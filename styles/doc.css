@@ -1,0 +1,252 @@
+/* =========================================================================
+   Reading pages (/guides) — a document, not a HUD.
+
+   Same design tokens, different job: one measured column, generous vertical
+   rhythm, and credit given real visual weight rather than a footnote.
+   Imported by globals.css; never imported anywhere else.
+   ========================================================================= */
+
+.doc {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(71, 81, 92, 0.22) 0%, rgba(27, 28, 34, 0) 60%),
+    var(--color-void);
+}
+.doc a { color: var(--color-lumen); }
+
+.doc-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) clamp(var(--space-lg), 5vw, var(--space-3xl));
+  background: rgba(27, 28, 34, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-hairline);
+  flex-wrap: wrap;
+}
+.doc-brand { display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; }
+.doc-brand .logo-wrap { width: 32px; height: 32px; flex-shrink: 0; }
+.doc-bar-links { display: inline-flex; gap: var(--space-xs); align-items: center; }
+
+.doc-main {
+  max-width: 78ch;
+  margin-inline: auto;
+  padding: var(--space-3xl) clamp(var(--space-lg), 5vw, var(--space-2xl)) var(--space-3xl);
+}
+.doc-head { margin-bottom: var(--space-2xl); }
+.doc-eyebrow {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-sm);
+}
+.doc-head h1 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: clamp(32px, 4.6vw, 50px);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  color: var(--color-foreground);
+  margin: 0 0 var(--space-md);
+  text-wrap: balance;
+}
+.doc-lede { color: var(--color-muted); font-size: var(--text-body-lg); line-height: 1.6; margin: 0; }
+
+.doc-section { margin-top: var(--space-3xl); scroll-margin-top: 92px; }
+.doc-section h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-display-md);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+  color: var(--color-foreground);
+  margin: 0 0 var(--space-md);
+  text-wrap: balance;
+}
+.doc-p { color: var(--color-muted); line-height: 1.7; margin: 0 0 var(--space-md); }
+.doc-p strong, .doc-list strong { color: var(--color-foreground); font-weight: var(--weight-semibold); }
+.doc-p em, .doc-list em { font-style: normal; color: var(--color-lumen); }
+.doc-list { color: var(--color-muted); line-height: 1.7; padding-left: 20px; margin: 0 0 var(--space-md); }
+.doc-list li { margin-bottom: var(--space-sm); }
+.doc-list li::marker { color: var(--color-hairline); }
+.doc-section .callout,
+.doc-section .table-wrap,
+.doc-section .steps { margin: var(--space-lg) 0; }
+
+/* --- table of contents --- */
+.doc-toc {
+  margin: var(--space-xl) 0 0;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--rim-inset);
+}
+.doc-toc-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-xs);
+}
+.doc-toc ol { margin: 0; padding-left: 20px; color: var(--color-muted); }
+.doc-toc li { margin: var(--space-2xs) 0; }
+.doc-toc a { text-decoration: none; }
+.doc-toc a:hover { text-decoration: underline; }
+
+/* -------------------------------------------------------------------------
+   Credit. Deliberately a raised, lit surface directly under the title — the
+   author is the first thing you meet, not a footnote you scroll past.
+   ------------------------------------------------------------------------- */
+.credit {
+  position: relative;
+  margin: var(--space-2xl) 0 0;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--surface-gradient);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+  overflow: hidden;
+}
+.credit::after {
+  content: "";
+  position: absolute;
+  bottom: 0; left: 15%;
+  width: 70%; height: 1px;
+  background: var(--horizon-line-lumen);
+  opacity: 0.9;
+}
+.credit-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-xs);
+}
+.credit-channel {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-2xs);
+}
+.credit-channel a { color: var(--color-foreground); text-decoration: none; }
+.credit-channel a:hover { color: var(--color-lumen); }
+.credit-title { color: var(--color-muted); margin: 0 0 var(--space-2xs); line-height: 1.5; }
+.credit-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  color: var(--color-muted);
+  margin: 0 0 var(--space-md);
+}
+.credit-foot { background: var(--color-panel); background-image: var(--surface-panel-gradient); }
+.credit-foot .doc-p { margin: 0; }
+
+/* --- guide index --- */
+.guide-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-xl); }
+.guide-card {
+  display: block;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  background-image: var(--surface-panel-gradient);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--motion-slow), transform var(--motion-slow);
+}
+.guide-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0; left: 15%;
+  width: 70%; height: 1px;
+  background: var(--horizon-line);
+  opacity: 0.18;
+  transition: opacity var(--motion-slow);
+}
+.guide-card:hover { transform: translateY(-2px); box-shadow: var(--rim-inset-strong), var(--shadow-card); }
+.guide-card:hover::after { opacity: 0.85; background: var(--horizon-line-lumen); }
+.guide-card:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+.guide-kicker {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2xs);
+}
+.guide-card h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-foreground);
+  margin: 0 0 var(--space-xs);
+  transition: color var(--motion-medium);
+}
+.guide-card:hover h2 { color: var(--color-lumen); }
+.guide-card p { color: var(--color-muted); line-height: 1.6; margin: 0; }
+.guide-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  color: var(--color-muted);
+}
+.guide-by strong { color: var(--color-foreground); font-weight: var(--weight-semibold); }
+.guide-source-line {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  color: var(--color-muted);
+  line-height: 1.7;
+  margin: var(--space-sm) 0 0;
+  padding-left: var(--space-lg);
+}
+
+.doc-foot {
+  max-width: 78ch;
+  margin-inline: auto;
+  padding: var(--space-xl) clamp(var(--space-lg), 5vw, var(--space-2xl)) var(--space-3xl);
+  border-top: 1px solid var(--color-hairline);
+}
+.doc-foot p {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  line-height: 1.7;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-xs);
+}
+
+/* The brand block and the guides link share the HUD top-left cell */
+.hud-topleft {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+.hud-topleft .brand { grid-column: auto; grid-row: auto; align-self: auto; }
+.hud-topleft .btn { text-decoration: none; }

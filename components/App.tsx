@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Logo from "./Logo";
 import Loader from "./Loader";
@@ -115,12 +116,17 @@ export default function App() {
       </div>
 
       <div className="hud">
-        <div className="panel brand">
-          <span className="logo-wrap"><Logo /></span>
-          <span>
-            <span className="brand-word">wardogspilot</span>
-            <span className="brand-sub">Rotary flight guide</span>
-          </span>
+        <div className="hud-topleft">
+          <div className="panel brand">
+            <span className="logo-wrap"><Logo /></span>
+            <span>
+              <span className="brand-word">wardogspilot</span>
+              <span className="brand-sub">Rotary flight guide</span>
+            </span>
+          </div>
+          <Link className="btn btn-sm btn-ghost" href="/guides/">
+            Guides
+          </Link>
         </div>
 
         <div className="hud-actions">
