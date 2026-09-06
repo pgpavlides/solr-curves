@@ -6,8 +6,19 @@
   the whole point here is that you can watch the inputs and the aircraft at the
   same moment.
 
-  Frame of reference matches the exported model: +X right, +Y up, +Z is the
-  nose. Positions are metres, angles degrees, control inputs normalised.
+  Frame of reference matches the exported model: +Y up, +Z is the nose.
+  Positions are metres, angles degrees, control inputs normalised.
+
+  SIGN CONVENTION — verified against the renderer, not assumed. With nose +Z
+  and up +Y, right = forward x up = (-1,0,0), so **+X is the aircraft's LEFT**.
+  Yaw about +Y swings the nose from +Z toward +X, so **increasing hdg is a LEFT
+  turn**. Roll about +Z lifts the left wing, so **positive roll is a RIGHT
+  bank**. A coordinated turn therefore has sign(roll) opposite to sign(d hdg).
+  Getting this backwards banks the aircraft against its own turn.
+
+  The `turn` and `jhook` tracks are generated from their geometry rather than
+  hand-authored, so heading and bank cannot drift out of agreement with the
+  flight path.
 */
 
 export interface Key {
@@ -15,11 +26,11 @@ export interface Key {
   t: number;
   /** world position, metres */
   p: [number, number, number];
-  /** heading in degrees; 0 = nose along +Z, positive = yaw right */
+  /** heading in degrees; 0 = nose along +Z, INCREASING = yaw left */
   hdg: number;
   /** nose-up positive */
   pitch: number;
-  /** right-bank positive */
+  /** positive = RIGHT bank (see the sign convention above) */
   roll: number;
   /** collective lever, 0 = full down, 1 = full up */
   coll: number;
@@ -152,25 +163,28 @@ export const maneuvers: Maneuver[] = [
     tag: "Cruise",
     blurb:
       "A 180° turn at 30° of bank, holding altitude. The cleanest demonstration of why banking costs you lift.",
-    duration: 16,
+    duration: 14,
     loops: false,
     watchFor:
       "At 30° of bank you keep about 87% of your vertical lift, so you need roughly 15% more collective just to stay level. Pilots who do not add it descend through the turn and blame the aircraft.",
     keys: [
-      K(0.0, [0, 15, 0], 0, -5, 0, 0.68, [0, -0.2], -0.12, 165),
-      K(0.12, [0, 15, 18], 4, -5, 14, 0.7, [0.3, -0.16], -0.08, 162),
-      K(0.26, [3, 15, 36], 26, -4, 30, 0.74, [0.34, -0.06], -0.04, 155),
-      K(0.45, [16, 15, 52], 74, -3, 32, 0.75, [0.32, -0.02], -0.02, 150),
-      K(0.64, [36, 15, 56], 122, -3, 32, 0.75, [0.32, -0.02], -0.02, 150),
-      K(0.8, [54, 15, 46], 158, -4, 26, 0.73, [0.28, -0.06], -0.04, 155),
-      K(0.92, [64, 15, 30], 176, -5, 10, 0.7, [0.12, -0.16], -0.08, 162),
-      K(1.0, [68, 15, 16], 180, -5, 0, 0.68, [0, -0.2], -0.12, 165),
+    K(0.00, [0, 15, -27.94], 0, -4, 0, 0.62, [0, -0.14], -0.1, 70),
+    K(0.06, [0, 15, -13.97], 0, -4, -15, 0.64, [-0.24, -0.14], -0.1, 70),
+    K(0.12, [0, 15, 0], 0.1, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.24, [8.01, 15, 31.63], 28.4, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.36, [30.11, 15, 55.63], 56.8, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.50, [66.45, 15, 66.45], 90, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.64, [102.79, 15, 55.63], 123.2, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.76, [124.89, 15, 31.63], 151.6, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.88, [132.9, 15, 0], 179.9, -4, -30, 0.72, [-0.48, -0.14], -0.1, 70),
+    K(0.94, [132.9, 15, -13.97], 180, -4, -15, 0.64, [-0.24, -0.14], -0.1, 70),
+    K(1.00, [132.9, 15, -27.94], 180, -4, 0, 0.62, [0, -0.14], -0.1, 70),
     ],
     phases: [
       { at: 0.0, title: "Roll in", detail: "Lateral cyclic banks the disc. Nothing else has happened yet — bank alone does not turn you." },
-      { at: 0.2, title: "Add collective", detail: "The moment the disc tilts, vertical lift drops. Feed collective in as the bank steepens or you will sink." },
-      { at: 0.45, title: "Hold the bank", detail: "Steady 30°. The turn rate comes from the bank angle and the speed, not from the pedals." },
-      { at: 0.82, title: "Roll out", detail: "Ease the bank off and take the collective back out at the same rate, or you balloon on the way out." },
+      { at: 0.08, title: "Add collective", detail: "The moment the disc tilts, vertical lift drops. Feed collective in as the bank steepens or you will sink." },
+      { at: 0.3, title: "Hold the bank", detail: "Steady 30°. The turn rate comes from the bank angle and the speed, not from the pedals." },
+      { at: 0.86, title: "Roll out", detail: "Ease the bank off and take the collective back out at the same rate, or you balloon on the way out." },
     ],
   },
 
@@ -234,29 +248,33 @@ export const maneuvers: Maneuver[] = [
     tag: "Arrival",
     blurb:
       "The combat landing: arrive fast and low, fly past the zone, and hook back onto it — trading every bit of airspeed for the turn rather than for altitude.",
-    duration: 17,
+    duration: 13,
     loops: false,
     watchFor:
       "Collective goes down at the start and stays down until the cushion. If you pull the nose up instead of banking, all that energy goes into a climb and you hang over the zone as a target.",
     keys: [
-      K(0.0, [-26, 14, 34], 218, -8, 0, 0.7, [0, -0.28], -0.13, 245),
-      K(0.14, [-16, 11.5, 24], 218, -6, -6, 0.42, [-0.16, -0.1], -0.16, 238),
-      K(0.28, [-7, 9.0, 15], 214, -2, -26, 0.26, [-0.4, 0.16], -0.28, 220),
-      K(0.42, [2, 7.0, 6], 196, 2, -42, 0.22, [-0.6, 0.3], -0.42, 190),
-      K(0.56, [8, 5.5, -3], 158, 6, -46, 0.22, [-0.64, 0.42], -0.5, 150),
-      K(0.68, [9, 4.4, -11], 112, 10, -40, 0.26, [-0.54, 0.5], -0.46, 108),
-      K(0.79, [5, 3.4, -15], 66, 12, -24, 0.34, [-0.3, 0.52], -0.34, 64),
-      K(0.88, [1.5, 2.4, -12], 30, 9, -8, 0.46, [-0.1, 0.38], -0.2, 30),
-      K(0.95, [0.2, 1.2, -5], 8, 3, -2, 0.55, [0, 0.14], -0.14, 10),
-      K(1.0, [0, 0, 0], 0, 0, 0, 0.5, [0, 0], -0.12, 0),
+    K(0.00, [-90, 16, -160], 0, -6, 0, 0.7, [0, -0.23], 0, 250),
+    K(0.08, [-90, 15.05, -127.24], 0, -4.9, 0, 0.27, [0, -0.19], 0, 244),
+    K(0.16, [-90, 14.1, -94.48], 0, -3.7, 0, 0.22, [0, -0.14], 0, 239),
+    K(0.24, [-90, 13.14, -61.71], 0, -2.6, 0, 0.22, [0, -0.1], 0, 233),
+    K(0.32, [-90, 12.19, -28.95], 0, -1.4, 0, 0.22, [0, -0.05], 0, 227),
+    K(0.42, [-90, 11, 12], 0.1, 0, -10.4, 0.22, [-0.17, 0], -0.03, 220),
+    K(0.50, [-82.86, 10.43, 36.33], 66.5, 3, -37.6, 0.22, [-0.61, 0.11], -0.89, 207),
+    K(0.58, [-63.69, 8.95, 52.93], 127.5, 9.1, -48, 0.22, [-0.77, 0.35], -0.02, 175),
+    K(0.66, [-38.6, 6.91, 56.54], 145.7, 14.2, -48, 0.22, [-0.77, 0.54], 0.32, 131),
+    K(0.74, [-15.53, 4.65, 46.01], 161.3, 15, -48, 0.22, [-0.77, 0.58], 0.33, 83),
+    K(0.82, [-1.82, 2.52, 24.68], 175.4, 15, -41.9, 0.22, [-0.68, 0.58], 0.43, 40),
+    K(0.88, [0, 1.22, 10.29], 180, 14.2, -20, 0.22, [-0.32, 0.54], 0, 16),
+    K(0.94, [0, 0.33, 5.14], 180, 5.9, -1.6, 0.39, [-0.03, 0.23], 0, 2),
+    K(1.00, [0, 0, 0], 180, 0, 0, 0.56, [0, 0], 0, 0),
     ],
     phases: [
-      { at: 0.0, title: "Arrive fast and low", detail: "All the speed you can carry, hugging the terrain. Start the manoeuvre about 200 m out." },
-      { at: 0.12, title: "Collective down", detail: "Dump it and hold it down. Everything from here is energy you already have." },
-      { at: 0.26, title: "Roll toward the zone", detail: "Bank hard into the turn. The lift vector goes sideways, so the energy goes into the turn instead of a climb." },
-      { at: 0.52, title: "Yaw holds the nose on the spot", detail: "Pedal keeps the nose pointed at the landing zone the whole way round, so you can see what you are landing into." },
-      { at: 0.74, title: "Tighten and bleed", detail: "More bank and aft cyclic as the speed comes off, trading airspeed against altitude." },
-      { at: 0.9, title: "Level and cushion", detail: "Roll level, nose to the horizon, collective back in to catch the sink onto the skids." },
+      { at: 0.0, title: "Arrive alongside, not at, the spot", detail: "Run in fast and low with the zone off your left. Aimed straight at it there is nowhere for the tail to swing." },
+      { at: 0.09, title: "Collective down", detail: "Dump it and hold it down until the skids touch. Everything from here is energy you already have." },
+      { at: 0.40, title: "Roll toward the zone", detail: "Bank hard into the turn as you come abeam. The lift vector goes sideways, so the energy goes into the turn instead of a climb." },
+      { at: 0.50, title: "Pedal swings the tail", detail: "Feed pedal so the tail comes round and the nose stays on the spot — the aircraft drifts around the landing point like a car through a corner." },
+      { at: 0.68, title: "Tighten and bleed", detail: "Hold the bank and let the speed wash off. The nose is now up to 78° off the flight path; that skid is what is braking you." },
+      { at: 0.86, title: "Roll level and cushion", detail: "Wings level onto a short final, nose to the horizon, collective back in to catch the sink onto the skids." },
     ],
   },
 ];
