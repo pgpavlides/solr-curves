@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import DocShell from "@/components/DocShell";
 import GuideBlocks from "@/components/GuideBlocks";
+import YouTubeThumb from "@/components/YouTubeThumb";
 import { guides, guideBySlug, videoUrl } from "@/data/guides";
 
 export function generateStaticParams() {
@@ -41,29 +42,45 @@ export default async function GuidePage({
         </header>
 
         {/* Credit sits above the content, not buried at the bottom. */}
-        <aside className="credit">
-          <span className="credit-label">Based on a video by</span>
-          <p className="credit-channel">
-            <a href={g.source.channelUrl} rel="noopener" target="_blank">
-              {g.source.channel}
-            </a>
-          </p>
-          <p className="credit-title">
-            <a href={videoUrl(g.source.videoId)} rel="noopener" target="_blank">
-              {g.source.title}
-            </a>
-          </p>
-          <p className="credit-meta">
-            {g.source.duration} &middot; published {g.source.published}
-          </p>
+        <aside className="credit has-thumb">
           <a
-            className="btn btn-sm"
+            className="credit-thumb"
             href={videoUrl(g.source.videoId)}
             rel="noopener"
             target="_blank"
+            aria-label={`Watch ${g.source.title} by ${g.source.channel} on YouTube`}
           >
-            Watch the original
+            <YouTubeThumb
+              videoId={g.source.videoId}
+              alt=""
+              duration={g.source.duration}
+              eager
+            />
           </a>
+          <div className="credit-text">
+            <span className="credit-label">Based on a video by</span>
+            <p className="credit-channel">
+              <a href={g.source.channelUrl} rel="noopener" target="_blank">
+                {g.source.channel}
+              </a>
+            </p>
+            <p className="credit-title">
+              <a href={videoUrl(g.source.videoId)} rel="noopener" target="_blank">
+                {g.source.title}
+              </a>
+            </p>
+            <p className="credit-meta">
+              {g.source.duration} &middot; published {g.source.published}
+            </p>
+            <a
+              className="btn btn-sm"
+              href={videoUrl(g.source.videoId)}
+              rel="noopener"
+              target="_blank"
+            >
+              Watch the original
+            </a>
+          </div>
         </aside>
 
         <nav className="doc-toc" aria-label="Contents">

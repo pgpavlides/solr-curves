@@ -157,19 +157,45 @@
 .credit-foot { background: var(--color-panel); background-image: var(--surface-panel-gradient); }
 .credit-foot .doc-p { margin: 0; }
 
-/* --- guide index --- */
-.guide-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-xl); }
+/* -------------------------------------------------------------------------
+   Guide index — a gallery, not a column. Wider container, thumbnails at the
+   real 16:9, and the credit line kept outside the card link so the channel
+   and the video stay independently clickable.
+   ------------------------------------------------------------------------- */
+.doc-main.is-wide,
+.doc-foot.is-wide { max-width: 1180px; }
+
+.doc-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: var(--space-md) 0 0;
+}
+
+.guide-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+}
+.guide-item { display: flex; flex-direction: column; min-width: 0; }
+
 .guide-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   text-decoration: none;
   color: inherit;
-  padding: var(--space-lg);
   border-radius: var(--radius-lg);
   background: var(--color-panel);
   background-image: var(--surface-panel-gradient);
   box-shadow: var(--rim-inset), var(--shadow-card);
   overflow: hidden;
+  isolation: isolate;
   transition: box-shadow var(--motion-slow), transform var(--motion-slow);
 }
 .guide-card::after {
@@ -180,10 +206,75 @@
   background: var(--horizon-line);
   opacity: 0.18;
   transition: opacity var(--motion-slow);
+  pointer-events: none;
+  z-index: 2;
 }
-.guide-card:hover { transform: translateY(-2px); box-shadow: var(--rim-inset-strong), var(--shadow-card); }
+.guide-card:hover { transform: translateY(-3px); box-shadow: var(--rim-inset-strong), var(--shadow-raised); }
 .guide-card:hover::after { opacity: 0.85; background: var(--horizon-line-lumen); }
 .guide-card:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+
+/* --- thumbnail --- */
+.thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  background: var(--color-graphite);
+  overflow: hidden;
+}
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--motion-slow), opacity var(--motion-medium);
+}
+.guide-card:hover .thumb img { transform: scale(1.035); }
+/* a wash so white thumbnails do not blow out against the dark panel */
+.thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11,21,30,0.15) 0%, rgba(11,21,30,0.55) 100%);
+  pointer-events: none;
+}
+.thumb-play {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 46px; height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: var(--radius-full);
+  background: var(--surface-gradient);
+  box-shadow: var(--rim-inset-strong);
+  display: grid;
+  place-items: center;
+  color: var(--color-lumen);
+  opacity: 0.82;
+  transition: opacity var(--motion-medium), transform var(--motion-medium);
+  z-index: 2;
+}
+.thumb-play svg { width: 20px; height: 20px; margin-left: 2px; }
+.guide-card:hover .thumb-play, .credit-thumb:hover .thumb-play { opacity: 1; transform: scale(1.08); }
+.thumb-time {
+  position: absolute;
+  right: 8px; bottom: 8px;
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(11, 21, 30, 0.82);
+  box-shadow: var(--rim-inset);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- card body --- */
+.guide-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  gap: var(--space-2xs);
+}
 .guide-kicker {
   display: block;
   font-family: var(--font-display);
@@ -192,36 +283,75 @@
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--color-muted);
-  margin-bottom: var(--space-2xs);
 }
-.guide-card h2 {
+.guide-title {
+  display: block;
   font-family: var(--font-display);
   font-size: var(--text-display-sm);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
+  line-height: 1.2;
   color: var(--color-foreground);
-  margin: 0 0 var(--space-xs);
   transition: color var(--motion-medium);
+  text-wrap: balance;
 }
-.guide-card:hover h2 { color: var(--color-lumen); }
-.guide-card p { color: var(--color-muted); line-height: 1.6; margin: 0; }
-.guide-meta {
+.guide-card:hover .guide-title { color: var(--color-lumen); }
+.guide-sum {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.6;
+  margin-top: var(--space-2xs);
+}
+.guide-body .card-meta { margin-top: var(--space-sm); }
+
+/* --- credit line beneath each card --- */
+.guide-credit {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-md);
-  margin-top: var(--space-md);
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: var(--text-label-sm);
+  line-height: 1.6;
   color: var(--color-muted);
-}
-.guide-by strong { color: var(--color-foreground); font-weight: var(--weight-semibold); }
-.guide-source-line {
-  font-family: var(--font-mono);
-  font-size: var(--text-label-sm);
-  color: var(--color-muted);
-  line-height: 1.7;
   margin: var(--space-sm) 0 0;
-  padding-left: var(--space-lg);
+  padding: 0 var(--space-2xs);
+}
+.guide-credit a { color: var(--color-muted); text-decoration: none; }
+.guide-credit a:first-child { color: var(--color-foreground); }
+.guide-credit a:hover { color: var(--color-lumen); text-decoration: underline; }
+.guide-credit .sep { opacity: 0.4; }
+.guide-credit .guide-date { opacity: 0.7; }
+
+.guide-notes {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  margin-top: var(--space-3xl);
+}
+
+/* --- credit panel on a guide page, with the thumbnail alongside --- */
+.credit.has-thumb {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) 1fr;
+  gap: var(--space-lg);
+  align-items: center;
+}
+.credit-thumb {
+  display: block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--rim-inset);
+  text-decoration: none;
+}
+.credit-thumb:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+.credit-text { min-width: 0; }
+@media (max-width: 720px) {
+  .credit.has-thumb { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) {
+  .guide-grid { grid-template-columns: 1fr; }
 }
 
 .doc-foot {

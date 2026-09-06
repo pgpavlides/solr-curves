@@ -5,9 +5,12 @@ import Logo from "./Logo";
 export default function DocShell({
   children,
   crumb,
+  wide = false,
 }: {
   children: React.ReactNode;
   crumb?: { href: string; label: string };
+  /** Index and gallery pages want the width; prose pages want a reading measure. */
+  wide?: boolean;
 }) {
   return (
     <div className="doc">
@@ -35,8 +38,8 @@ export default function DocShell({
           </Link>
         </nav>
       </header>
-      <main className="doc-main">{children}</main>
-      <footer className="doc-foot">
+      <main className={`doc-main${wide ? " is-wide" : ""}`}>{children}</main>
+      <footer className={`doc-foot${wide ? " is-wide" : ""}`}>
         <p>
           Guides are written up from the work of the creators credited on each
           page. Go and watch the originals — and subscribe to the people who made
