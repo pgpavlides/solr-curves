@@ -9,6 +9,7 @@ const links = [
   { href: "/settings/", label: "Settings" },
   { href: "/keybinds/", label: "Keybinds" },
   { href: "/flying/", label: "Flying" },
+  { href: "/maneuvers/", label: "Simulator" },
   { href: "/logistics/", label: "Logistics" },
   { href: "/fleet/", label: "Fleet" },
   { href: "/glossary/", label: "Glossary" },

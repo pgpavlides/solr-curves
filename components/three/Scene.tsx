@@ -38,6 +38,10 @@ const scenes = {
     ssr: false,
     loading: () => <Loading height={490} />,
   }),
+  maneuvers: dynamic(() => import("./scenes/ManeuverSim"), {
+    ssr: false,
+    loading: () => <Loading height={600} />,
+  }),
 };
 
 export type SceneName = keyof typeof scenes;

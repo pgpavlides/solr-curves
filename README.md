@@ -54,13 +54,59 @@ initial bundle — pages with a scene cost ~1.5 kB more up front, and the
 
 | Scene | Page | What it is for |
 | --- | --- | --- |
+| `ManeuverSim` | `/maneuvers/` | Seven maneuvers flown on the real Blender model, with the pilot's collective, cyclic and pedal positions driven off the same timeline. Rendered on **WebGPU**, auto-falling back to WebGL2 |
 | `HeroScene` | `/` | An MH-6 built from primitives — no external model to download or go stale |
 | `LiftVectorScene` | `/controls/` | Tilt the rotor disc and watch total lift split into vertical and horizontal components. Live readout of vertical lift % and the extra collective needed to hold altitude |
 | `JHookScene` | `/flying/` | The J-hook as a scrubable 3D path; the phase list beside it lights up to match |
 | `DropScene` | `/numbers/` | Passenger drop height against a 1.8 m figure, to scale |
 
-`LittleBird.tsx` is shared geometry. Dimensions are roughly true to the real
-aircraft (7.5 m rotor, 5-bladed head).
+`LittleBird.tsx` is procedural geometry used by the small diagram scenes.
+`HeliModel.tsx` loads the real airframe from `public/heli.glb`.
+
+### WebGPU
+
+Only `ManeuverSim` uses `three/webgpu`; the small diagram scenes stay on the
+default WebGL renderer. That split is deliberate — drei's `Grid`, `Line` and
+`ContactShadows` are GLSL `ShaderMaterial`s that the WebGPU renderer will not
+compile, so the WebGPU scene builds its grid and path from `LineBasicMaterial`
+instead. Aliasing `three` to `three/webgpu` globally would break the other
+scenes, so it is not done.
+
+The renderer probes `navigator.gpu` and forces the WebGL2 backend when it is
+absent rather than letting `init()` fail; the viewport badge reports which
+backend actually came up. `SceneBoundary` turns any scene crash into a readable
+message instead of a blank rectangle.
+
+Materials are set at **low metalness on purpose**. There is no environment map
+in these scenes, and a PBR metal with nothing to reflect renders as a black
+silhouette.
+
+## The Blender pipeline
+
+`public/heli.glb` came out of a single 378k-poly merged mesh via the Blender
+MCP. Worth knowing if it needs regenerating:
+
+1. The mesh has **417 loose parts**. The rotors were identified by labelling
+   every loose part and classifying by its bounding-box centre — main rotor is
+   `y > 8.8, z < 45`; tail rotor is `z > 44, x < -0.8, y < 8`. The `x < -0.8`
+   term matters: the two vertical fins sit on the centreline at `x ≈ 0.1` while
+   the tail rotor is offset to `x ≈ -2.3`. Without it you get a spinning fin.
+2. Labels are baked into a per-vertex `part_id` attribute **before** any
+   separation. Selecting by vertex index breaks, because `mesh.separate()`
+   re-indexes the remaining mesh.
+3. Origins are set to the real rotor axes (3D cursor + `ORIGIN_CURSOR`), the
+   hull is decimated to 20%, and the rig is scaled so the main rotor is a true
+   8.33 m and rotated 180° about Z so the nose exports onto +Z.
+4. Work happens on copies in a `WEB_EXPORT` collection. The original
+   `CL0SED_B0DY` is never modified.
+
+Resulting node graph:
+
+```
+HELI_Body        root · 180° about Y · scale 0.0975 · skids at y=0
+├─ HELI_MainRotor   origin on the mast · spins about local Y
+└─ HELI_TailRotor   origin on the tail rotor axis · spins about local X
+```
 
 ## Content
 

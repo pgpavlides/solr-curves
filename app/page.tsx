@@ -41,6 +41,13 @@ const sections: {
     chips: ["9 drills", "J-hook", "3D"],
   },
   {
+    href: "/maneuvers/",
+    icon: "play",
+    title: "Maneuver simulator",
+    body: "Seven maneuvers flown in 3D with the collective, cyclic and pedals moving as the aircraft moves. Hover, quick stop, level turn, J-hook.",
+    chips: ["7 maneuvers", "WebGPU", "live inputs"],
+  },
+  {
     href: "/logistics/",
     icon: "package",
     title: "Logistics",
@@ -144,7 +151,7 @@ export default function Home() {
       <section className="section">
         <SectionHead
           eyebrow="Contents"
-          title="Eight pages, no filler."
+          title="Nine pages, no filler."
           lede="Each page is one part of the job. Read them in order the first time; after that they are a reference you dip into between rounds."
         />
 
