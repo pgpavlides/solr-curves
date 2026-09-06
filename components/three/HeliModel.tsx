@@ -9,7 +9,7 @@ import { LUMEN } from "./lumen";
 /*
   The Blender export, wired for animation.
 
-  The GLB comes out of the pipeline with three named nodes:
+  The GLB carries three named nodes:
     HELI_Body       root, 180 deg about Y so the nose lands on +Z, scaled to metres
     HELI_MainRotor  origin on the mast axis, spins about its local Y
     HELI_TailRotor  origin on the tail rotor axis, spins about its local X
@@ -18,8 +18,32 @@ import { LUMEN } from "./lumen";
   the deck with no fudge factor.
 */
 
-const MAIN_RPM = 480; // MD530 is ~480 rpm; scaled down on screen so it reads
+/** Main rotor, revolutions per second on screen. Slower than the real ~480 rpm
+ *  so the blades read as blades instead of strobing into a solid ring. */
+const MAIN_REV_PER_SEC = 1.75;
+/** MD530 tail rotor turns about 5.9 times for every main rotor turn. Both
+ *  rotors derive from the one figure above so the ratio cannot drift: using
+ *  separate fudge factors is what previously had the tail turning at 1.6:1. */
 const TAIL_RATIO = 5.9;
+const TAU = Math.PI * 2;
+
+type Axis = "x" | "y";
+
+/** Largest distance any vertex sits from the given spin axis, in node units. */
+function discRadius(node: THREE.Object3D, axis: Axis): number {
+  let r2 = 0;
+  node.traverse((o) => {
+    const g = (o as THREE.Mesh).geometry;
+    const pos = g?.attributes?.position;
+    if (!pos) return;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const d = axis === "y" ? x * x + z * z : y * y + z * z;
+      if (d > r2) r2 = d;
+    }
+  });
+  return Math.sqrt(r2);
+}
 
 export default function HeliModel({
   spin = 1,
@@ -35,85 +59,89 @@ export default function HeliModel({
 
   const main = useRef<THREE.Object3D | null>(null);
   const tail = useRef<THREE.Object3D | null>(null);
+  const discMats = useRef<{ mat: THREE.MeshBasicMaterial; base: number }[]>([]);
 
   useEffect(() => {
     main.current = root.getObjectByName("HELI_MainRotor") ?? null;
     tail.current = root.getObjectByName("HELI_TailRotor") ?? null;
 
-    // Re-material into the Lumen palette so the aircraft belongs to the page.
-    // Material.002 is the canopy glass; everything else is hull.
+    /*
+      Re-material into the Lumen palette. Metalness is deliberately low: there
+      is no environment map in this scene, and a PBR metal with nothing to
+      reflect renders as a black silhouette. Material.002 is the canopy glass.
+    */
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
       const old = mesh.material as THREE.Material | THREE.Material[];
       const name = Array.isArray(old) ? old[0]?.name : old?.name;
-      /*
-        Metalness is deliberately low. A PBR metal reflects its environment,
-        and there is no environment map in this scene — at metalness 0.6+ the
-        airframe renders as a black silhouette with no readable form.
-      */
       mesh.material = /002/.test(name ?? "")
-        ? new THREE.MeshStandardMaterial({
-            color: LUMEN.slateRise,
-            metalness: 0.3,
-            roughness: 0.18,
-          })
-        : new THREE.MeshStandardMaterial({
-            color: LUMEN.shell,
-            metalness: 0.18,
-            roughness: 0.58,
-          });
+        ? new THREE.MeshStandardMaterial({ color: LUMEN.slateRise, metalness: 0.3, roughness: 0.18 })
+        : new THREE.MeshStandardMaterial({ color: LUMEN.shell, metalness: 0.18, roughness: 0.58 });
     });
-  }, [root]);
+
+    /*
+      Swept discs are added as CHILDREN of the rotor nodes rather than placed
+      at hand-computed coordinates. Parenting means they inherit the hub
+      position and the model scale automatically — the previous hardcoded
+      positions were still those of an older export scale, leaving the tail
+      disc a third of a metre ahead of its own rotor.
+    */
+    const added: THREE.Mesh[] = [];
+    discMats.current = [];
+
+    const attach = (node: THREE.Object3D | null, axis: Axis, opacity: number, rim: boolean) => {
+      if (!node) return;
+      const r = discRadius(node, axis);
+      if (!(r > 0)) return;
+
+      const make = (geo: THREE.BufferGeometry, base: number) => {
+        const mat = new THREE.MeshBasicMaterial({
+          color: LUMEN.lumen,
+          transparent: true,
+          opacity: base,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        // circleGeometry faces +Z; turn it to face the spin axis
+        if (axis === "y") mesh.rotation.x = -Math.PI / 2;
+        else mesh.rotation.y = Math.PI / 2;
+        mesh.renderOrder = 2;
+        node.add(mesh);
+        added.push(mesh);
+        discMats.current.push({ mat, base });
+      };
+
+      make(new THREE.CircleGeometry(r, 64), opacity);
+      if (rim) make(new THREE.RingGeometry(r * 0.985, r, 64), opacity * 6);
+    };
+
+    if (blur) {
+      attach(main.current, "y", 0.035, true);
+      attach(tail.current, "x", 0.09, false);
+    }
+
+    return () => {
+      for (const m of added) {
+        m.removeFromParent();
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      }
+      discMats.current = [];
+    };
+  }, [root, blur]);
 
   useFrame((_, dt) => {
     const step = Math.min(dt, 0.05) * spin;
-    if (main.current) main.current.rotation.y += step * (MAIN_RPM / 60) * Math.PI * 2 * 0.22;
-    if (tail.current) tail.current.rotation.x += step * (MAIN_RPM / 60) * TAIL_RATIO * Math.PI * 2 * 0.06;
+    if (main.current) main.current.rotation.y += step * MAIN_REV_PER_SEC * TAU;
+    if (tail.current) tail.current.rotation.x += step * MAIN_REV_PER_SEC * TAIL_RATIO * TAU;
+    // the swept discs only read once the blades are actually moving
+    const k = Math.min(Math.max((spin - 0.12) / 0.5, 0), 1);
+    for (const d of discMats.current) d.mat.opacity = d.base * k;
   });
 
-  return (
-    <group>
-      <primitive object={root} />
-      {blur && spin > 0.15 && (
-        <>
-          {/* swept discs: the real blades strobe badly at any frame rate */}
-          <mesh position={[0, 2.276, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[4.16, 64]} />
-            <meshBasicMaterial
-              color={LUMEN.lumen}
-              transparent
-              opacity={0.035 * spin}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-            />
-          </mesh>
-          <mesh position={[0, 2.276, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[4.1, 4.17, 64]} />
-            <meshBasicMaterial
-              color={LUMEN.lumen}
-              transparent
-              opacity={0.22 * spin}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-            />
-          </mesh>
-          <mesh position={[0.26, 1.465, -4.272]} rotation={[0, Math.PI / 2, 0]}>
-            <circleGeometry args={[0.78, 32]} />
-            <meshBasicMaterial
-              color={LUMEN.lumen}
-              transparent
-              opacity={0.07 * spin}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-            />
-          </mesh>
-        </>
-      )}
-    </group>
-  );
+  return <primitive object={root} />;
 }
 
 useGLTF.preload("/heli.glb");
