@@ -1,0 +1,182 @@
+export interface Video {
+  id: string;
+  channel: string;
+  title: string;
+  length: string;
+  covers: string;
+  /** true when captions were pulled and read for this compilation */
+  transcribed: boolean;
+}
+
+export const url = (id: string) => `https://www.youtube.com/watch?v=${id}`;
+
+export const videos: Video[] = [
+  {
+    id: "bhnqjfTH-Mg",
+    channel: "Cologne TM · real-world pilot, 3,000 hrs",
+    title: "REAL PILOT Teaches How To FLY — WARDOGS Helicopter Tutorial (Beginner)",
+    length: "4:35",
+    covers: "Axes · Drills",
+    transcribed: true,
+  },
+  {
+    id: "nD5bxC38pRI",
+    channel: "Cologne TM",
+    title: "REAL PILOT Teaches J-HOOKS — Helicopter Tutorial WARDOGS",
+    length: "4:16",
+    covers: "J-hook · LZ choice",
+    transcribed: true,
+  },
+  {
+    id: "wcsY2EeIlyc",
+    channel: "StratzFPS · WARDOGS War College",
+    title: "How to FLY Helis in WARDOGS (5 Basic Tips)",
+    length: "7:02",
+    covers: "Collective · Money",
+    transcribed: true,
+  },
+  {
+    id: "1Vvo7K7moGA",
+    channel: "StratzFPS · War College Ep. 5",
+    title: "ADVANCED Heli Guide for WARDOGS!",
+    length: "4:59",
+    covers: "Orbits · AGL",
+    transcribed: true,
+  },
+  {
+    id: "3NK8T8hSIn0",
+    channel: "Nova Gaming",
+    title: "So You Want to Fly Helicopters in WARDOGS…",
+    length: "10:57",
+    covers: "Most complete beginner guide",
+    transcribed: true,
+  },
+  {
+    id: "3G2ov9FCNx8",
+    channel: "TinyTank800",
+    title: "The Logistics Pilot Experience in WARDOGS",
+    length: "17:57",
+    covers: "Supply chain · Full round, narrated",
+    transcribed: true,
+  },
+  {
+    id: "_s4gBuvQX0A",
+    channel: "Jingoea",
+    title: "WARDOGS Helicopter Tutorial — How to Fly for Beginners & Profit",
+    length: "9:36",
+    covers: "HUD · Crates · Gunnery",
+    transcribed: true,
+  },
+  {
+    id: "V8Qx9D9vYm4",
+    channel: "OnMapleWings",
+    title: "WARDOGS Pilot Guide: How to Fly & Profit (Beginner friendly)",
+    length: "10:03",
+    covers: "Theory · Landing",
+    transcribed: true,
+  },
+  {
+    id: "bu5H5ULa-Ag",
+    channel: "OnMapleWings",
+    title: "Fly Like a Pro: 2X Your Pilot $ and XP in WARDOGS",
+    length: "6:52",
+    covers: "Lift vector · NOE",
+    transcribed: true,
+  },
+  {
+    id: "HeVt0xkaEI4",
+    channel: "Unlisted channel",
+    title: "How To Get Started With Helicopters In WARDOGS…",
+    length: "—",
+    covers: "Rifle aim · Logistics",
+    transcribed: true,
+  },
+  {
+    id: "RvDm0GMj0x0",
+    channel: "Your Chopper Pilot",
+    title: "War Dogs Helicopter Mouse and Keyboard Keybind Tutorial",
+    length: "4:38",
+    covers: "Keybinds",
+    transcribed: true,
+  },
+  {
+    id: "fH7VUcaarOU",
+    channel: "SaltyAzz",
+    title: "Heli Landing Tutorial WARDOGS",
+    length: "3:49",
+    covers: "Deceleration",
+    transcribed: true,
+  },
+  {
+    id: "1C0RXAygtOQ",
+    channel: "LiteralWedgeOfCheese",
+    title: "WARDOGS — Helicopter Flight Settings",
+    length: "3:08",
+    covers: "Settings",
+    transcribed: true,
+  },
+  {
+    id: "BNyTUNpf3SM",
+    channel: "The Pure Gamer",
+    title: "WARDOGS Helicopter Settings for Novice Players",
+    length: "4:47",
+    covers: "Low-sens setup",
+    transcribed: true,
+  },
+  {
+    id: "gBiF8kWgLOQ",
+    channel: "KaptainLeeks",
+    title: "How to Fly Helicopters in WARDOGS with HOTAS",
+    length: "5:18",
+    covers: "HOTAS",
+    transcribed: true,
+  },
+  {
+    id: "72OTxrlubOo",
+    channel: "Chef Goybeam",
+    title: "Wardogs flying tutorial for controller players",
+    length: "4:23",
+    covers: "Controller",
+    transcribed: true,
+  },
+  {
+    id: "Wg9ve3wWJ_E",
+    channel: "Unlisted channel",
+    title: "WarDogs Helicopter Tutorial — Mouse & Keyboard + FIX Keybindings",
+    length: "—",
+    covers: "Keybinds · Firing range",
+    transcribed: true,
+  },
+  {
+    id: "rxniPlm7NBo",
+    channel: "Enders",
+    title: "Attack Helicopter Close Air Support in WARDOGS Is INSANE!",
+    length: "23:33",
+    covers: "Gameplay, not instruction",
+    transcribed: true,
+  },
+  {
+    id: "SiZBHRrblNA",
+    channel: "Arma Pilot · no captions available",
+    title: "The BEST Helicopter Settings in WARDOGS",
+    length: "8:56",
+    covers: "Unreviewed",
+    transcribed: false,
+  },
+  {
+    id: "S6d4pVmC9BI",
+    channel: "Dynamic",
+    title: "Learning How to Profit as a Wardogs Pilot",
+    length: "7:48",
+    covers: "Economy",
+    transcribed: false,
+  },
+  {
+    id: "EkMXZo5Y5-w",
+    channel: "The Arcade Farmer",
+    title: "How not to FLY Helis in WARDOGS",
+    length: "2:29",
+    covers: "Failure reel",
+    transcribed: false,
+  },
+];

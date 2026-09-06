@@ -1,0 +1,26 @@
+---
+interface Props {
+  caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<div class="table-wrap">
+  {caption && <div class="table-caption"><span>{caption}</span></div>}
+  <div class="table-scroll">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .table-caption span {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--text-label-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-muted);
+    padding: var(--space-md) var(--space-lg) 0;
+  }
+</style>

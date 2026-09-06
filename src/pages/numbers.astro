@@ -1,0 +1,110 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import SectionHead from "../components/SectionHead.astro";
+import Table from "../components/Table.astro";
+import { dropHeights, crates } from "../data/numbers";
+---
+
+<Base
+  title="Numbers that get people killed"
+  description="WARDOGS passenger drop heights by AGL, supply crate drop ceilings, and how to read AGL versus ASL before telling anyone to jump."
+>
+  <PageHead
+    eyebrow="Hard limits"
+    title="Numbers that get people"
+    accent="killed."
+    lede="Read <strong>AGL</strong> — above ground level — off the HUD before you tell anyone to jump. <strong>ASL</strong> (above sea level) is the other readout, and it is what you use to plan terrain and obstacle clearance, because AGL changes as the ground rises underneath you."
+  />
+
+  <section class="section">
+    <Table caption="Passenger drop height, AGL">
+      <table>
+        <thead>
+          <tr><th>Band</th><th class="num">AGL</th><th>Outcome</th></tr>
+        </thead>
+        <tbody>
+          {
+            dropHeights.map((d) => (
+              <tr class={`sev sev-${d.sev}`}>
+                <td>{d.band}</td>
+                <td class="num">{d.agl}</td>
+                <td>{d.outcome}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </Table>
+    <p class="legend">
+      Leading rule brightness marks severity — <span class="k k1"></span> safe,
+      <span class="k k2"></span> degraded, <span class="k k3"></span> fatal.
+    </p>
+  </section>
+
+  <section class="section">
+    <SectionHead
+      eyebrow="Cargo"
+      title="Supply crates."
+      lede="Both types also break on high-speed impact regardless of height — fling them out in a hard turn and they shatter on landing, and you eat the cost."
+    />
+
+    <Table>
+      <table>
+        <thead>
+          <tr>
+            <th>Crate</th><th class="num">Max drop</th><th>Protection</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            crates.map((c) => (
+              <tr>
+                <td><b>{c.crate}</b></td>
+                <td class="num">{c.maxDrop}</td>
+                <td>{c.protection}</td>
+                <td>{c.notes}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </Table>
+
+    <div class="prose after-table">
+      <p>
+        Each crate occupies <strong>two passenger seats</strong>, and you can carry
+        <strong>two crates</strong> — so a fully loaded logistics run leaves you
+        one infantry slot.
+      </p>
+    </div>
+  </section>
+
+  <nav class="pager" aria-label="Next">
+    <a class="btn btn-secondary" href="/fleet/">Next: the fleet</a>
+  </nav>
+</Base>
+
+<style>
+  .legend {
+    font-family: var(--font-mono);
+    font-size: var(--text-label-sm);
+    color: var(--color-muted);
+    margin: var(--space-sm) 0 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    flex-wrap: wrap;
+  }
+  .legend .k {
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    margin-left: var(--space-xs);
+  }
+  .legend .k1 { background: var(--color-lumen); }
+  .legend .k2 { background: var(--color-slate-rise); }
+  .legend .k3 { background: var(--color-hairline); }
+  .after-table { margin-top: var(--space-lg); }
+  .pager { display: flex; justify-content: flex-end; padding-top: var(--space-lg); }
+</style>

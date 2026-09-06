@@ -1,0 +1,13 @@
+---
+interface Props {
+  label: string;
+  /** Lights the full Lumen horizon — the system's "read this" signal. */
+  critical?: boolean;
+}
+const { label, critical = false } = Astro.props;
+---
+
+<aside class={`callout${critical ? " is-critical" : ""}`}>
+  <span class="callout-label">{label}</span>
+  <slot />
+</aside>

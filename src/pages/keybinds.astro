@@ -1,0 +1,150 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import SectionHead from "../components/SectionHead.astro";
+import Callout from "../components/Callout.astro";
+import Table from "../components/Table.astro";
+import { layouts, bindRows, hotkeys } from "../data/keybinds";
+
+/** Split a cell like "W / S" or "Mouse L/R + keys" into keycaps and plain text. */
+function parts(cell: string) {
+  return cell.split(/(\s\/\s|\s\+\s)/).map((chunk) => {
+    const t = chunk.trim();
+    const isSep = t === "/" || t === "+";
+    const isPlain = /mouse|keys|button/i.test(t) || t === "" || isSep;
+    return { text: chunk, cap: !isPlain };
+  });
+}
+---
+
+<Base
+  title="Keybind layouts"
+  description="Three working WARDOGS helicopter keybind layouts side by side — Battlefield-style, real-pilot, and all-keys — plus the bindings everybody forgets."
+>
+  <PageHead
+    eyebrow="Bindings"
+    title="Three keybind"
+    accent="layouts."
+    lede="None of these is correct. The only thing every source agrees on is that the layout has to fit your hands — so take the one closest to how you already play and adjust from there."
+  />
+
+  <Callout label="Check the defaults yourself" critical>
+    <p>
+      Sources contradict each other on what the game ships with — some playtests
+      had collective on <kbd>W</kbd>/<kbd>S</kbd>, others on <kbd>L Shift</kbd>/<kbd
+        >L Ctrl</kbd
+      >. Open the menu and look.
+    </p>
+    <p>
+      Also watch for <strong>collisions</strong>: binding collective to
+      <kbd>Space</kbd> has unbound parachute deploy, and <kbd>Space</kbd> has
+      appeared double-bound to fire. Verify before you take passengers.
+    </p>
+  </Callout>
+
+  <section class="section">
+    <Table caption="Keybindings → Rotary Vehicle">
+      <table>
+        <thead>
+          <tr>
+            <th>Function</th>
+            {
+              layouts.map((l) => (
+                <th>
+                  {l.name}
+                  <span class="col-note">{l.note}</span>
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            bindRows.map((r) => (
+              <tr>
+                <td>{r.fn}</td>
+                {r.keys.map((cell) => (
+                  <td class="keys">
+                    {parts(cell).map((p) =>
+                      p.cap ? <kbd>{p.text.trim()}</kbd> : <span>{p.text}</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </Table>
+
+    <div class="prose after-table">
+      <p>
+        <strong>A</strong> is what most of the community landed on and what you
+        will see in the majority of tutorials. <strong>B</strong> comes from a
+        pilot with 3,000 real rotary hours who wants pitch and roll on the same
+        hand and yaw independently under the thumb. <strong>C</strong> keeps
+        everything on keys for people who dislike mouse flight.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <SectionHead
+      eyebrow="Easy to miss"
+      title="Bind these too — they get forgotten."
+      lede="Half of these are unbound or awkwardly placed by default, and you will only discover it at the worst possible moment."
+    />
+
+    <Table>
+      <table>
+        <thead>
+          <tr><th>Function</th><th>Default</th><th>Why it matters</th></tr>
+        </thead>
+        <tbody>
+          {
+            hotkeys.map((h) => (
+              <tr>
+                <td>{h.fn}</td>
+                <td class="keys">
+                  {h.key === "unbound" ? (
+                    <span class="unbound">unbound</span>
+                  ) : (
+                    <kbd>{h.key}</kbd>
+                  )}
+                </td>
+                <td set:html={h.why} />
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </Table>
+  </section>
+
+  <nav class="pager" aria-label="Next">
+    <a class="btn btn-secondary" href="/flying/">Next: flying and the J-hook</a>
+  </nav>
+</Base>
+
+<style>
+  .col-note {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: var(--color-muted);
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  td.keys { white-space: nowrap; }
+  td.keys span { color: var(--color-muted); }
+  .unbound {
+    font-family: var(--font-mono);
+    font-size: var(--text-label-sm);
+    color: var(--color-muted);
+    opacity: 0.6;
+  }
+  .after-table { margin-top: var(--space-lg); }
+  .pager { display: flex; justify-content: flex-end; padding-top: var(--space-lg); }
+</style>

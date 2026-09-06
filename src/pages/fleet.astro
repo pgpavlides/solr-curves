@@ -1,0 +1,70 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import SectionHead from "../components/SectionHead.astro";
+import Table from "../components/Table.astro";
+import { fleet, money } from "../data/fleet";
+---
+
+<Base
+  title="The fleet"
+  description="Every WARDOGS helicopter with cost, seat count and role — MH-6, AH-6M, AH-6R, UH-1Y and the Havoc attack helicopter."
+>
+  <PageHead
+    eyebrow="Airframes"
+    title="The"
+    accent="fleet."
+    lede="Six airframes, from the $6,250 trainer to the most expensive vehicle in the game. Landing at main base auto-refuels and repairs you; rotor damage needs a wrench, and one wrench covers two repairs."
+  />
+
+  <section class="section">
+    <Table>
+      <table>
+        <thead>
+          <tr>
+            <th>Airframe</th><th class="num">Cost</th><th class="num">Seats</th><th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            fleet.map((f) => (
+              <tr>
+                <td>
+                  <b>{f.name}</b>
+                  {f.variant && <span class="variant"> {f.variant}</span>}
+                </td>
+                <td class="num">{money(f.cost)}</td>
+                <td class="num">{f.seats}</td>
+                <td>{f.role}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </Table>
+  </section>
+
+  <section class="section">
+    <SectionHead
+      eyebrow="Gunnery"
+      title="Shooting from a Little Bird."
+      lede="The miniguns are hard and the payout is poor. Transporting people pays substantially better than gunning until you are in a Havoc."
+    />
+    <div class="prose">
+      <p>
+        If you must: aim with the <strong>top-right of the crosshair</strong>, not
+        the centre, and work in micro-taps of yaw and pitch, taking straight shots
+        rather than tracking.
+      </p>
+    </div>
+  </section>
+
+  <nav class="pager" aria-label="Next">
+    <a class="btn btn-secondary" href="/glossary/">Next: glossary</a>
+  </nav>
+</Base>
+
+<style>
+  .variant { color: var(--color-muted); font-weight: var(--weight-regular); }
+  .pager { display: flex; justify-content: flex-end; padding-top: var(--space-lg); }
+</style>

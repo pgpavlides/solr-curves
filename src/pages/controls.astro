@@ -1,0 +1,78 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import Callout from "../components/Callout.astro";
+import { controls } from "../data/controls";
+---
+
+<Base
+  title="The four controls"
+  description="Collective, cyclic, yaw and the lift vector explained — what each control actually does in a helicopter, and what WARDOGS calls it in the keybind menu."
+>
+  <PageHead
+    eyebrow="Fundamentals"
+    title="The four"
+    accent="controls."
+    lede="A helicopter has one engine driving one rotor, and four ways to point the force it makes. Every guide, every maneuver and every crash comes back to these. Learn what the word means in the aircraft first, then what key it sits on."
+  />
+
+  <dl class="defs controls-list">
+    {
+      controls.map((c) => (
+        <div>
+          <dt>
+            {c.name}
+            <span class="tag">{c.tag}</span>
+          </dt>
+          <dd>
+            {c.real.map((p) => (
+              <p set:html={p} />
+            ))}
+            <p class="ingame">
+              <b>In WARDOGS:</b> <span set:html={c.inGame} />
+            </p>
+          </dd>
+        </div>
+      ))
+    }
+  </dl>
+
+  <section class="section">
+    <Callout label="The one that explains everything else" critical>
+      <p>
+        If you take a single idea away, take the lift vector. Banking hard spills
+        lift sideways, so instead of energy going into a climb it goes into the
+        turn. That is why a J-hook stops you, why you sink in a bank, and why
+        pulling the nose up on approach makes you balloon straight into everyone's
+        sights.
+      </p>
+    </Callout>
+  </section>
+
+  <nav class="pager" aria-label="Next">
+    <a class="btn btn-secondary" href="/settings/">Next: settings first</a>
+  </nav>
+</Base>
+
+<style>
+  .controls-list > div { padding: var(--space-lg) 0; }
+  .controls-list dd p { margin: 0 0 var(--space-sm); }
+  .controls-list dd p:last-child { margin-bottom: 0; }
+
+  .ingame {
+    border-left: 1px solid var(--color-hairline);
+    padding-left: var(--space-md);
+    font-size: var(--text-body-sm);
+  }
+  .ingame b {
+    color: var(--color-lumen);
+    font-family: var(--font-display);
+    font-weight: var(--weight-medium);
+  }
+
+  .pager {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--space-lg);
+  }
+</style>

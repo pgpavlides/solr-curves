@@ -1,0 +1,305 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import Callout from "../components/Callout.astro";
+import SectionHead from "../components/SectionHead.astro";
+import { transcriptCount, videoCount, eaDate } from "../data/meta";
+
+const sections = [
+  {
+    href: "/controls/",
+    icon: "gauge" as const,
+    title: "The four controls",
+    body: "Collective, cyclic, yaw and the lift vector — what each word means in the aircraft before it means a key on your keyboard.",
+    chips: ["collective", "cyclic X / Y", "anti-torque"],
+  },
+  {
+    href: "/settings/",
+    icon: "sliders" as const,
+    title: "Settings first",
+    body: "The one setting every guide opens with, the roll-vs-yaw split that changes how the aircraft feels, and sensitivity numbers that actually work.",
+    chips: ["mouse control", "rifle aim", "HOTAS"],
+  },
+  {
+    href: "/keybinds/",
+    icon: "keyboard" as const,
+    title: "Three keybind layouts",
+    body: "Battlefield-style, real-pilot, and all-keys — side by side, plus the bindings everybody forgets until they need them.",
+    chips: ["3 layouts", "8 hotkeys"],
+  },
+  {
+    href: "/flying/",
+    icon: "target" as const,
+    title: "Flying & the J-hook",
+    body: "A nine-drill syllabus for the firing range, the J-hook broken into six inputs, and what actually gets you shot down.",
+    chips: ["9 drills", "J-hook", "survival"],
+  },
+  {
+    href: "/logistics/",
+    icon: "package" as const,
+    title: "Logistics",
+    body: "What each supply type feeds, pallets versus boxes, the markup trap at match start, and how the pilot economy pays.",
+    chips: ["5 supply types", "markup", "payouts"],
+  },
+  {
+    href: "/numbers/",
+    icon: "ruler" as const,
+    title: "Numbers that kill people",
+    body: "Passenger drop heights, crate drop ceilings, and the AGL readings you check before you tell anyone to jump.",
+    chips: ["≤ 5 m", "60 / 80 m"],
+  },
+  {
+    href: "/fleet/",
+    icon: "helicopter" as const,
+    title: "The fleet",
+    body: "Every airframe with its cost, seat count and what it is actually for — from the $6,250 trainer to the $18,000 Havoc.",
+    chips: ["6 airframes"],
+  },
+  {
+    href: "/glossary/",
+    icon: "book" as const,
+    title: "Glossary",
+    body: "Nineteen terms of art, from weathercocking to nap-of-the-earth, in the plainest language they survive.",
+    chips: ["19 terms"],
+  },
+];
+---
+
+<Base
+  title="WARDOGS helicopter reference"
+  description="Every helicopter control, setting, keybind and number in WARDOGS — compiled from 18 captioned community tutorials. Collective, cyclic, yaw, the J-hook, drop heights and the pilot economy."
+>
+  <section class="hero">
+    <div>
+      <span class="hero-eyebrow"
+        ><span class="dot"></span>Compiled from {transcriptCount} captioned tutorials</span
+      >
+      <h1>
+        Fly the <span class="accent">helicopters</span> like you already know how.
+      </h1>
+      <p>
+        Everything the WARDOGS community has worked out about rotary flight, in
+        one place: what the controls actually are, which settings are not
+        optional, three keybind layouts that work, and the numbers that decide
+        whether your passengers live.
+      </p>
+      <div class="hero-actions">
+        <a class="btn" href="/controls/">
+          Start with the controls
+          <Icon name="arrowRight" size={16} />
+        </a>
+        <a class="btn btn-ghost" href="/videos/">
+          <Icon name="play" size={15} />
+          Source videos
+        </a>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="num">{transcriptCount}</span>
+          <span class="label">Transcripts read</span>
+        </div>
+        <div class="stat">
+          <span class="num">{videoCount}</span>
+          <span class="label">Videos indexed</span>
+        </div>
+        <div class="stat">
+          <span class="num">4</span>
+          <span class="label">Flight controls</span>
+        </div>
+        <div class="stat">
+          <span class="num">5 m</span>
+          <span class="label">Safe drop AGL</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="horizon-panel">
+      <div class="panel-grow">
+        <span class="panel-eyebrow">
+          <span class="status-dot" aria-hidden="true"></span>
+          Before you fly
+        </span>
+        <p class="panel-title">Go to the Firing Range</p>
+        <p class="panel-note">
+          Bottom-left of the main menu. Forward from spawn, two sharp lefts to
+          the vehicle vendor, then Air. Every airframe is free and fuel costs
+          nothing. Nobody wants to lose an $8,000 loadout because a stranger
+          crashed on takeoff.
+        </p>
+      </div>
+    </aside>
+  </section>
+
+  <section class="section">
+    <SectionHead
+      eyebrow="Contents"
+      title="Eight pages, no filler."
+      lede="Each page is one part of the job. Read them in order the first time; after that they are a reference you dip into between rounds."
+    />
+
+    <div class="grid">
+      {
+        sections.map((s) => (
+          <a class="card card-link" href={s.href}>
+            <span class="card-icon">
+              <Icon name={s.icon} />
+            </span>
+            <h3 class="card-title">{s.title}</h3>
+            <p class="card-body">{s.body}</p>
+            <span class="card-meta">
+              {s.chips.map((c) => (
+                <span class="chip">{c}</span>
+              ))}
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <SectionHead
+      eyebrow="Sourcing"
+      title="Where this came from, and what to distrust."
+    />
+    <div class="grid grid-2">
+      <Callout label="How it was built" critical>
+        <p>
+          Captions were pulled from {transcriptCount} community tutorials and read
+          in full — roughly 24,000 words — then cross-checked against a published
+          vehicle list. Where sources disagree, the disagreement is stated on the
+          page rather than smoothed over.
+        </p>
+      </Callout>
+      <Callout label="A warning about the &ldquo;wiki&rdquo; sites">
+        <p>
+          Search for WARDOGS helicopter guides and you will hit a cluster of
+          near-identical sites — wardogswiki.com, thewardogs.wiki,
+          wardogsguide.wiki, wardogshub.gg — that are generated SEO content,
+          contradict each other, and cite named settings that appear in no
+          gameplay footage. None of them were used here.
+        </p>
+      </Callout>
+    </div>
+  </section>
+
+  <section class="section">
+    <aside class="horizon-panel">
+      <div class="panel-grow">
+        <span class="panel-eyebrow">Status</span>
+        <p class="panel-title">Early Access opens {eaDate}</p>
+        <p class="panel-note">
+          Figures below reflect the two closed betas. Keybind defaults moved
+          between them at least once, so check the menu rather than trusting any
+          guide — including this one.
+        </p>
+      </div>
+      <a class="btn btn-secondary" href="/keybinds/">Check the binds</a>
+    </aside>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding: var(--space-3xl) 0 var(--space-2xl);
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: var(--space-3xl);
+    align-items: center;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 6px 12px 6px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-panel);
+    box-shadow: var(--rim-inset);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-label-sm);
+    letter-spacing: 0.04em;
+  }
+  .hero-eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-lumen);
+    box-shadow: 0 0 10px rgba(207, 216, 230, 0.7);
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: var(--weight-bold);
+    font-size: clamp(40px, 5.4vw, 68px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    color: var(--color-foreground);
+    margin: var(--space-lg) 0 var(--space-md);
+    text-wrap: balance;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(
+      180deg,
+      var(--color-foreground) 30%,
+      var(--color-lumen) 70%,
+      rgba(207, 216, 230, 0.4) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero p {
+    color: var(--color-muted);
+    font-size: var(--text-body-lg);
+    line-height: 1.6;
+    max-width: 52ch;
+    margin: 0 0 var(--space-xl);
+  }
+  .hero-actions {
+    display: inline-flex;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hero .stats { margin-top: var(--space-xl); }
+
+  .horizon-panel { align-items: flex-start; }
+  .horizon-panel .panel-note {
+    color: var(--color-muted);
+    font-size: var(--text-body-sm);
+    line-height: 1.6;
+    margin: var(--space-xs) 0 0;
+  }
+  /* The dot rides the eyebrow so the panel never wraps in a narrow column. */
+  .horizon-panel .panel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  /* Cards that navigate: the horizon brightens on hover, per the system. */
+  .card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .card-link::after { transition: opacity var(--motion-slow); }
+  .card-link:hover {
+    box-shadow: var(--rim-inset-strong), var(--shadow-card);
+    transform: translateY(-2px);
+  }
+  .card-link:hover::after { opacity: 0.85; background: var(--horizon-line-lumen); }
+  .card-link:focus-visible {
+    outline: none;
+    box-shadow: var(--rim-inset-strong), var(--focus-ring);
+  }
+  .card-link .card-title { transition: color var(--motion-medium); }
+  .card-link:hover .card-title { color: var(--color-lumen); }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: var(--space-xl); }
+  }
+</style>
