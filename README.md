@@ -94,10 +94,17 @@ MCP. Worth knowing if it needs regenerating:
 2. Labels are baked into a per-vertex `part_id` attribute **before** any
    separation. Selecting by vertex index breaks, because `mesh.separate()`
    re-indexes the remaining mesh.
-3. Origins are set to the real rotor axes (3D cursor + `ORIGIN_CURSOR`), the
+3. **The main rotor axis is found by fitting a circle to the blade tips**, not
+   by reading the hub's bounding box. Converting the hub from local to world
+   space by hand is easy to get wrong — dropping the object's `location` put
+   the axis 34.7 cm off the mast and made the rotor orbit visibly. The circle
+   fit is self-checking: tip radii about the true centre agree to 0.25 units,
+   versus 1.93 about a wrong one. It also gives the true rotor radius, which
+   sets the export scale.
+4. Origins are set to the real rotor axes (3D cursor + `ORIGIN_CURSOR`), the
    hull is decimated to 20%, and the rig is scaled so the main rotor is a true
    8.33 m and rotated 180° about Z so the nose exports onto +Z.
-4. Work happens on copies in a `WEB_EXPORT` collection. The original
+5. Work happens on copies in a `WEB_EXPORT` collection. The original
    `CL0SED_B0DY` is never modified.
 
 Resulting node graph:
@@ -138,6 +145,9 @@ npm run dev        # http://localhost:3000
 npm run build      # → out/
 npm run typecheck
 ```
+
+`next build` and `next dev` write to separate dist dirs (`.next-build` and
+`.next`), so a build will not corrupt a running dev server.
 
 ## Deploying to wardogspilot.com
 

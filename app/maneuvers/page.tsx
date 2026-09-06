@@ -21,7 +21,9 @@ export default function ManeuversPage() {
         lede="Seven maneuvers, flown correctly, with the collective, cyclic and pedals shown moving as the aircraft moves. Reading that a bank costs you lift is one thing; watching the collective climb to pay for it is another."
       />
 
-      <Scene name="maneuvers" />
+      <div className="full-bleed">
+        <Scene name="maneuvers" />
+      </div>
 
       <section className="section">
         <SectionHead

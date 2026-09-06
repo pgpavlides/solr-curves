@@ -184,7 +184,7 @@ function Framing({
     const centre = box.getCenter(new THREE.Vector3());
     centre.y = Math.max(centre.y, 3);
     const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 6);
-    const dist = radius * 1.75 + 10;
+    const dist = radius * 2.05 + 12;
 
     camera.position.set(
       centre.x + dist * 0.58,
@@ -371,6 +371,19 @@ export default function ManeuverSim() {
   const [phase, setPhase] = useState(0);
   const [scrub, setScrub] = useState(0);
   const [backend, setBackend] = useState<string>("starting…");
+  const [isFull, setIsFull] = useState(false);
+  const shell = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onChange = () => setIsFull(document.fullscreenElement === shell.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void shell.current?.requestFullscreen?.();
+  };
 
   const man = useMemo(() => maneuvers.find((m) => m.id === manId)!, [manId]);
   const heliRef = useRef<THREE.Group | null>(null);
@@ -407,12 +420,12 @@ export default function ManeuverSim() {
   }, []);
 
   return (
-    <div className="sim">
+    <div className="sim" ref={shell}>
       <div className="sim-stage">
         <div className="viewport sim-viewport">
           <span className="viewport-label">{man.name}</span>
           <span className="viewport-hint">{backend}</span>
-          <div style={{ height: 520 }}>
+          <div className="sim-canvas">
             <SceneBoundary height={520}>
             <Canvas
               className="viewport-canvas"
@@ -505,6 +518,13 @@ export default function ManeuverSim() {
                 </button>
               ))}
             </div>
+            <button
+              className="btn btn-sm btn-ghost sim-full"
+              onClick={toggleFull}
+              aria-pressed={isFull}
+            >
+              {isFull ? "Exit fullscreen" : "Fullscreen"}
+            </button>
           </div>
         </div>
 

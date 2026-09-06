@@ -1201,3 +1201,33 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--rim-inse
   color: var(--color-muted);
   margin-left: 3px;
 }
+
+/* -------------------------------------------------------------------------
+   Simulator: full-bleed, and a real fullscreen mode
+   ------------------------------------------------------------------------- */
+/* Break out of the 1240px reading column — the sim is a tool, not prose. */
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  padding-inline: clamp(var(--space-lg), 4vw, var(--space-3xl));
+}
+
+.sim-canvas { height: clamp(380px, 58vh, 760px); }
+.sim-full { margin-left: auto; }
+
+/* The whole tool goes fullscreen, gauges and phase list included — the point
+   is watching the inputs against the aircraft, so they have to stay together. */
+.sim:fullscreen {
+  background: var(--color-void);
+  padding: var(--space-lg);
+  height: 100vh;
+  overflow: auto;
+  align-content: start;
+}
+.sim:fullscreen .sim-canvas { height: calc(100vh - 250px); }
+.sim:fullscreen .sim-side { max-height: calc(100vh - 2 * var(--space-lg)); overflow: auto; }
+
+@media (max-width: 1040px) {
+  .sim:fullscreen .sim-canvas { height: 52vh; }
+  .sim:fullscreen .sim-side { max-height: none; }
+}

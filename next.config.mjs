@@ -11,6 +11,13 @@ const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   reactStrictMode: true,
+
+  /*
+    Keep dev and build artifacts apart. `next build` wipes and rewrites its
+    dist dir; sharing one with a running `next dev` corrupts the dev server's
+    chunk cache and every lazy-loaded scene 500s until you clear it.
+  */
+  distDir: process.env.NODE_ENV === "production" ? ".next-build" : ".next",
 };
 
 export default nextConfig;
