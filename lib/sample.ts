@@ -100,6 +100,38 @@ function slopes(t: Float64Array, y: Float64Array, loop: boolean): Float64Array {
   return d;
 }
 
+/**
+ * Non-uniform Catmull-Rom tangents, used for the three position channels only.
+ *
+ * PCHIP is monotone, which means it forces the derivative to zero at every
+ * local extremum. On a control channel that is exactly what we want. On a
+ * flight path it is a defect: at the apex of a turn the aircraft is moving
+ * purely along one axis, so the other axis has an extremum there, and zeroing
+ * its derivative flattens the track — the aircraft visibly straightens out
+ * mid-turn. Catmull-Rom keeps the tangent alive through the extremum.
+ */
+function catmullSlopes(t: Float64Array, y: Float64Array, loop: boolean): Float64Array {
+  const n = y.length;
+  const d = new Float64Array(n);
+  if (n < 2) return d;
+  for (let i = 1; i < n - 1; i++) {
+    d[i] = (y[i + 1] - y[i - 1]) / (t[i + 1] - t[i - 1]);
+  }
+  if (loop && n > 2) {
+    // The closing key repeats the opening one, so the wrapped neighbour is the
+    // second-to-last, shifted by however far the channel travels over a lap.
+    const lap = y[n - 1] - y[0];
+    const span = t[n - 1] - t[n - 2] + (t[1] - t[0]);
+    const seam = (y[1] - (y[n - 2] - lap)) / span;
+    d[0] = seam;
+    d[n - 1] = seam;
+  } else {
+    d[0] = (y[1] - y[0]) / (t[1] - t[0]);
+    d[n - 1] = (y[n - 1] - y[n - 2]) / (t[n - 1] - t[n - 2]);
+  }
+  return d;
+}
+
 function endSlope(h0: number, h1: number, d0: number, d1: number): number {
   let m = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
   if (m * d0 <= 0) m = 0;
@@ -124,7 +156,11 @@ function curveFor(m: Maneuver): Curve {
   for (let i = 0; i < keys.length; i++) t[i] = keys[i].t;
 
   const y = channelValues(keys);
-  const d = y.map((ch) => slopes(t, ch, m.loops));
+  // Channels 0-2 are position (Catmull-Rom, smooth through extrema);
+  // 3 and up are attitude and control inputs (PCHIP, never overshoots).
+  const d = y.map((ch, i) =>
+    i < 3 ? catmullSlopes(t, ch, m.loops) : slopes(t, ch, m.loops)
+  );
   const built: Curve = { t, y, d };
   cache.set(m, built);
   return built;

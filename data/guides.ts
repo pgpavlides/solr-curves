@@ -447,4 +447,128 @@ export const guides: Guide[] = [
   },
 ];
 
+guides.push({
+  slug: "j-hook-technique",
+  title: "The J-hook, step by step",
+  kicker: "Maneuvers",
+  summary:
+    "Rolling in, dumping the collective, whipping the tail round with pedal, and the collective discipline that decides whether you arrive or crash. Plus the three mistakes that account for most bad J-hooks.",
+  tags: ["J-hook", "landings", "collective", "cross-game"],
+  source: {
+    channel: "Dynamic",
+    channelUrl: "https://www.youtube.com/channel/UCdWBQnQZXlcuVoSBxWfEr7Q",
+    title: "How to J Hook in SQUAD",
+    videoId: "9B_3rswGrGU",
+    published: "24 August 2023",
+    duration: "3:22",
+  },
+  sections: [
+    {
+      id: "different-game",
+      heading: "Read this first: it is a SQUAD tutorial",
+      blocks: [
+        {
+          kind: "callout",
+          label: "Different game, same maneuver",
+          critical: true,
+          html: "This one is <strong>not a WARDOGS video</strong> — it is Dynamic's SQUAD tutorial from 2023. It is here because the J-hook is the same piece of airmanship in both, and because it corroborates our WARDOGS sources independently: collective fully down and held, pedal to whip the tail, nose where you want it, then level and cushion. Dynamic has since made WARDOGS content too. Treat the <em>technique</em> as transferable and the <em>exact numbers and keys</em> as SQUAD's.",
+        },
+      ],
+    },
+    {
+      id: "standard",
+      heading: "The standard J-hook",
+      blocks: [
+        {
+          kind: "steps",
+          items: [
+            {
+              title: "Approach at normal altitude and a sensible speed",
+              detail:
+                "He flies these between 80 and 120 knots — roughly 150–220 km/h. Fast enough to have energy to trade, not so fast that you cannot manage it.",
+            },
+            {
+              title: "Roll toward the side you are hooking to",
+              detail: "He demonstrates hooking right, so he rolls right. Commit to the direction.",
+            },
+            {
+              title: "Collective completely down",
+              detail: "All the way, as you commit. This is the same non-negotiable every source repeats.",
+            },
+            {
+              title: "Pull back on the cyclic",
+              detail: "Nose up as you roll — the roll and the pull happen together, not one after the other.",
+            },
+            {
+              title: "Hold pedal to whip the tail round",
+              detail:
+                "Hooking right means holding right pedal. This is what swings the tail out while the nose stays where you are looking.",
+            },
+            {
+              title: "Raise the collective and level out",
+              detail:
+                "Once the rotation has done its work, collective back in and wings level, using the pedals to settle the direction you are facing.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "collective-on-touchdown",
+      heading: "Gauging the collective on the way down",
+      blocks: [
+        {
+          kind: "p",
+          html: "His rule for the last part of the descent is refreshingly mechanical: <strong>falling too fast, raise the collective; not falling fast enough, lower it.</strong> Balance altitude against collective and land softly.",
+        },
+        {
+          kind: "callout",
+          label: "The number worth stealing",
+          html: "If you are worried about dropping too quickly, park the collective around <strong>25%</strong>. You will still lose altitude, but slowly enough to stay in control of the arrival rather than fighting it.",
+        },
+      ],
+    },
+    {
+      id: "aggressive",
+      heading: "The low, fast variant",
+      blocks: [
+        {
+          kind: "p",
+          html: "The second version is his go-to when the priority is getting down <em>now</em>. Same approach, but flown lower, turning sharper, with the nose pointed toward the ground. Once the tail has come fully round, level the aircraft and kill the remaining speed as fast as you can.",
+        },
+        {
+          kind: "p",
+          html: "It is the same maneuver with less margin. Worth having, worth not attempting first.",
+        },
+      ],
+    },
+    {
+      id: "mistakes",
+      heading: "The three mistakes he sees most",
+      blocks: [
+        {
+          kind: "steps",
+          items: [
+            {
+              title: "Forgetting to level out",
+              detail:
+                "Watch the attitude indicator in the centre of the screen. Even with backwards momentum, the smallest lean will correct it — and do not chase it with big corrections.",
+            },
+            {
+              title: "Misjudging the collective",
+              detail:
+                "He is blunt that there is no trick here: soft landings come from practising the collective until you can feel the sink rate. Nothing else fixes it.",
+            },
+            {
+              title: "Not knowing the landing zone",
+              detail:
+                "Your odds go up enormously if you already know the LZ and what kind of landing it needs. Same conclusion Sim Controls reaches — premeditate the spot.",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
 export const guideBySlug = (slug: string) => guides.find((g) => g.slug === slug);
