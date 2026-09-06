@@ -571,4 +571,129 @@ guides.push({
   ],
 });
 
+guides.push({
+  slug: "j-hook-cologne",
+  title: "The J-hook, from a working pilot",
+  kicker: "Maneuvers",
+  summary:
+    "Four inputs, in order, from someone with 3,000 hours in real helicopters — and his argument that the maneuver is the easy part. Choosing where to put the aircraft down is what actually keeps you alive.",
+  tags: ["J-hook", "real pilot", "LZ choice", "keybinds"],
+  source: {
+    channel: "Cologne TM",
+    channelUrl: "https://www.youtube.com/channel/UCULPLRn4k4LlSDxaqKOAiVw",
+    title: "REAL PILOT Teaches J-HOOKS - Helicopter Tutorial WARDOGS",
+    videoId: "nD5bxC38pRI",
+    published: "27 August 2026",
+    duration: "4:16",
+  },
+  sections: [
+    {
+      id: "who",
+      heading: "Why this one carries weight",
+      blocks: [
+        {
+          kind: "p",
+          html: "Cologne flies helicopters for a living — <strong>3,000 hours on real aircraft</strong> — and flies them in every game he touches. That shows less in the stick work than in what he chooses to spend the four minutes on, which is not the maneuver.",
+        },
+        {
+          kind: "callout",
+          label: "A note on his vocabulary",
+          html: "He groups every cyclic input under the word <em>roll</em> — “left, right, forward and aft” — where standard usage splits the cyclic into <strong>pitch</strong> fore and aft and <strong>roll</strong> laterally. Nothing he demonstrates is affected by it, but if you are cross-referencing our <a href=\"/terminology/\">terminology page</a>, that is the difference you will notice.",
+        },
+      ],
+    },
+    {
+      id: "inputs",
+      heading: "The maneuver, in four inputs",
+      blocks: [
+        {
+          kind: "steps",
+          items: [
+            {
+              title: "Carry as much speed as you can into the entry",
+              detail:
+                "The whole maneuver is a trade, and speed is what you are trading. Arrive with nothing and there is nothing to convert.",
+            },
+            {
+              title: "Collective all the way down, and hold it there",
+              detail:
+                "Once you have picked the LZ, dump it and keep it down for the entirety of the maneuver. Not partway, not intermittently — down.",
+            },
+            {
+              title: "Roll toward the landing zone",
+              detail:
+                "Whichever side the zone sits on. In his demonstration it is off his left, so he rolls left.",
+            },
+            {
+              title: "Pedal to keep the nose on the spot the whole way round",
+              detail:
+                "Left pedal for a left hook. The nose stays pointed at the landing zone throughout the rotation while the tail swings — that is what takes you from fast airspeed to zero airspeed.",
+            },
+          ],
+        },
+        {
+          kind: "p",
+          html: "Then, and only then, level the nose and cushion for the landing. His own one-line summary: <strong>collective down, roll in the direction of the LZ, pedal to keep the nose pointed at it.</strong>",
+        },
+      ],
+    },
+    {
+      id: "lz",
+      heading: "The part that actually kills you",
+      blocks: [
+        {
+          kind: "callout",
+          label: "His central claim",
+          critical: true,
+          html: "What is most likely to get you killed is <strong>not</strong> failing to fly the maneuver perfectly. It is your decision about where you are setting the aircraft down.",
+        },
+        {
+          kind: "list",
+          items: [
+            "<strong>Never land in open fields</strong> with no structures for cover.",
+            "<strong>Land behind where your team has just cleared.</strong> If they came through it, you know it is clear.",
+            "<strong>Check the map</strong> before takeoff and again in the air, so you are following your team's movement rather than guessing.",
+          ],
+        },
+        {
+          kind: "p",
+          html: "He works a real example on camera: his team is on the north-east edge of the hot zone, and he has three candidate spots — the road east of tower one, the base of the tower, or a shipping container yard to the north-west. He takes the containers, because that is where his team came from, so he knows it is clear. He scouts as he turns, adjusts on the way in, and parks between two structures for cover on more than one side.",
+        },
+      ],
+    },
+    {
+      id: "towers",
+      heading: "J-hooking onto towers",
+      blocks: [
+        {
+          kind: "p",
+          html: "The same maneuver lands on rooftops, which is how his squad takes FOBs from the top down. In the clip there is an anti-air gun on the tower — and the approach is fast enough, with the deceleration hard enough, that the gunner never acquires them before they are already down on the far side.",
+        },
+        {
+          kind: "p",
+          html: "Speed is not just how you arrive sooner. It is cover.",
+        },
+      ],
+    },
+    {
+      id: "controls",
+      heading: "How he has it bound",
+      blocks: [
+        {
+          kind: "list",
+          items: [
+            "<strong>Tail rotor on the mouse thumb buttons</strong> — yaw under the thumb, independent of everything else.",
+            "<strong>Free look permanently on</strong>, so the mouse is always controlling where he is looking.",
+            "Everything else on <strong>WASD, left shift and left control</strong>.",
+          ],
+        },
+        {
+          kind: "p",
+          html: "His reasoning is that this combination buys the most precise control <em>and</em> the most situational awareness at the same time — which, given what he says kills pilots, is the same argument as the rest of the video.",
+        },
+      ],
+    },
+  ],
+});
+
 export const guideBySlug = (slug: string) => guides.find((g) => g.slug === slug);

@@ -27,6 +27,9 @@ export default function DocShell({
               {crumb.label}
             </Link>
           )}
+          <Link className="btn btn-sm btn-ghost" href="/terminology/">
+            Terminology
+          </Link>
           <Link className="btn btn-sm" href="/">
             Open the simulator
           </Link>

@@ -58,6 +58,15 @@ export default function GuidesIndex() {
         ))}
       </ul>
 
+      <aside className="callout is-critical spaced">
+        <span className="callout-label">Not sure what a word means?</span>
+        <p>
+          The <Link href="/terminology/">terminology page</Link> covers the four
+          controls in full, then every term these guides use — collective,
+          cyclic, crab, flare, AGL and the rest, with the traps in each.
+        </p>
+      </aside>
+
       <aside className="callout spaced">
         <span className="callout-label">More coming</span>
         <p>
