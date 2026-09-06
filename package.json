@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "npx serve out",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "clean": "node -e \"for(const d of ['.next','.next-build','out'])require('fs').rmSync(d,{recursive:true,force:true})\""
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

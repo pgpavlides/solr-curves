@@ -167,8 +167,16 @@ npm run build      # → out/
 npm run typecheck
 ```
 
-`next build` and `next dev` write to separate dist dirs (`.next-build` and
-`.next`), so a build will not corrupt a running dev server.
+**Stop the dev server before building.** `next build` rewrites `.next`, and a
+running `next dev` will then 500 with `Cannot find module './NNN.js'` until the
+cache is cleared — `npm run clean` does that.
+
+Do **not** try to fix this with a custom `distDir`. With `output: "export"` a
+non-default `distDir` makes the exported site land in that directory instead of
+`out/`, silently stranding the deploy target while builds still report success.
+
+`npm run build` purges `out/` first, so routes deleted from `app/` cannot
+survive into a deploy.
 
 ## Deploying to wardogspilot.com
 

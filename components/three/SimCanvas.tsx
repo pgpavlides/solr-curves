@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three/webgpu";
@@ -256,17 +256,26 @@ function Aircraft({
   );
 }
 
+/* Renders only once its Suspense siblings have resolved, i.e. once the GLB is
+   actually parsed and in the scene. */
+function Loaded({ onLoaded }: { onLoaded: () => void }) {
+  useEffect(() => onLoaded(), [onLoaded]);
+  return null;
+}
+
 /* -------------------------------------------------------------------- shell */
 export default function SimCanvas({
   man,
   sim,
   camMode,
   onReady,
+  onModelReady,
 }: {
   man: Maneuver;
   sim: React.RefObject<Sim>;
   camMode: CamMode;
   onReady: (backend: string) => void;
+  onModelReady: () => void;
 }) {
   const heliRef = useRef<THREE.Group | null>(null);
   const controls = useRef<{ target: THREE.Vector3; update: () => void } | null>(null);
@@ -305,7 +314,10 @@ export default function SimCanvas({
       <Track man={man} sim={sim} />
       <ShadowBlob target={heliRef} />
       <Framing man={man} controls={controls} camMode={camMode} />
-      <Aircraft sim={sim} heliRef={heliRef} camMode={camMode} />
+      <Suspense fallback={null}>
+        <Aircraft sim={sim} heliRef={heliRef} camMode={camMode} />
+        <Loaded onLoaded={onModelReady} />
+      </Suspense>
       {camMode === "orbit" && (
         <OrbitControls
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useProgress } from "@react-three/drei";
 import Logo from "./Logo";
 import Loader from "./Loader";
 import Gauges from "./hud/Gauges";
@@ -31,11 +30,11 @@ export default function App() {
   const [phase, setPhase] = useState(0);
   const [scrub, setScrub] = useState(0);
   const [backend, setBackend] = useState<string | null>(null);
+  const [modelReady, setModelReady] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [tab, setTab] = useState<Tab>("Controls");
 
   const man = useMemo(() => maneuvers.find((m) => m.id === manId)!, [manId]);
-  const { progress, active } = useProgress();
 
   const sim = useRef<Sim>({
     t: 0,
@@ -72,7 +71,11 @@ export default function App() {
   }, []);
 
   const onReady = useCallback((b: string) => setBackend(b), []);
-  const ready = backend !== null && !active;
+  const onModelReady = useCallback(() => setModelReady(true), []);
+  // Both, explicitly. The renderer finishes initialising after the last byte
+  // of the model arrives, and the model can resolve before the renderer is up
+  // — gating on either one alone shows an empty scene.
+  const ready = backend !== null && modelReady;
 
   // Keyboard: space toggles playback, R opens the reference.
   useEffect(() => {
@@ -101,7 +104,13 @@ export default function App() {
 
       <div className="stage">
         <SceneBoundary>
-          <SimCanvas man={man} sim={sim} camMode={camMode} onReady={onReady} />
+          <SimCanvas
+            man={man}
+            sim={sim}
+            camMode={camMode}
+            onReady={onReady}
+            onModelReady={onModelReady}
+          />
         </SceneBoundary>
       </div>
 
@@ -214,9 +223,9 @@ export default function App() {
       <Reference open={drawer} tab={tab} onTab={setTab} onClose={() => setDrawer(false)} />
 
       <Loader
-        progress={backend ? Math.max(progress, 92) : progress * 0.9}
+        progress={ready ? 100 : backend ? 78 : modelReady ? 55 : 22}
         done={ready}
-        note={backend ? "starting renderer" : "loading airframe"}
+        note={backend ? (modelReady ? "ready" : "loading airframe") : "starting renderer"}
       />
     </div>
   );
