@@ -1,7 +1,24 @@
 # wardogspilot.com
 
-The WARDOGS helicopter reference, with the three concepts that text cannot carry
-rendered in 3D.
+A full-screen WARDOGS helicopter flight guide. The site **is** the simulator:
+one route, one canvas filling the viewport, and a HUD layered over it. The
+written reference lives in a drawer over the scene rather than in pages.
+
+## Shape
+
+```
+app/page.tsx          the only route; renders <App/> plus a <noscript> summary
+components/App.tsx    HUD state, keyboard, deep links, loader gate
+components/three/     the full-viewport WebGPU canvas and the airframe
+components/hud/       gauges, telemetry, reference drawer
+```
+
+The HUD is a CSS grid pinned over the canvas with `pointer-events: none`,
+re-enabled per panel — brand top-left, actions top-right, maneuver rail left,
+brief right, gauges/transport/telemetry along the bottom. `html, body` are
+locked to the viewport; only the drawer scrolls.
+
+Keyboard: **Space** play/pause, **R** reference. Deep links: `/?m=jhook`.
 
 ## Stack
 
@@ -52,25 +69,19 @@ component doing `dynamic(..., { ssr: false })`. That keeps three.js out of the
 initial bundle — pages with a scene cost ~1.5 kB more up front, and the
 ~700 kB three chunk loads on demand.
 
-| Scene | Page | What it is for |
-| --- | --- | --- |
-| `ManeuverSim` | `/maneuvers/` | Seven maneuvers flown on the real Blender model, with the pilot's collective, cyclic and pedal positions driven off the same timeline. Rendered on **WebGPU**, auto-falling back to WebGL2 |
-| `HeroScene` | `/` | An MH-6 built from primitives — no external model to download or go stale |
-| `LiftVectorScene` | `/controls/` | Tilt the rotor disc and watch total lift split into vertical and horizontal components. Live readout of vertical lift % and the extra collective needed to hold altitude |
-| `JHookScene` | `/flying/` | The J-hook as a scrubable 3D path; the phase list beside it lights up to match |
-| `DropScene` | `/numbers/` | Passenger drop height against a 1.8 m figure, to scale |
+`SimCanvas.tsx` is the whole scene: ground grid, flight path, shadow blob, the
+airframe and the camera. `HeliModel.tsx` loads `public/heli.glb`.
 
-`LittleBird.tsx` is procedural geometry used by the small diagram scenes.
-`HeliModel.tsx` loads the real airframe from `public/heli.glb`.
+The earlier multi-page build had four small diagram scenes (lift vector, J-hook
+path, drop-height scale, hero). They were removed when the site became one
+application; they are in git history if any are wanted back as a HUD overlay.
 
 ### WebGPU
 
-Only `ManeuverSim` uses `three/webgpu`; the small diagram scenes stay on the
-default WebGL renderer. That split is deliberate — drei's `Grid`, `Line` and
-`ContactShadows` are GLSL `ShaderMaterial`s that the WebGPU renderer will not
-compile, so the WebGPU scene builds its grid and path from `LineBasicMaterial`
-instead. Aliasing `three` to `three/webgpu` globally would break the other
-scenes, so it is not done.
+The scene uses `three/webgpu`. drei's `Grid`, `Line` and `ContactShadows` are
+GLSL `ShaderMaterial`s that the WebGPU renderer will not compile, so the grid,
+the flight path and the ground shadow are all built from `LineBasicMaterial`,
+`Float32BufferAttribute` vertex colours and a `CanvasTexture` instead.
 
 The renderer probes `navigator.gpu` and forces the WebGL2 backend when it is
 absent rather than letting `init()` fail; the viewport badge reports which
@@ -114,6 +125,16 @@ HELI_Body        root · 180° about Y · scale 0.0975 · skids at y=0
 ├─ HELI_MainRotor   origin on the mast · spins about local Y
 └─ HELI_TailRotor   origin on the tail rotor axis · spins about local X
 ```
+
+## The mark
+
+`components/Logo.tsx` inlines `public/logo.svg` so its two fills can be driven
+from CSS. In the source art the shield is the single `lg-light` polygon and the
+paths on top are the aircraft. Brand order is a dark shield with a light
+aircraft; straight black would vanish on the void ground, so the shield is
+lifted to `#2b303b` and the aircraft takes Lumen. The loading screen holds until
+both the GLB and the renderer are up — WebGPU init finishes after the last byte
+arrives, so gating on load progress alone drops the curtain on an empty scene.
 
 ## Content
 

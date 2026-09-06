@@ -8,7 +8,7 @@ import React from "react";
  * readable message inside the same viewport chrome.
  */
 export default class SceneBoundary extends React.Component<
-  { children: React.ReactNode; height: number },
+  { children: React.ReactNode },
   { msg: string | null }
 > {
   state = { msg: null as string | null };
@@ -24,11 +24,7 @@ export default class SceneBoundary extends React.Component<
   render() {
     if (this.state.msg) {
       return (
-        <div
-          className="viewport-fallback"
-          style={{ height: this.props.height, flexDirection: "column", gap: 8, padding: 24, textAlign: "center" }}
-          role="alert"
-        >
+        <div className="scene-fallback" role="alert">
           <span>3D view unavailable on this device</span>
           <span style={{ opacity: 0.6, fontSize: 11 }}>{this.state.msg}</span>
         </div>
