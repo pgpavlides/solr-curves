@@ -1,0 +1,10 @@
+# Routes that used to exist. Cloudflare Pages keeps serving a deleted page from
+# an earlier deployment, and the old /guides/ index still links to /youtubers/,
+# which is gone — so both need to land somewhere real rather than 404 or, worse,
+# render a stale page with dead navigation.
+#
+# Exact paths only: /guides/<slug>/ write-ups are still live and must not match.
+/guides      /videos/  301
+/guides/     /videos/  301
+/youtubers   /videos/  301
+/youtubers/  /videos/  301
