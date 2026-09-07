@@ -48,7 +48,7 @@ export default function Youtubers() {
         {creators.map((c) => (
           <li
             key={c.name}
-            className={`creator${c.tribute ? " is-tribute" : ""}`}
+            className={`creator${c.featured ? " is-featured" : ""}`}
           >
             <div className="creator-head">
               <div className="creator-id">
@@ -58,8 +58,6 @@ export default function Youtubers() {
                     {c.name}
                   </a>
                 </h2>
-                {/* The debt comes before the review. */}
-                {c.tribute && <p className="creator-tribute">{c.tribute}</p>}
                 <p className="creator-note">{c.note}</p>
               </div>
               <a

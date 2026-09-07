@@ -13,8 +13,8 @@
   `guide` points at the write-up in data/guides.ts when a video became one;
   `why` says what stopped one, when there is a specific reason.
 
-  The order is curated, not ranked by volume. Arma Pilot leads because he is
-  the reason the site's author started flying — see `tribute`.
+  The order is curated, not ranked by volume. The `featured` creator leads
+  because he is the reason the site's author started flying.
 */
 
 export interface Mark {
@@ -54,12 +54,8 @@ export interface Creator {
   tag: string;
   /** why you would go and watch them, in our words */
   note: string;
-  /*
-    Set on the one creator this site owes its existence to. Written in the
-    first person, unlike every other line on the page, and rendered as a
-    dedication rather than as a recommendation.
-  */
-  tribute?: string;
+  /** the one creator this site owes its existence to; leads the page */
+  featured?: boolean;
   videos: CreatorVideo[];
 }
 
@@ -75,16 +71,15 @@ export const creators: Creator[] = [
     channelUrl: "https://www.youtube.com/@ArmaPilot",
     tag: "Where this started",
     note:
-      "An Arma Reforger pilot with close to 5,000 hours who flies WARDOGS on the same settings, and puts them on screen. Worth watching for the crossover alone — but you do have to watch it, because there is nothing written down.",
-    tribute:
-      "He is the reason I started flying. I watched him put a helicopter exactly where he wanted it, decided I wanted to be able to do that, and everything on this site came out of trying. If you read one thing here and then go and watch one channel, make it his.",
+      "He is an Arma pilot, and the inspiration to learn to fly.",
+    featured: true,
     videos: [
       {
         id: "SiZBHRrblNA",
         title: "The BEST Helicopter Settings in WARDOGS",
         length: "8:56",
         published: "22 August 2026",
-        covers: "Settings · Arma Reforger crossover",
+        covers: "Settings",
         transcribed: false,
         why:
           "YouTube carries no captions for it, auto-generated or otherwise, so there is nothing to read — only to watch.",

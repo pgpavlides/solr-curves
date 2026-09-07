@@ -706,15 +706,15 @@
 }
 
 /* -------------------------------------------------------------------------
-   The tribute
+   The featured creator
 
-   One creator on this page is not here because his material is useful but
-   because without him there would be no site. That is a different claim, so
-   it gets a different treatment: the block sits on a raised surface with the
-   horizon line lit, and the dedication is set in the foreground colour at
-   reading size rather than muted like the editorial notes.
+   One creator is not here because his material is useful but because without
+   him there would be no site. That is a different claim, so it gets a
+   different treatment: a raised surface with the horizon line lit, and the
+   note set in the foreground colour at reading size rather than muted like
+   the editorial notes. It says it in one line and stops.
    ------------------------------------------------------------------------- */
-.creator.is-tribute {
+.creator.is-featured {
   position: relative;
   margin-bottom: var(--space-2xl);
   padding: var(--space-2xl) var(--space-xl);
@@ -725,7 +725,7 @@
   box-shadow: var(--rim-inset), var(--shadow-card);
   overflow: hidden;
 }
-.creator.is-tribute::after {
+.creator.is-featured::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -736,23 +736,16 @@
   opacity: 0.85;
   pointer-events: none;
 }
-.creator.is-tribute .creator-tag { color: var(--color-lumen); }
-.creator.is-tribute .creator-name { font-size: var(--text-display-md); }
+.creator.is-featured .creator-tag { color: var(--color-lumen); }
+.creator.is-featured .creator-name { font-size: var(--text-display-md); }
 
-.creator-tribute {
-  max-width: 62ch;
-  margin: 0 0 var(--space-md);
+/* the note IS the statement here, so it is not muted down like the others */
+.creator.is-featured .creator-note {
   color: var(--color-foreground);
   font-size: var(--text-body-lg);
   line-height: 1.6;
 }
-/* the editorial note is subordinate to the dedication above it */
-.creator.is-tribute .creator-note {
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-hairline);
-  font-size: var(--text-body-sm);
-}
 @media (max-width: 640px) {
-  .creator.is-tribute { padding: var(--space-lg) var(--space-md); }
-  .creator-tribute { font-size: var(--text-body-md); }
+  .creator.is-featured { padding: var(--space-lg) var(--space-md); }
+  .creator.is-featured .creator-note { font-size: var(--text-body-md); }
 }

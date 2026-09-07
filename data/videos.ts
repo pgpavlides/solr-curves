@@ -160,7 +160,7 @@ export const videos: Video[] = [
     channel: "Arma Pilot",
     title: "The BEST Helicopter Settings in WARDOGS",
     length: "8:56",
-    covers: "Settings · Arma Reforger crossover",
+    covers: "Settings",
     transcribed: false,
   },
   {
