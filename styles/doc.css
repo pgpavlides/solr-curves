@@ -33,7 +33,16 @@
 }
 .doc-brand { display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; }
 .doc-brand .logo-wrap { width: 32px; height: 32px; flex-shrink: 0; }
-.doc-bar-links { display: inline-flex; gap: var(--space-xs); align-items: center; }
+/* Four buttons do not fit a 360px phone on one line — without wrapping, the
+   bar pushed the whole document sideways by 57px on every reading page. */
+.doc-bar-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  align-items: center;
+  min-width: 0;
+}
 
 .doc-main {
   max-width: 78ch;
@@ -180,7 +189,7 @@
   margin: 0;
   display: grid;
   gap: var(--space-xl);
-  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr));
 }
 .guide-item { display: flex; flex-direction: column; min-width: 0; }
 
@@ -327,7 +336,7 @@
 .guide-notes {
   display: grid;
   gap: var(--space-md);
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   margin-top: var(--space-3xl);
 }
 
@@ -448,7 +457,7 @@
 .term-grid {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr));
   gap: 0 var(--space-2xl);
 }
 .term-item {
@@ -560,7 +569,7 @@
   margin: 0;
   display: grid;
   gap: var(--space-md);
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
 }
 .creator-video {
   display: grid;
@@ -694,4 +703,56 @@
 .mark-label {
   font-size: var(--text-body-sm);
   line-height: 1.4;
+}
+
+/* -------------------------------------------------------------------------
+   The tribute
+
+   One creator on this page is not here because his material is useful but
+   because without him there would be no site. That is a different claim, so
+   it gets a different treatment: the block sits on a raised surface with the
+   horizon line lit, and the dedication is set in the foreground colour at
+   reading size rather than muted like the editorial notes.
+   ------------------------------------------------------------------------- */
+.creator.is-tribute {
+  position: relative;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-2xl) var(--space-xl);
+  border-top: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  background-image: var(--surface-panel-gradient);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+  overflow: hidden;
+}
+.creator.is-tribute::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 1px;
+  background: var(--horizon-line-lumen);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.creator.is-tribute .creator-tag { color: var(--color-lumen); }
+.creator.is-tribute .creator-name { font-size: var(--text-display-md); }
+
+.creator-tribute {
+  max-width: 62ch;
+  margin: 0 0 var(--space-md);
+  color: var(--color-foreground);
+  font-size: var(--text-body-lg);
+  line-height: 1.6;
+}
+/* the editorial note is subordinate to the dedication above it */
+.creator.is-tribute .creator-note {
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-hairline);
+  font-size: var(--text-body-sm);
+}
+@media (max-width: 640px) {
+  .creator.is-tribute { padding: var(--space-lg) var(--space-md); }
+  .creator-tribute { font-size: var(--text-body-md); }
 }

@@ -451,8 +451,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--rim-inse
   text-transform: uppercase; color: var(--color-muted); margin-bottom: var(--space-xs);
 }
 
-.grid { display: grid; gap: var(--space-md); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.grid-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.grid { display: grid; gap: var(--space-md); grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
 .spaced { margin-top: var(--space-lg); }
 .stack-tight > * + * { margin-top: var(--space-md); }
 
@@ -565,7 +565,15 @@ kbd {
   display: block; font-family: var(--font-mono); font-size: var(--text-label-sm);
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); margin-top: var(--space-3xs);
 }
-.defs dd { margin: 0; color: var(--color-muted); line-height: 1.6; }
+.defs dd { margin: 0; color: var(--color-muted); line-height: 1.6; min-width: 0; overflow-wrap: break-word; }
+/*
+  The 210px term column plus a 1fr definition does not fit a 360px phone: the
+  definition track cannot shrink below its longest word, so the whole document
+  scrolled sideways by 12px. Stack the two below that.
+*/
+@media (max-width: 640px) {
+  .defs > div { grid-template-columns: 1fr; gap: var(--space-2xs); }
+}
 .controls-list > div { padding: var(--space-lg) 0; }
 .controls-list dd p { margin: 0 0 var(--space-sm); }
 .controls-list dd p:last-child { margin-bottom: 0; }

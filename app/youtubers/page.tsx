@@ -35,7 +35,8 @@ export default function Youtubers() {
         <p className="doc-lede">
           None of what is on this site is original flying. It is their work,
           read carefully and written down in one place. Every channel below is
-          worth your time directly — go and watch them, and subscribe.
+          worth your time directly — go and watch them, and subscribe. The
+          order is not a ranking; the first one is where this started.
         </p>
         <p className="doc-count">
           {creatorCount} creators · {creatorVideoCount} videos · {transcribed}{" "}
@@ -45,7 +46,10 @@ export default function Youtubers() {
 
       <ul className="creator-list">
         {creators.map((c) => (
-          <li key={c.name} className="creator">
+          <li
+            key={c.name}
+            className={`creator${c.tribute ? " is-tribute" : ""}`}
+          >
             <div className="creator-head">
               <div className="creator-id">
                 <span className="creator-tag">{c.tag}</span>
@@ -54,6 +58,8 @@ export default function Youtubers() {
                     {c.name}
                   </a>
                 </h2>
+                {/* The debt comes before the review. */}
+                {c.tribute && <p className="creator-tribute">{c.tribute}</p>}
                 <p className="creator-note">{c.note}</p>
               </div>
               <a
