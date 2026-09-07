@@ -4,6 +4,7 @@
 */
 import "../styles/globals.css";
 import type { Metadata, Viewport } from "next";
+import PageTransition from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://wardogspilot.com"),
@@ -40,7 +41,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* sits above everything, inert until a navigation starts */}
+        <PageTransition />
+      </body>
     </html>
   );
 }

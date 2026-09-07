@@ -114,6 +114,61 @@ a.btn { text-decoration: none; }
 }
 
 /* -------------------------------------------------------------------------
+   Page transition — the mark is the same object on every route
+
+   .home-mark (big, centred, front door) and the small brand marks on every
+   other route share one view-transition-name, so the browser morphs the shield
+   between them instead of cutting. Everything else cross-fades under it.
+
+   Only one of these three renders per route. That is load-bearing: two visible
+   elements sharing a name aborts the whole transition.
+   ------------------------------------------------------------------------- */
+.home-mark,
+.doc-brand .logo-wrap,
+.hud-topleft .brand .logo-wrap {
+  view-transition-name: crest;
+}
+
+/* the mark travels slower than the content it is travelling over */
+::view-transition-group(crest) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.15, 0.83, 0.66, 1);
+}
+/*
+  The shield is a different size at each end, so let the browser scale the
+  frame rather than cross-fading two bitmaps of different dimensions — without
+  this the mark ghosts against itself mid-flight.
+*/
+::view-transition-old(crest),
+::view-transition-new(crest) {
+  height: 100%;
+  object-fit: contain;
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* the page under it: out fast, in a beat later and slightly from below */
+::view-transition-old(root) {
+  animation: 180ms cubic-bezier(0.15, 0.83, 0.66, 1) both crest-page-out;
+}
+::view-transition-new(root) {
+  animation: 320ms cubic-bezier(0.15, 0.83, 0.66, 1) 90ms both crest-page-in;
+}
+@keyframes crest-page-out {
+  to { opacity: 0; }
+}
+@keyframes crest-page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
+/* -------------------------------------------------------------------------
    HUD — panels float over the scene; only they take pointer events
    ------------------------------------------------------------------------- */
 .hud {
