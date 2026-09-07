@@ -6,6 +6,7 @@ import {
   creators,
   creatorCount,
   creatorVideoCount,
+  markUrl,
   videoUrl,
 } from "@/data/creators";
 
@@ -92,8 +93,8 @@ export default function Youtubers() {
                     </a>
                     <p className="creator-video-meta">
                       <span className="chip">{v.covers}</span>
-                      {!v.transcribed && (
-                        <span className="creator-flag">not written up</span>
+                      {v.published && (
+                        <span className="creator-date">{v.published}</span>
                       )}
                     </p>
                     {v.guide && (
@@ -102,6 +103,34 @@ export default function Youtubers() {
                       </Link>
                     )}
                   </div>
+                  {/* the reason runs the full width of the card, not the
+                      leftover strip beside the thumbnail */}
+                  {!v.transcribed && (
+                    <p className="creator-flag">
+                      Not written up
+                      {v.why ? <span className="creator-why"> — {v.why}</span> : null}
+                    </p>
+                  )}
+
+                  {/* Marked moments open YouTube at the second, which is the
+                      whole point on a video with no captions to quote. */}
+                  {v.marks && v.marks.length > 0 && (
+                    <ul className="marks">
+                      {v.marks.map((k) => (
+                        <li key={k.at}>
+                          <a
+                            className="mark"
+                            href={markUrl(v.id, k.at)}
+                            rel="noopener"
+                            target="_blank"
+                          >
+                            <span className="mark-time">{k.clock}</span>
+                            <span className="mark-label">{k.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
@@ -123,10 +152,12 @@ export default function Youtubers() {
         <aside className="callout">
           <span className="callout-label">How the list is kept</span>
           <p>
-            Channel names, links and video titles are taken from YouTube itself
-            rather than typed from memory, so a name here is the name on the
-            channel. Anything marked <em>not written up</em> is listed but has
-            not been read through — usually because no captions were available.
+            Channel names, links, video titles, publish dates and run times are
+            taken from YouTube itself rather than typed from memory, so what is
+            printed here is what is on the channel. Anything marked{" "}
+            <em>not written up</em> is listed but has no guide behind it, and
+            says why — usually that the video carries no captions, so the only
+            way to get it is to watch it.
           </p>
         </aside>
       </div>
