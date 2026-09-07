@@ -1,0 +1,213 @@
+/* =========================================================================
+   The front door — four doors in a 2x2 grid.
+
+   Same tokens as everywhere else. The card is the .panel idea at full size:
+   a lifted surface, a hairline rim, and the 70%-wide horizon line along the
+   bottom edge carrying the hover state. No hue anywhere; the card that is
+   under the cursor is simply the brightest thing on the page.
+   Imported by globals.css; never imported anywhere else.
+   ========================================================================= */
+
+.home {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  display: flex;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 100%, rgba(71, 81, 92, 0.26) 0%, rgba(27, 28, 34, 0) 64%),
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(71, 81, 92, 0.16) 0%, rgba(27, 28, 34, 0) 58%),
+    var(--color-void);
+}
+
+.home-inner {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: clamp(var(--space-2xl), 7vh, var(--space-3xl)) clamp(var(--space-lg), 5vw, var(--space-2xl));
+  display: flex;
+  flex-direction: column;
+  gap: clamp(var(--space-2xl), 6vh, var(--space-3xl));
+}
+
+/* --- the mark and the promise --- */
+.home-head { text-align: center; }
+.home-mark {
+  display: block;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto var(--space-md);
+}
+.home-word {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-foreground);
+  margin: 0;
+  line-height: 1.1;
+}
+.home-lede {
+  max-width: 56ch;
+  margin: var(--space-md) auto 0;
+  color: var(--color-muted);
+  font-size: var(--text-body-lg);
+  line-height: 1.6;
+}
+
+/* --- the grid --- */
+.home-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+.home-grid > li { display: flex; min-width: 0; }
+
+.home-card {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  background-image: var(--surface-panel-gradient);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+  overflow: hidden;
+  transition: transform var(--motion-slow), box-shadow var(--motion-slow);
+}
+.home-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 1px;
+  background: var(--horizon-line);
+  opacity: 0.18;
+  transition: opacity var(--motion-slow), background var(--motion-slow);
+  pointer-events: none;
+}
+.home-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--rim-inset-strong), var(--shadow-raised);
+}
+.home-card:hover::after { opacity: 0.85; background: var(--horizon-line-lumen); }
+.home-card:focus-visible {
+  outline: none;
+  box-shadow: var(--rim-inset-strong), var(--shadow-raised), var(--focus-ring);
+}
+
+.home-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+.home-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--surface-gradient);
+  box-shadow: var(--rim-inset);
+  color: var(--color-muted);
+  transition: color var(--motion-slow);
+}
+.home-card:hover .home-card-icon { color: var(--color-lumen); }
+.home-card-no {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.1em;
+  color: var(--color-hairline);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-card-kicker {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2xs);
+}
+.home-card-title {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-foreground);
+  margin: 0 0 var(--space-xs);
+  transition: color var(--motion-slow);
+}
+.home-card:hover .home-card-title { color: var(--color-lumen); }
+.home-card-body {
+  color: var(--color-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.6;
+  margin: 0 0 var(--space-lg);
+}
+
+/* the foot is pushed down so every card's rule sits on the same line */
+.home-card-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-hairline);
+}
+.home-card-stat {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+.home-card-go {
+  display: inline-flex;
+  color: var(--color-muted);
+  transition: transform var(--motion-slow), color var(--motion-slow);
+}
+.home-card:hover .home-card-go { color: var(--color-lumen); transform: translateX(4px); }
+
+/* Not shipped yet: dimmer, and the stat says so rather than the card lying. */
+.home-card.is-soon { background-image: none; }
+.home-card.is-soon .home-card-title { color: var(--color-muted); }
+.home-card.is-soon:hover .home-card-title { color: var(--color-foreground); }
+.home-card.is-soon .home-card-stat { opacity: 0.7; }
+
+/* --- foot --- */
+.home-foot { text-align: center; }
+.home-foot p {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  line-height: 1.7;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-2xs);
+}
+.home-foot p:last-child { opacity: 0.65; }
+
+@media (max-width: 760px) {
+  .home-grid { grid-template-columns: 1fr; gap: var(--space-md); }
+  .home-card { padding: var(--space-lg); }
+  .home-mark { width: 64px; height: 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-card, .home-card-go { transition: none; }
+  .home-card:hover { transform: none; }
+  .home-card:hover .home-card-go { transform: none; }
+}

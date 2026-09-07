@@ -394,3 +394,124 @@
   opacity: 0.92;
 }
 .term-note strong { color: var(--color-lumen); font-weight: var(--weight-medium); }
+
+/* -------------------------------------------------------------------------
+   /youtubers — the credit page
+
+   One block per channel: who they are and why, then their videos as a row of
+   small cards. The channel name is the loudest thing in the block, because
+   the page exists to send people there.
+   ------------------------------------------------------------------------- */
+.creator-list { list-style: none; padding: 0; margin: 0; }
+.creator {
+  padding: var(--space-2xl) 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.creator:first-child { padding-top: 0; }
+.creator:last-child { border-bottom: 0; }
+
+.creator-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+.creator-id { min-width: 0; flex: 1 1 320px; }
+.creator-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2xs);
+}
+.creator-name {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-xs);
+  line-height: 1.2;
+}
+.creator-name a { color: var(--color-foreground); text-decoration: none; }
+.creator-name a:hover { color: var(--color-lumen); text-decoration: underline; }
+.creator-note {
+  color: var(--color-muted);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 68ch;
+}
+.creator-head .btn { flex-shrink: 0; text-decoration: none; }
+
+.creator-videos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.creator-video {
+  display: grid;
+  grid-template-columns: 152px 1fr;
+  gap: var(--space-md);
+  align-items: start;
+  min-width: 0;
+}
+.creator-thumb {
+  display: block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--rim-inset);
+  isolation: isolate;
+}
+.creator-thumb:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+.creator-thumb .thumb-play { width: 32px; height: 32px; }
+.creator-thumb .thumb-play svg { width: 15px; height: 15px; }
+.creator-thumb:hover .thumb img { transform: scale(1.035); }
+
+.creator-video-text { min-width: 0; }
+.creator-video-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-body-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+.creator-video-title:hover { color: var(--color-lumen); text-decoration: underline; }
+.creator-video-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  margin: var(--space-xs) 0 0;
+}
+.creator-flag {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  color: var(--color-muted);
+  opacity: 0.65;
+}
+.creator-guide {
+  display: inline-block;
+  margin-top: var(--space-2xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  text-decoration: none;
+}
+.creator-guide:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .creator-videos { grid-template-columns: 1fr; }
+  .creator-video { grid-template-columns: 124px 1fr; gap: var(--space-sm); }
+}
+
+/* The brand panel in the HUD is a link home, so it must not pick up the
+   default underline that .doc a / global a rules give anchors. */
+.hud-topleft .brand { text-decoration: none; color: inherit; }
+.hud-topleft .brand:hover .brand-word { color: var(--color-lumen); }

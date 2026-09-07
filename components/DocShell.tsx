@@ -30,10 +30,13 @@ export default function DocShell({
               {crumb.label}
             </Link>
           )}
+          <Link className="btn btn-sm btn-ghost" href="/youtubers/">
+            Youtubers
+          </Link>
           <Link className="btn btn-sm btn-ghost" href="/terminology/">
             Terminology
           </Link>
-          <Link className="btn btn-sm" href="/">
+          <Link className="btn btn-sm" href="/simulator/">
             Open the simulator
           </Link>
         </nav>

@@ -7,16 +7,16 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://wardogspilot.com"),
-  title: "wardogspilot — WARDOGS helicopter flight simulator",
+  title: "wardogspilot — the WARDOGS helicopter reference",
   description:
-    "An interactive WARDOGS helicopter guide: seven maneuvers flown in 3D with the pilot's collective, cyclic and pedal inputs shown live, plus the full controls, keybind and logistics reference.",
+    "Everything for flying helicopters in WARDOGS: a 3D maneuver simulator, guides written up from the community's own videos, the creators behind them, and the terminology.",
   openGraph: {
     type: "website",
     siteName: "wardogspilot",
     url: "https://wardogspilot.com",
-    title: "wardogspilot — WARDOGS helicopter flight simulator",
+    title: "wardogspilot — the WARDOGS helicopter reference",
     description:
-      "Seven WARDOGS helicopter maneuvers flown in 3D with the pilot's inputs shown live.",
+      "A 3D maneuver simulator, community guides with every author credited, and the terminology.",
   },
   twitter: { card: "summary_large_image" },
   icons: { icon: "/favicon.svg" },
@@ -26,8 +26,6 @@ export const viewport: Viewport = {
   themeColor: "#1b1c22",
   width: "device-width",
   initialScale: 1,
-  // The HUD sits in the corners; a zoomed viewport would push it off screen.
-  maximumScale: 1,
   viewportFit: "cover",
 };
 
@@ -41,7 +39,6 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preload" as="fetch" href="/heli.glb" crossOrigin="anonymous" />
       </head>
       <body>{children}</body>
     </html>

@@ -14,7 +14,7 @@ export default function GuidesIndex() {
   const creators = new Set(guides.map((g) => g.source.channel));
 
   return (
-    <DocShell wide>
+    <DocShell wide crumb={{ href: "/", label: "Home" }}>
       <header className="doc-head">
         <span className="doc-eyebrow">Guides</span>
         <h1>Learn from the people flying it.</h1>
@@ -80,10 +80,13 @@ export default function GuidesIndex() {
         </aside>
 
         <aside className="callout">
-          <span className="callout-label">More coming</span>
+          <span className="callout-label">Everyone we learned from</span>
           <p>
-            This list is being added to. If you make WARDOGS flying content and
-            would rather not be written up here, say so and the page comes down.
+            These write-ups are a fraction of what is out there. The{" "}
+            <Link href="/youtubers/">Youtubers page</Link> lists every channel
+            behind this site and every video we went through, linked straight to
+            them. If you make WARDOGS flying content and would rather not be
+            written up here, say so and the page comes down.
           </p>
         </aside>
       </div>

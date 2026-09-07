@@ -8,6 +8,8 @@
    ========================================================================= */
 
 @import "./system.css";
+/* The 2x2 front door at /. Must sit with the other @imports, at the top. */
+@import "./home.css";
 /* Reading-page chrome for /guides. Must sit with the other @imports, at the top. */
 @import "./doc.css";
 

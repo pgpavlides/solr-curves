@@ -52,7 +52,7 @@ export const guides: Guide[] = [
     tags: ["HOTAS", "sensitivity", "curves", "landings"],
     source: {
       channel: "Sim Controls",
-      channelUrl: "https://www.youtube.com/channel/UC_lgWjvPrOiJ_Xw4tQdaAwQ",
+      channelUrl: "https://www.youtube.com/@SimControls",
       title: "How I Made HOTAS Helicopter Controls Feel Better in WARDOGS",
       videoId: "TciRy5CzvDQ",
       published: "6 September 2026",
@@ -312,7 +312,7 @@ export const guides: Guide[] = [
     tags: ["HOTAS", "HOSAS", "beginner", "firing range"],
     source: {
       channel: "Duskguy",
-      channelUrl: "https://www.youtube.com/channel/UCIZKl6BwGOBCgMdt4NmO2Lw",
+      channelUrl: "https://www.youtube.com/@Duskguy",
       title: "Quick and Easy Wardogs HOTAS Setup",
       videoId: "k01CbrV_Zu8",
       published: "5 September 2026",
@@ -456,7 +456,7 @@ guides.push({
   tags: ["J-hook", "landings", "collective", "cross-game"],
   source: {
     channel: "Dynamic",
-    channelUrl: "https://www.youtube.com/channel/UCdWBQnQZXlcuVoSBxWfEr7Q",
+    channelUrl: "https://www.youtube.com/@Dynamic_AU",
     title: "How to J Hook in SQUAD",
     videoId: "9B_3rswGrGU",
     published: "24 August 2023",
@@ -580,7 +580,7 @@ guides.push({
   tags: ["J-hook", "real pilot", "LZ choice", "keybinds"],
   source: {
     channel: "Cologne TM",
-    channelUrl: "https://www.youtube.com/channel/UCULPLRn4k4LlSDxaqKOAiVw",
+    channelUrl: "https://www.youtube.com/@CologneTM",
     title: "REAL PILOT Teaches J-HOOKS - Helicopter Tutorial WARDOGS",
     videoId: "nD5bxC38pRI",
     published: "27 August 2026",

@@ -1,24 +1,37 @@
 # wardogspilot.com
 
-A full-screen WARDOGS helicopter flight guide. The site **is** the simulator:
-one route, one canvas filling the viewport, and a HUD layered over it. The
-written reference lives in a drawer over the scene rather than in pages.
+A WARDOGS helicopter flight guide, built out of the community's own videos with
+every author credited. The front door is four doors; behind one of them the site
+becomes a full-screen simulator.
 
 ## Shape
 
 ```
-app/page.tsx          the only route; renders <App/> plus a <noscript> summary
-components/App.tsx    HUD state, keyboard, deep links, loader gate
-components/three/     the full-viewport WebGPU canvas and the airframe
-components/hud/       gauges, telemetry, reference drawer
+app/page.tsx            the front door — 2x2 grid of the four sections
+app/simulator/          the application: <App/> plus a <noscript> summary
+app/guides/             written write-ups, index + one route per guide
+app/youtubers/          the credit page: every creator and every video
+app/pilot-app/          status page for the desktop companion
+app/terminology/        the words, defined
+
+components/App.tsx      HUD state, keyboard, deep links, loader gate
+components/three/       the full-viewport WebGPU canvas and the airframe
+components/hud/         gauges, telemetry, reference drawer
+components/DocShell.tsx chrome shared by every reading page
 ```
+
+Only `/simulator/` is an application; everything else is a document. That split
+is why the GLB preload and the `maximumScale: 1` viewport lock both live on that
+route's `page.tsx` rather than in the root layout — a 1.9 MB model and a
+pinch-zoom lock have no business on a page of prose.
 
 The HUD is a CSS grid pinned over the canvas with `pointer-events: none`,
 re-enabled per panel — brand top-left, actions top-right, maneuver rail left,
-brief right, gauges/transport/telemetry along the bottom. `html, body` are
-locked to the viewport; only the drawer scrolls.
+brief right, gauges/transport/telemetry along the bottom. The simulator is
+locked to the viewport by `#app { position: fixed }` rather than by nailing down
+`html, body`, so the reading pages can still scroll.
 
-Keyboard: **Space** play/pause, **R** reference. Deep links: `/?m=jhook`.
+Keyboard: **Space** play/pause, **R** reference. Deep links: `/simulator/?m=jhook`.
 
 ## Stack
 
@@ -136,6 +149,19 @@ lifted to `#2b303b` and the aircraft takes Lumen. The loading screen holds until
 both the GLB and the renderer are up — WebGPU init finishes after the last byte
 arrives, so gating on load progress alone drops the curtain on an empty scene.
 
+## Credit
+
+Attribution is a hard requirement, not a courtesy, and the data model enforces
+it: `source` is a required field on the `Guide` type, so a guide cannot exist in
+`data/guides.ts` without saying whose work it is.
+
+Channel names, channel URLs and video titles in `data/creators.ts` are the
+canonical ones YouTube reports for each video (oEmbed `author_name` /
+`author_url`), not names typed from memory — regenerate them rather than editing
+them by hand if a channel is renamed. Two channels listed as "Unlisted channel"
+before this were in fact **LewF20** and **VGAiM**; that is exactly the kind of
+error the canonical lookup exists to prevent.
+
 ## Content
 
 All facts live in `data/` as typed modules, so pages stay presentational and
@@ -153,6 +179,8 @@ each fact has one home:
 | `supplies.ts` | Supply types and pilot etiquette |
 | `glossary.ts` | Terms of art |
 | `videos.ts` | Every source video, transcribed or not |
+| `guides.ts` | The written guides; `source` is a required field |
+| `creators.ts` | Channels and videos, grouped — the credit page's data |
 
 To add a fact, edit the data module — not the page. The J-hook phase list is the
 one exception: it lives in `JHookScene.tsx` because the copy and the waypoint
