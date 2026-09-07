@@ -381,9 +381,117 @@
 .hud-topleft .brand { grid-column: auto; grid-row: auto; align-self: auto; }
 .hud-topleft .btn { text-decoration: none; }
 
-/* --- terminology: definition list with a subordinate note line --- */
-.term-list > div { padding: var(--space-md) 0; }
-.term-list dt { font-size: var(--text-body-md); }
+/* -------------------------------------------------------------------------
+   /terminology — a reference you can search, not a wall you scroll
+
+   Thirty definitions stacked in one column is six thousand pixels of page and
+   no way to find a single word. The toolbar filters, the grid halves the
+   height, and every term carries its own anchor.
+   ------------------------------------------------------------------------- */
+/*
+  Sticky only where it pays. The .doc-bar is itself sticky and its height is
+  not fixed — measured: 65px on a wide screen, but 102px at 640 and 115px at
+  390 as its links wrap — and below ~1100px the toolbar's own chips wrap to
+  186px, which is a quarter of a phone screen spent on a filter. So the
+  toolbar sticks on desktop, where both heights are stable, and scrolls away
+  everywhere else.
+*/
+.term-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin: var(--space-2xl) 0 var(--space-xl);
+  padding: var(--space-sm) 0;
+  /* 0.92 let definition text read through the bar while scrolling; the page
+     gradient still runs this far down, so a fully opaque void would band. */
+  background: rgba(27, 28, 34, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.term-search { flex: 1 1 260px; min-width: 0; }
+.term-search .input-wrap { display: flex; align-items: center; }
+.term-search .input { padding-left: 40px; padding-right: 40px; }
+.term-search-icon {
+  position: absolute;
+  left: 13px;
+  /* .input is itself positioned with an opaque fill, and it comes after this
+     in the DOM — without a stacking bump the magnifier paints underneath it */
+  z-index: 1;
+  display: inline-flex;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+/* the hint is only true when there is a keyboard to press it on */
+.term-search-key { position: absolute; right: 10px; z-index: 1; opacity: 0.6; }
+@media (pointer: coarse) { .term-search-key { display: none; } }
+
+.term-chips { display: flex; gap: 2px; flex-wrap: wrap; }
+.term-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  color: var(--color-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.term-empty {
+  color: var(--color-muted);
+  padding: var(--space-2xl) 0;
+  text-align: center;
+}
+.term-empty strong { color: var(--color-foreground); }
+.term-empty .btn { margin-left: var(--space-xs); }
+
+/* --- the definitions, two abreast on a wide screen --- */
+.term-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 0 var(--space-2xl);
+}
+.term-item {
+  padding: var(--space-md) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 0;
+}
+.term-item dt {
+  font-family: var(--font-display);
+  font-size: var(--text-body-lg);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-foreground);
+  margin-bottom: var(--space-2xs);
+}
+.term-item dd {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.65;
+  font-size: var(--text-body-sm);
+  max-width: 62ch;
+}
+
+/* --- anchors: every term is a link you can send someone --- */
+.term-anchor { color: inherit; text-decoration: none; }
+.term-anchor:hover { color: var(--color-lumen); }
+.term-hash {
+  margin-left: var(--space-2xs);
+  color: var(--color-hairline);
+  opacity: 0;
+  transition: opacity var(--motion-medium);
+}
+.term-anchor:hover .term-hash,
+.term-anchor:focus-visible .term-hash { opacity: 1; }
+/* land the target below the sticky bar(s) rather than underneath them */
+.term-item, .controls-list > div { scroll-margin-top: 124px; }
+
+@media (min-width: 1100px) {
+  .term-bar { position: sticky; top: 65px; z-index: 4; }
+  .term-item, .controls-list > div { scroll-margin-top: 148px; }
+}
+:target > dt .term-anchor { color: var(--color-lumen); }
+
 .term-note {
   display: block;
   margin-top: var(--space-xs);
@@ -515,3 +623,17 @@
    default underline that .doc a / global a rules give anchors. */
 .hud-topleft .brand { text-decoration: none; color: inherit; }
 .hud-topleft .brand:hover .brand-word { color: var(--color-lumen); }
+
+/* Credit block laid out as a row: who it is on the left, the way in on the
+   right. Used where the credit has no thumbnail to carry it. */
+.credit-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+.credit-row .btn { flex-shrink: 0; text-decoration: none; }
+
+/* A wide page still needs a reading measure inside the definition column. */
+.controls-list dd { max-width: 68ch; }

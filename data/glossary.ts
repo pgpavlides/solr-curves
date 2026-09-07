@@ -1,3 +1,5 @@
+import { controls } from "./controls";
+
 /*
   Rotary-wing vocabulary, as used in WARDOGS.
 
@@ -56,13 +58,13 @@ export const glossary: Term[] = [
     def: "The tail rotor, worked by foot pedals in a real aircraft. It swings the nose left and right about the vertical axis <em>without</em> changing where the aircraft is travelling.",
     note: "Its real job is anti-torque: the main rotor tries to spin the fuselage the other way, and the tail rotor cancels that out.",
   },
-  {
-    term: "Rotor disc",
-    group: "The controls",
-    def: "The circle the blades sweep out. Almost every explanation of helicopter flight is really a statement about which way the disc is tilted.",
-  },
 
   /* ------------------------------------------------- attitude and forces */
+  {
+    term: "Rotor disc",
+    group: "Attitude and forces",
+    def: "The circle the blades sweep out. Almost every explanation of helicopter flight is really a statement about which way the disc is tilted.",
+  },
   {
     term: "Lift vector",
     group: "Attitude and forces",
@@ -199,4 +201,31 @@ export const glossary: Term[] = [
   },
 ];
 
+/** Stable anchor id for a term — `/terminology/#crab`. */
+export const termId = (term: string) =>
+  term
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
 export const byGroup = (g: Group) => glossary.filter((t) => t.group === g);
+
+/*
+  The terms that get their own definition entry.
+
+  The four controls are set out at full length on the terminology page, so
+  their short glossary entries would be a second, worse copy of the same words:
+  the whole "The controls" group, plus anything sharing a name with a control.
+  That last clause is not hypothetical — "Lift vector" is both a control and a
+  glossary term, and rendering both gave two elements the same #lift-vector id.
+
+  Deriving it here rather than in the page means the count in the header and
+  the count in the filter toolbar cannot disagree.
+*/
+const controlNames = new Set(controls.map((c) => c.name.toLowerCase()));
+export const listedTerms = glossary.filter(
+  (t) => t.group !== "The controls" && !controlNames.has(t.term.toLowerCase())
+);
+
+/** Everything the terminology page actually shows: controls + listed terms. */
+export const termCount = controls.length + listedTerms.length;
