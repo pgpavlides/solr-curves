@@ -17,9 +17,16 @@ export const metadata: Metadata = {
 };
 
 /*
-  The credit page. Nothing here is a summary of someone's video — it is a
-  pointer to it. Channel names and video titles are the canonical ones from
-  YouTube, so what is printed here matches what is on their channel.
+  The credit page, on the same card grid as /guides.
+
+  One card per creator rather than per video, because the subject of this page
+  is the person: the card is the channel, and their videos hang underneath it
+  the way a guide's source credit does. The card classes are the guides
+  classes, not copies of them, so the two pages cannot drift apart.
+
+  Nothing here is a summary of someone's video — it is a pointer to it. Channel
+  names, video titles, dates and run times are the canonical ones from YouTube,
+  so what is printed here matches what is on their channel.
 */
 export default function Youtubers() {
   const transcribed = creators.reduce(
@@ -44,102 +51,101 @@ export default function Youtubers() {
         </p>
       </header>
 
-      <ul className="creator-list">
-        {creators.map((c) => (
-          <li
-            key={c.name}
-            className={`creator${c.featured ? " is-featured" : ""}`}
-          >
-            <div className="creator-head">
-              <div className="creator-id">
-                <span className="creator-tag">{c.tag}</span>
-                <h2 className="creator-name">
-                  <a href={c.channelUrl} rel="noopener" target="_blank">
-                    {c.name}
-                  </a>
-                </h2>
-                <p className="creator-note">{c.note}</p>
-              </div>
+      <ul className="guide-grid">
+        {creators.map((c, i) => {
+          const lead = c.videos[0];
+          return (
+            <li
+              key={c.name}
+              className={`guide-item${c.featured ? " is-featured" : ""}`}
+            >
               <a
-                className="btn btn-sm"
+                className="guide-card"
                 href={c.channelUrl}
                 rel="noopener"
                 target="_blank"
               >
-                Visit the channel
+                <YouTubeThumb
+                  videoId={lead.id}
+                  alt={`Thumbnail from ${lead.title} by ${c.name}`}
+                  duration={lead.length}
+                  eager={i < 3}
+                />
+                <span className="guide-body">
+                  <span className="guide-kicker">{c.tag}</span>
+                  <span className="guide-title">{c.name}</span>
+                  <span className="guide-sum">{c.note}</span>
+                  <span className="card-meta">
+                    {[...new Set(c.videos.flatMap((v) => v.covers.split(" · ")))].map(
+                      (t) => (
+                        <span key={t} className="chip">
+                          {t}
+                        </span>
+                      )
+                    )}
+                  </span>
+                </span>
               </a>
-            </div>
 
-            <ul className="creator-videos">
-              {c.videos.map((v) => (
-                <li key={v.id} className="creator-video">
-                  <a
-                    className="creator-thumb"
-                    href={videoUrl(v.id)}
-                    rel="noopener"
-                    target="_blank"
-                    aria-label={`Watch ${v.title} by ${c.name} on YouTube`}
-                  >
-                    <YouTubeThumb
-                      videoId={v.id}
-                      alt=""
-                      duration={v.length === "—" ? undefined : v.length}
-                    />
-                  </a>
-                  <div className="creator-video-text">
-                    <a
-                      className="creator-video-title"
-                      href={videoUrl(v.id)}
-                      rel="noopener"
-                      target="_blank"
-                    >
-                      {v.title}
-                    </a>
-                    <p className="creator-video-meta">
-                      <span className="chip">{v.covers}</span>
+              {/* The videos sit outside the card link so each one is its own
+                  link, not swallowed by the channel link. */}
+              <ul className="channel-videos">
+                {c.videos.map((v) => (
+                  <li key={v.id}>
+                    <p className="guide-credit">
+                      <a href={videoUrl(v.id)} rel="noopener" target="_blank">
+                        {v.title}
+                      </a>
+                      <span className="sep">·</span>
+                      <span className="guide-date">{v.length}</span>
                       {v.published && (
-                        <span className="creator-date">{v.published}</span>
+                        <>
+                          <span className="sep">·</span>
+                          <span className="guide-date">{v.published}</span>
+                        </>
+                      )}
+                      {v.guide && (
+                        <>
+                          <span className="sep">·</span>
+                          <Link className="channel-readup" href={`/guides/${v.guide}/`}>
+                            our write-up
+                          </Link>
+                        </>
                       )}
                     </p>
-                    {v.guide && (
-                      <Link className="creator-guide" href={`/guides/${v.guide}/`}>
-                        Read our write-up →
-                      </Link>
-                    )}
-                  </div>
-                  {/* the reason runs the full width of the card, not the
-                      leftover strip beside the thumbnail */}
-                  {!v.transcribed && (
-                    <p className="creator-flag">
-                      Not written up
-                      {v.why ? <span className="creator-why"> — {v.why}</span> : null}
-                    </p>
-                  )}
 
-                  {/* Marked moments open YouTube at the second, which is the
-                      whole point on a video with no captions to quote. */}
-                  {v.marks && v.marks.length > 0 && (
-                    <ul className="marks">
-                      {v.marks.map((k) => (
-                        <li key={k.at}>
-                          <a
-                            className="mark"
-                            href={markUrl(v.id, k.at)}
-                            rel="noopener"
-                            target="_blank"
-                          >
-                            <span className="mark-time">{k.clock}</span>
-                            <span className="mark-label">{k.label}</span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+                    {!v.transcribed && (
+                      <p className="creator-flag">
+                        Not written up
+                        {v.why ? <span className="creator-why"> — {v.why}</span> : null}
+                      </p>
+                    )}
+
+                    {/* Marked moments open YouTube at the second, which is the
+                        whole point on a video with no captions to quote. */}
+                    {v.marks && v.marks.length > 0 && (
+                      <ul className="marks">
+                        {v.marks.map((k) => (
+                          <li key={k.at}>
+                            <a
+                              className="mark"
+                              href={markUrl(v.id, k.at)}
+                              rel="noopener"
+                              target="_blank"
+                            >
+                              <span className="mark-time">{k.clock}</span>
+                              <span className="mark-label">{k.label}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
 
       <div className="guide-notes">

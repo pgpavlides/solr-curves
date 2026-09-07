@@ -512,116 +512,6 @@
 }
 .term-note strong { color: var(--color-lumen); font-weight: var(--weight-medium); }
 
-/* -------------------------------------------------------------------------
-   /youtubers — the credit page
-
-   One block per channel: who they are and why, then their videos as a row of
-   small cards. The channel name is the loudest thing in the block, because
-   the page exists to send people there.
-   ------------------------------------------------------------------------- */
-.creator-list { list-style: none; padding: 0; margin: 0; }
-.creator {
-  padding: var(--space-2xl) 0;
-  border-bottom: 1px solid var(--color-hairline);
-}
-.creator:first-child { padding-top: 0; }
-.creator:last-child { border-bottom: 0; }
-
-.creator-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
-  flex-wrap: wrap;
-}
-.creator-id { min-width: 0; flex: 1 1 320px; }
-.creator-tag {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: var(--text-label-sm);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin-bottom: var(--space-2xs);
-}
-.creator-name {
-  font-family: var(--font-display);
-  font-size: var(--text-display-sm);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
-  margin: 0 0 var(--space-xs);
-  line-height: 1.2;
-}
-.creator-name a { color: var(--color-foreground); text-decoration: none; }
-.creator-name a:hover { color: var(--color-lumen); text-decoration: underline; }
-.creator-note {
-  color: var(--color-muted);
-  line-height: 1.65;
-  margin: 0;
-  max-width: 68ch;
-}
-.creator-head .btn { flex-shrink: 0; text-decoration: none; }
-
-.creator-videos {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--space-md);
-  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
-}
-.creator-video {
-  display: grid;
-  /* a slimmer thumbnail leaves the title a readable column rather than a strip */
-  grid-template-columns: 136px 1fr;
-  gap: var(--space-sm) var(--space-md);
-  align-items: start;
-  min-width: 0;
-}
-.creator-thumb {
-  display: block;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: var(--rim-inset);
-  isolation: isolate;
-}
-.creator-thumb:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
-.creator-thumb .thumb-play { width: 32px; height: 32px; }
-.creator-thumb .thumb-play svg { width: 15px; height: 15px; }
-.creator-thumb:hover .thumb img { transform: scale(1.035); }
-
-.creator-video-text { min-width: 0; }
-.creator-video-title {
-  display: block;
-  font-family: var(--font-display);
-  font-size: var(--text-body-sm);
-  font-weight: var(--weight-medium);
-  line-height: 1.4;
-  color: var(--color-foreground);
-  text-decoration: none;
-}
-.creator-video-title:hover { color: var(--color-lumen); text-decoration: underline; }
-.creator-video-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
-  margin: var(--space-xs) 0 0;
-}
-.creator-guide {
-  display: inline-block;
-  margin-top: var(--space-2xs);
-  font-family: var(--font-mono);
-  font-size: var(--text-label-sm);
-  text-decoration: none;
-}
-.creator-guide:hover { text-decoration: underline; }
-
-@media (max-width: 560px) {
-  .creator-videos { grid-template-columns: 1fr; }
-  .creator-video { grid-template-columns: 124px 1fr; gap: var(--space-sm); }
-}
 
 /* The brand panel in the HUD is a link home, so it must not pick up the
    default underline that .doc a / global a rules give anchors. */
@@ -644,16 +534,8 @@
 
 /* A video with no write-up says so, and says why, rather than looking like an
    oversight. The reason sits on its own line under the title. */
-.creator-date {
-  font-family: var(--font-mono);
-  font-size: var(--text-label-sm);
-  color: var(--color-muted);
-  opacity: 0.7;
-  white-space: nowrap;
-}
 .creator-flag {
-  grid-column: 1 / -1;
-  margin: 0;
+  margin: var(--space-2xs) 0 0 var(--space-2xs);
   padding-left: var(--space-sm);
   border-left: 1px solid var(--color-hairline);
   font-size: var(--text-label-sm);
@@ -671,12 +553,11 @@
 /* Marked moments — a timestamp that opens the video at the second. On a video
    with no captions this is the only written record of what is in it. */
 .marks {
-  grid-column: 1 / -1;
   list-style: none;
-  margin: 0;
-  padding: 0;
+  margin: var(--space-2xs) 0 0;
+  padding: 0 var(--space-2xs);
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-2xs);
 }
 .mark {
@@ -706,46 +587,43 @@
 }
 
 /* -------------------------------------------------------------------------
-   The featured creator
+   /youtubers — the credit page, on the /guides card grid
 
-   One creator is not here because his material is useful but because without
-   him there would be no site. That is a different claim, so it gets a
-   different treatment: a raised surface with the horizon line lit, and the
-   note set in the foreground colour at reading size rather than muted like
-   the editorial notes. It says it in one line and stops.
+   One card per creator, using the guide-card classes rather than copies of
+   them, so the two pages cannot drift apart. The only page-specific pieces
+   are the video list under each card and the featured creator, who is not
+   here because his material is useful but because without him there would be
+   no site: he takes the full row and reads as a banner rather than a tile.
    ------------------------------------------------------------------------- */
-.creator.is-featured {
-  position: relative;
-  margin-bottom: var(--space-2xl);
-  padding: var(--space-2xl) var(--space-xl);
-  border-top: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-panel);
-  background-image: var(--surface-panel-gradient);
-  box-shadow: var(--rim-inset), var(--shadow-card);
-  overflow: hidden;
+.guide-item.is-featured { grid-column: 1 / -1; }
+.guide-item.is-featured .guide-card { flex-direction: row; align-items: stretch; }
+.guide-item.is-featured .thumb {
+  flex: 0 0 clamp(240px, 34%, 420px);
+  aspect-ratio: auto;
 }
-.creator.is-featured::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 15%;
-  width: 70%;
-  height: 1px;
-  background: var(--horizon-line-lumen);
-  opacity: 0.85;
-  pointer-events: none;
+.guide-item.is-featured .guide-body {
+  justify-content: center;
+  padding: var(--space-xl);
 }
-.creator.is-featured .creator-tag { color: var(--color-lumen); }
-.creator.is-featured .creator-name { font-size: var(--text-display-md); }
-
-/* the note IS the statement here, so it is not muted down like the others */
-.creator.is-featured .creator-note {
+.guide-item.is-featured .guide-kicker { color: var(--color-lumen); }
+.guide-item.is-featured .guide-title { font-size: var(--text-display-md); }
+.guide-item.is-featured .guide-sum {
   color: var(--color-foreground);
   font-size: var(--text-body-lg);
-  line-height: 1.6;
 }
-@media (max-width: 640px) {
-  .creator.is-featured { padding: var(--space-lg) var(--space-md); }
-  .creator.is-featured .creator-note { font-size: var(--text-body-md); }
+.guide-item.is-featured .guide-card::after {
+  background: var(--horizon-line-lumen);
+  opacity: 0.85;
 }
+@media (max-width: 720px) {
+  .guide-item.is-featured .guide-card { flex-direction: column; }
+  .guide-item.is-featured .thumb { flex: none; aspect-ratio: 16 / 9; }
+  .guide-item.is-featured .guide-body { padding: var(--space-lg); }
+  .guide-item.is-featured .guide-title { font-size: var(--text-display-sm); }
+  .guide-item.is-featured .guide-sum { font-size: var(--text-body-md); }
+}
+
+/* --- each channel's videos, listed under its card --- */
+.channel-videos { list-style: none; margin: 0; padding: 0; }
+.channel-videos > li + li { margin-top: var(--space-sm); }
+.channel-readup { color: var(--color-lumen) !important; }
