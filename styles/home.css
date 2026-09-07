@@ -1,45 +1,71 @@
 /* =========================================================================
-   The front door — four doors in a 2x2 grid.
+   The front door — four doors on one screen.
 
-   Same tokens as everywhere else. The card is the .panel idea at full size:
-   a lifted surface, a hairline rim, and the 70%-wide horizon line along the
-   bottom edge carrying the hover state. No hue anywhere; the card that is
-   under the cursor is simply the brightest thing on the page.
+   This page never scrolls. It is a fixed-height grid: a compact header, the
+   2x2 of cards taking every pixel that is left, and a one-line foot. Type and
+   spacing are clamped against `vh`, so a 1080p desktop and a 768px-tall laptop
+   get the same layout at different sizes rather than one of them overflowing.
+
+   Same tokens as everywhere else. The card is the .panel idea at full size: a
+   lifted surface, a hairline rim, and the 70%-wide horizon line along the
+   bottom edge carrying the hover state. No hue anywhere; the card under the
+   cursor is simply the brightest thing on the page.
    Imported by globals.css; never imported anywhere else.
    ========================================================================= */
+
+/*
+  system.css sets `body { min-height: 100vh }`. On a phone 100vh is the LARGE
+  viewport — taller than what you can actually see — so that alone is enough to
+  make this page scroll by the height of the URL bar. Undo it for this page
+  only; every other route still wants it.
+*/
+body:has(.home) {
+  min-height: 0;
+  height: 100svh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 .home {
   position: relative;
   z-index: 1;
-  min-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
   display: flex;
   background:
     radial-gradient(ellipse 90% 60% at 50% 100%, rgba(71, 81, 92, 0.26) 0%, rgba(27, 28, 34, 0) 64%),
     radial-gradient(ellipse 70% 45% at 50% 0%, rgba(71, 81, 92, 0.16) 0%, rgba(27, 28, 34, 0) 58%),
     var(--color-void);
 }
+/* svh is recent enough to be worth a floor for anything that lacks it. */
+@supports not (height: 100svh) {
+  body:has(.home) { height: 100vh; }
+  .home { height: 100vh; }
+}
 
 .home-inner {
   width: 100%;
-  max-width: 1080px;
+  height: 100%;
+  max-width: 1120px;
   margin-inline: auto;
-  padding: clamp(var(--space-2xl), 7vh, var(--space-3xl)) clamp(var(--space-lg), 5vw, var(--space-2xl));
-  display: flex;
-  flex-direction: column;
-  gap: clamp(var(--space-2xl), 6vh, var(--space-3xl));
+  padding: clamp(16px, 3.6vh, 44px) clamp(16px, 4vw, 40px);
+  display: grid;
+  /* header · the grid takes the rest · foot */
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: clamp(14px, 3vh, 36px);
 }
 
 /* --- the mark and the promise --- */
-.home-head { text-align: center; }
+.home-head { text-align: center; min-height: 0; }
 .home-mark {
   display: block;
-  width: 84px;
-  height: 84px;
-  margin: 0 auto var(--space-md);
+  width: clamp(40px, 7.5vh, 76px);
+  height: clamp(40px, 7.5vh, 76px);
+  margin: 0 auto clamp(6px, 1.3vh, 14px);
 }
 .home-word {
   font-family: var(--font-display);
-  font-size: clamp(28px, 5vw, 40px);
+  font-size: clamp(20px, 3.4vh, 36px);
   font-weight: var(--weight-semibold);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -48,33 +74,38 @@
   line-height: 1.1;
 }
 .home-lede {
-  max-width: 56ch;
-  margin: var(--space-md) auto 0;
+  max-width: 58ch;
+  margin: clamp(6px, 1.3vh, 14px) auto 0;
   color: var(--color-muted);
-  font-size: var(--text-body-lg);
-  line-height: 1.6;
+  font-size: clamp(13px, 1.8vh, 17px);
+  line-height: 1.55;
 }
 
-/* --- the grid --- */
+/* --- the grid: always 2x2, always exactly the height that is left --- */
+.home-nav { min-height: 0; display: grid; }
 .home-grid {
   list-style: none;
   padding: 0;
   margin: 0;
+  height: 100%;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 1.9vh, 24px);
 }
-.home-grid > li { display: flex; min-width: 0; }
+.home-grid > li { display: flex; min-width: 0; min-height: 0; }
 
 .home-card {
   position: relative;
   isolation: isolate;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  padding: var(--space-xl);
+  padding: clamp(14px, 2.6vh, 30px);
   border-radius: var(--radius-lg);
   background: var(--color-panel);
   background-image: var(--surface-panel-gradient);
@@ -108,20 +139,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-lg);
+  margin-bottom: clamp(8px, 1.8vh, 20px);
+  flex-shrink: 0;
 }
 .home-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: clamp(32px, 5vh, 46px);
+  height: clamp(32px, 5vh, 46px);
   border-radius: var(--radius-md);
   background: var(--surface-gradient);
   box-shadow: var(--rim-inset);
   color: var(--color-muted);
   transition: color var(--motion-slow);
 }
+.home-card-icon svg { width: 55%; height: 55%; }
 .home-card:hover .home-card-icon { color: var(--color-lumen); }
 .home-card-no {
   font-family: var(--font-mono);
@@ -139,33 +172,49 @@
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--color-muted);
-  margin-bottom: var(--space-2xs);
+  margin-bottom: var(--space-3xs);
 }
 .home-card-title {
   font-family: var(--font-display);
-  font-size: var(--text-display-sm);
+  font-size: clamp(17px, 2.7vh, 26px);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--color-foreground);
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 clamp(4px, 0.9vh, 10px);
+  line-height: 1.2;
   transition: color var(--motion-slow);
 }
 .home-card:hover .home-card-title { color: var(--color-lumen); }
+/*
+  No line clamp. A clamped paragraph as a flex item ends up sized by the flex
+  algorithm rather than by its line count, and cuts the copy off mid-sentence
+  with no ellipsis — which reads as a bug, not as "there is more inside". The
+  copy is written to fit instead, and the media queries below drop the
+  paragraph whole when the screen genuinely has no room for it.
+
+  It is still the first thing allowed to shrink, so if it ever did overrun it
+  would clip itself rather than push the foot rule out of a card that cannot
+  scroll.
+*/
 .home-card-body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
   color: var(--color-muted);
-  font-size: var(--text-body-sm);
-  line-height: 1.6;
-  margin: 0 0 var(--space-lg);
+  font-size: clamp(12px, 1.65vh, 15px);
+  line-height: 1.55;
+  margin: 0 0 var(--space-md);
 }
 
 /* the foot is pushed down so every card's rule sits on the same line */
 .home-card-foot {
   margin-top: auto;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-md);
-  padding-top: var(--space-md);
+  gap: var(--space-sm);
+  padding-top: clamp(8px, 1.5vh, 16px);
   border-top: 1px solid var(--color-hairline);
 }
 .home-card-stat {
@@ -175,9 +224,14 @@
   text-transform: uppercase;
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .home-card-go {
   display: inline-flex;
+  flex-shrink: 0;
   color: var(--color-muted);
   transition: transform var(--motion-slow), color var(--motion-slow);
 }
@@ -190,20 +244,56 @@
 .home-card.is-soon .home-card-stat { opacity: 0.7; }
 
 /* --- foot --- */
-.home-foot { text-align: center; }
+.home-foot { text-align: center; min-height: 0; }
 .home-foot p {
   font-family: var(--font-mono);
   font-size: var(--text-label-sm);
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--color-muted);
-  margin: 0 0 var(--space-2xs);
+  margin: 0;
 }
-.home-foot p:last-child { opacity: 0.65; }
+.home-foot p + p { margin-top: 2px; opacity: 0.6; }
 
-@media (max-width: 760px) {
-  .home-grid { grid-template-columns: 1fr; gap: var(--space-md); }
-  .home-card { padding: var(--space-lg); }
-  .home-mark { width: 64px; height: 64px; }
+/*
+  Shedding order as the screen runs out, so something is always dropped before
+  anything is clipped: the strapline first, then the lede, then the card
+  paragraphs. Title, stat and icon survive to the end — they are the parts that
+  say what the door is.
+*/
+@media (max-height: 780px) {
+  .home-foot p + p { display: none; }
+}
+@media (max-height: 660px) {
+  .home-lede { display: none; }
+}
+@media (max-height: 580px), (max-width: 640px) {
+  .home-card-body { display: none; }
+}
+@media (max-width: 640px) {
+  .home-word { letter-spacing: 0.1em; }
+  .home-card-no { display: none; }
+  /*
+    A narrow card cannot fit "20 creators · 24 videos" on one line, and an
+    ellipsis on the one number the card exists to show is the wrong trade.
+    Let it wrap — the body paragraph is already gone at this width, so the
+    room is there.
+  */
+  .home-card-stat {
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.35;
+  }
+}
+
+/*
+  Below this the four cards genuinely cannot be shown legibly at any size — a
+  landscape phone leaves about 320px of usable height. Scrolling a little beats
+  clipping content away where nobody can reach it.
+*/
+@media (max-height: 440px) {
+  body:has(.home), .home { height: auto; min-height: 100svh; overflow: visible; }
+  .home-inner { height: auto; }
+  .home-grid { grid-template-rows: repeat(2, minmax(132px, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

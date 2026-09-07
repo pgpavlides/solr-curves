@@ -9,6 +9,10 @@ import { creatorCount, creatorVideoCount } from "@/data/creators";
   The front door. Four destinations in a 2x2 grid — the simulator, the written
   guides, the creators they came from, and the desktop app.
 
+  It is one screen and it does not scroll, so the copy is written to a budget:
+  a card body is at most three short lines, because the fourth would be
+  truncated by the line clamp in home.css rather than pushing the page taller.
+
   Everything the cards say is counted from the data modules rather than typed
   in, so a number on this page cannot drift away from what is behind the link.
 */
@@ -31,7 +35,7 @@ const doors: Door[] = [
     title: "Simulation",
     kicker: "Fly it",
     body:
-      "Every maneuver flown in 3D with the pilot's collective, cyclic and pedals moving live beside it. Scrub it, slow it down, watch what the hands are doing at the moment the nose comes up.",
+      "Every maneuver flown in 3D, with the collective, cyclic and pedals moving live beside it. Scrub it, slow it down, watch what the hands are doing.",
     stat: `${maneuvers.length} maneuvers`,
   },
   {
@@ -40,7 +44,7 @@ const doors: Door[] = [
     title: "Videos & Guides",
     kicker: "Read it",
     body:
-      "Community videos written up in full — settings, numbers and technique, with the original always one click away and the author credited at the top of the page, not in a footnote.",
+      "Community videos written up in full — settings, numbers and technique, with the original one click away and the author credited at the top.",
     stat: `${guides.length} guides`,
   },
   {
@@ -49,7 +53,7 @@ const doors: Door[] = [
     title: "Youtubers",
     kicker: "Watch them",
     body:
-      "The people this site is built on. Every channel we have learned from, what each one is good for, and every video we went through — linked straight to them.",
+      "The people this site is built on. Every channel we have learned from, what each one is good for, and every video — linked straight to them.",
     stat: `${creatorCount} creators · ${creatorVideoCount} videos`,
   },
   {
@@ -74,13 +78,13 @@ export default function Home() {
           </span>
           <h1 className="home-word">wardogspilot</h1>
           <p className="home-lede">
-            Everything for flying helicopters in WARDOGS. Built out of the
+            Everything for flying helicopters in WARDOGS — built out of the
             community&rsquo;s own videos, with the people who made them credited
             on every page.
           </p>
         </header>
 
-        <nav aria-label="Sections">
+        <nav className="home-nav" aria-label="Sections">
           <ul className="home-grid">
             {doors.map((d, i) => (
               <li key={d.href}>
@@ -90,7 +94,7 @@ export default function Home() {
                 >
                   <span className="home-card-top">
                     <span className="home-card-icon">
-                      <Icon name={d.icon} size={22} />
+                      <Icon name={d.icon} size={24} />
                     </span>
                     <span className="home-card-no">
                       {String(i + 1).padStart(2, "0")}
@@ -113,9 +117,8 @@ export default function Home() {
 
         <footer className="home-foot">
           <p>
-            Also here: the{" "}
-            <Link href="/terminology/">terminology page</Link> — collective,
-            cyclic, crab, flare, AGL and the rest, with the trap in each.
+            Also here: the <Link href="/terminology/">terminology</Link> —
+            collective, cyclic, crab, flare, AGL and the rest.
           </p>
           <p>Unofficial. Not affiliated with the developer of WARDOGS.</p>
         </footer>
