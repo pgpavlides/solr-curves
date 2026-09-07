@@ -33,7 +33,7 @@ export default async function GuidePage({
   if (!g) notFound();
 
   return (
-    <DocShell crumb={{ href: "/guides/", label: "All guides" }}>
+    <DocShell crumb={{ href: "/videos/", label: "All videos" }}>
       <article className="doc-article">
         <header className="doc-head">
           <span className="doc-eyebrow">{g.kicker}</span>

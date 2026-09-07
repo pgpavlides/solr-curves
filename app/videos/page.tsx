@@ -11,33 +11,33 @@ import {
 } from "@/data/creators";
 
 export const metadata: Metadata = {
-  title: "Youtubers — wardogspilot",
+  title: "Videos — wardogspilot",
   description:
-    "Every creator this site learned from: the channels, what each one is good for, and every WARDOGS helicopter video we went through — all linked straight back to them.",
+    "Every WARDOGS helicopter video this site was built from, grouped by the creator who made it, with what each channel is good for and a link straight back to them.",
 };
 
 /*
-  The credit page, on the same card grid as /guides.
+  Every video the site was built from, and the credit for it.
 
-  One card per creator rather than per video, because the subject of this page
-  is the person: the card is the channel, and their videos hang underneath it
-  the way a guide's source credit does. The card classes are the guides
-  classes, not copies of them, so the two pages cannot drift apart.
+  One card per creator rather than per video, because the subject is the
+  person: the card is the channel, and their videos hang underneath it. The
+  card classes are shared with the written guides at /guides/<slug>/ so the
+  two cannot drift apart.
 
   Nothing here is a summary of someone's video — it is a pointer to it. Channel
   names, video titles, dates and run times are the canonical ones from YouTube,
   so what is printed here matches what is on their channel.
 */
-export default function Youtubers() {
+export default function Videos() {
   const transcribed = creators.reduce(
     (n, c) => n + c.videos.filter((v) => v.transcribed).length,
     0
   );
 
   return (
-    <DocShell wide crumb={{ href: "/guides/", label: "All guides" }}>
+    <DocShell wide crumb={{ href: "/", label: "Home" }}>
       <header className="doc-head">
-        <span className="doc-eyebrow">Youtubers</span>
+        <span className="doc-eyebrow">Videos</span>
         <h1>The people this is built on.</h1>
         <p className="doc-lede">
           None of what is on this site is original flying. It is their work,

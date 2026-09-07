@@ -252,17 +252,11 @@ body:has(.home) {
   color: var(--color-muted);
   margin: 0;
 }
-.home-foot p + p { margin-top: 2px; opacity: 0.6; }
-
 /*
   Shedding order as the screen runs out, so something is always dropped before
-  anything is clipped: the strapline first, then the lede, then the card
-  paragraphs. Title, stat and icon survive to the end — they are the parts that
-  say what the door is.
+  anything is clipped: the lede first, then the card paragraphs. Title, stat
+  and icon survive to the end — they are the parts that say what the door is.
 */
-@media (max-height: 780px) {
-  .home-foot p + p { display: none; }
-}
 @media (max-height: 660px) {
   .home-lede { display: none; }
 }

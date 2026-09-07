@@ -96,7 +96,7 @@ export default function PilotApp() {
             <Link href="/simulator/">simulator</Link> takes deep links, so{" "}
             <code>/simulator/?m=jhook</code> opens straight onto the J-hook and
             can live in a bookmark or a second window. The{" "}
-            <Link href="/guides/">guides</Link> and the{" "}
+            <Link href="/videos/">videos</Link> and the{" "}
             <Link href="/terminology/">terminology</Link> are plain pages that
             print and read fine on a phone propped against the monitor.
           </p>

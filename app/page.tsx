@@ -2,16 +2,16 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import Icon, { type IconName } from "@/components/Icon";
 import { maneuvers } from "@/data/maneuvers";
-import { guides } from "@/data/guides";
+import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
 /*
-  The front door. Four destinations in a 2x2 grid — the simulator, the written
-  guides, the creators they came from, and the desktop app.
+  The front door. Four destinations in a 2x2 grid — the simulator, the videos
+  the site is built from, the vocabulary, and the desktop app.
 
   It is one screen and it does not scroll, so the copy is written to a budget:
-  a card body is at most three short lines, because the fourth would be
-  truncated by the line clamp in home.css rather than pushing the page taller.
+  a card body is at most three short lines, because a fourth would be shed by
+  the media queries in home.css rather than pushing the page taller.
 
   Everything the cards say is counted from the data modules rather than typed
   in, so a number on this page cannot drift away from what is behind the link.
@@ -39,22 +39,22 @@ const doors: Door[] = [
     stat: `${maneuvers.length} maneuvers`,
   },
   {
-    href: "/guides/",
-    icon: "book",
-    title: "Videos & Guides",
-    kicker: "Read it",
-    body:
-      "Community videos written up in full — settings, numbers and technique, with the original one click away and the author credited at the top.",
-    stat: `${guides.length} guides`,
-  },
-  {
-    href: "/youtubers/",
-    icon: "users",
-    title: "Youtubers",
+    href: "/videos/",
+    icon: "play",
+    title: "Videos",
     kicker: "Watch them",
     body:
-      "The people this site is built on. Every channel we have learned from, what each one is good for, and every video — linked straight to them.",
-    stat: `${creatorCount} creators · ${creatorVideoCount} videos`,
+      "Every video this site was built from, grouped by the creator who made it — what each channel is good for, and a link straight back to them.",
+    stat: `${creatorVideoCount} videos · ${creatorCount} creators`,
+  },
+  {
+    href: "/terminology/",
+    icon: "book",
+    title: "Terminology",
+    kicker: "Learn it",
+    body:
+      "Collective, cyclic, crab, flare, AGL and the rest — what each word actually means and the trap in it. Searchable, and every term is linkable.",
+    stat: `${termCount} terms`,
   },
   {
     href: "/pilot-app/",
@@ -116,10 +116,6 @@ export default function Home() {
         </nav>
 
         <footer className="home-foot">
-          <p>
-            Also here: the <Link href="/terminology/">terminology</Link> —
-            collective, cyclic, crab, flare, AGL and the rest.
-          </p>
           <p>Unofficial. Not affiliated with the developer of WARDOGS.</p>
         </footer>
       </div>

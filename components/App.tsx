@@ -125,8 +125,8 @@ export default function App() {
               <span className="brand-sub">Rotary flight guide</span>
             </span>
           </Link>
-          <Link className="btn btn-sm btn-ghost" href="/guides/">
-            Guides
+          <Link className="btn btn-sm btn-ghost" href="/videos/">
+            Videos
           </Link>
         </div>
 
