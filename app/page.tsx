@@ -6,13 +6,14 @@ import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
 /*
-  The front door. Four destinations in a 2x2 grid — the simulator, the videos
-  the site is built from, the vocabulary, and the desktop app.
+  The front door. The mark, at the size it deserves, and four destinations in
+  a single row beneath it — the simulator, the videos the site is built from,
+  the vocabulary, and the desktop app.
 
   It is one screen and it does not scroll, and the mark is the subject of it,
   so the cards are capped rather than stretching to fill what is left. That
-  makes the copy budget tighter than it looks: a card body is two short lines,
-  and a third gets clipped rather than pushing the page taller.
+  makes the copy budget tight: a card in the row of four is about 260px wide,
+  so a body is one short sentence and no more.
 
   Everything the cards say is counted from the data modules rather than typed
   in, so a number on this page cannot drift away from what is behind the link.
@@ -36,7 +37,7 @@ const doors: Door[] = [
     title: "Simulation",
     kicker: "Fly it",
     body:
-      "Every maneuver flown in 3D, with the collective, cyclic and pedals moving live beside it.",
+      "Every maneuver flown in 3D, with the pilot's inputs live beside it.",
     stat: `${maneuvers.length} maneuvers`,
   },
   {
@@ -45,7 +46,7 @@ const doors: Door[] = [
     title: "Videos",
     kicker: "Watch them",
     body:
-      "Every video the site was built from, grouped by the creator who made it, and linked back to them.",
+      "Every video the site is built from, and the creator who made it.",
     stat: `${creatorVideoCount} videos · ${creatorCount} creators`,
   },
   {
@@ -54,7 +55,7 @@ const doors: Door[] = [
     title: "Terminology",
     kicker: "Learn it",
     body:
-      "Collective, cyclic, crab, flare, AGL — what each word means and the trap in it. Searchable.",
+      "What each word actually means, and the trap in it.",
     stat: `${termCount} terms`,
   },
   {
@@ -63,7 +64,7 @@ const doors: Door[] = [
     title: "Pilot App",
     kicker: "Fly with it",
     body:
-      "A desktop companion for the second screen — the reference beside the game, not behind it.",
+      "The reference beside the game instead of behind it.",
     stat: "In development",
     soon: true,
   },

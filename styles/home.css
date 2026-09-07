@@ -46,7 +46,7 @@ body:has(.home) {
 .home-inner {
   width: 100%;
   height: 100%;
-  max-width: 1120px;
+  max-width: 1260px;
   margin-inline: auto;
   padding: clamp(16px, 3.6vh, 44px) clamp(16px, 4vw, 40px);
   display: grid;
@@ -59,9 +59,9 @@ body:has(.home) {
 .home-head { text-align: center; min-height: 0; }
 .home-mark {
   display: block;
-  width: clamp(76px, 14vh, 160px);
-  height: clamp(76px, 14vh, 160px);
-  margin: 0 auto clamp(6px, 1.3vh, 16px);
+  width: clamp(160px, 38vh, 460px);
+  height: clamp(160px, 38vh, 460px);
+  margin: 0 auto clamp(8px, 1.6vh, 20px);
 }
 .home-word {
   font-family: var(--font-display);
@@ -98,14 +98,43 @@ body:has(.home) {
   list-style: none;
   padding: 0;
   margin: 0;
-  width: min(100%, 900px);
-  height: min(100%, 520px);
+  width: 100%;
+  height: min(100%, 250px);
   margin-inline: auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: clamp(10px, 1.9vh, 22px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(10px, 1.4vw, 20px);
+}
+
+/*
+  Four abreast needs about 240px a card to stay readable. Below that the row
+  folds back to the 2x2 — still one screen, still no scrolling.
+*/
+@media (max-width: 1020px) {
+  .home-grid {
+    width: min(100%, 760px);
+    height: min(100%, 440px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+  /* two rows of cards need the height back that the mark was taking */
+  .home-mark {
+    width: clamp(130px, 28vh, 320px);
+    height: clamp(130px, 28vh, 320px);
+  }
+}
+/*
+  A card in the two-row fallback is about 215px tall whatever the screen does,
+  because the grid is capped and the row it sits in is what is left after a
+  large mark. That is not enough for a paragraph at full type size — measured
+  clipping at 900x800, 768x1024, 820x1180 and 1000x1400, tall screens included,
+  which is why this is not conditional on height. The title and the stat still
+  say what the door is.
+*/
+@media (max-width: 1020px) {
+  .home-card-body { display: none; }
 }
 .home-grid > li { display: flex; min-width: 0; min-height: 0; }
 
@@ -118,7 +147,7 @@ body:has(.home) {
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  padding: clamp(14px, 2.2vh, 20px);
+  padding: clamp(13px, 1.9vh, 18px);
   border-radius: var(--radius-lg);
   background: var(--color-panel);
   background-image: var(--surface-panel-gradient);
@@ -189,7 +218,7 @@ body:has(.home) {
 }
 .home-card-title {
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.4vh, 22px);
+  font-size: clamp(15px, 2.2vh, 20px);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--color-foreground);
