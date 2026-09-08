@@ -306,6 +306,13 @@ body:has(.home) {
   color: var(--color-muted);
   margin: 0;
 }
+/* the disclaimer sits quieter than the signature above it */
+.home-foot p + p { margin-top: 2px; opacity: 0.62; }
+
+.home-sig a { color: var(--color-foreground); text-decoration: none; }
+.home-sig a:hover { color: var(--color-lumen); text-decoration: underline; }
+/* the emoji leave the mono stack, which renders them cramped and flat */
+.home-sig span { font-family: initial; letter-spacing: 0.06em; }
 /*
   Shedding order as the screen runs out, so something is always dropped before
   anything is clipped: the lede first, then the card paragraphs. Title, stat

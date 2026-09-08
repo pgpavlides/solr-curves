@@ -144,6 +144,18 @@ export default function Home() {
         </nav>
 
         <footer className="home-foot">
+          <p className="home-sig">
+            Created with much love from{" "}
+            <a
+              href="https://steamcommunity.com/id/BroccoliGr/"
+              rel="noopener"
+              target="_blank"
+            >
+              Broccoli
+            </a>{" "}
+            {/* decorative: the line already says "with much love" */}
+            <span aria-hidden="true">🥦❤️</span>
+          </p>
           <p>Unofficial. Not affiliated with the developer of WARDOGS.</p>
         </footer>
       </div>
