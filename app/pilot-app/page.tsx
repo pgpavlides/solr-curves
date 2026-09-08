@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import DocShell from "@/components/DocShell";
+import { ogCard } from "@/lib/og";
 import { maneuvers } from "@/data/maneuvers";
 import { guides } from "@/data/guides";
 import { creatorCount } from "@/data/creators";
@@ -9,6 +10,8 @@ export const metadata: Metadata = {
   title: "Pilot App — wardogspilot",
   description:
     "A desktop companion for WARDOGS pilots — the reference and the pilot's tools on the second screen instead of behind the game. In development.",
+  openGraph: ogCard("pilot-app", "The wardogspilot desktop companion"),
+  twitter: ogCard("pilot-app", "The wardogspilot desktop companion"),
 };
 
 /*

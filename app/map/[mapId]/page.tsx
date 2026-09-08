@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import MapApp from "@/components/map/MapApp";
+import { ogCard } from "@/lib/og";
 import { MAP_IDS, type MapData, type MapId } from "@/components/map/types";
 
 /*
@@ -34,9 +35,12 @@ export async function generateMetadata({
   if (!(MAP_IDS as string[]).includes(mapId)) return { title: "Map — wardogspilot" };
   const data = readData();
   const game = data.maps[mapId as MapId];
+  const alt = `Interactive WARDOGS map of ${game.displayName}`;
   return {
     title: `${game.displayName} map — wardogspilot`,
     description: `Interactive WARDOGS map of ${game.displayName}: ${game.zones.length} zones and ${game.markers.length} markers, with filterable layers and shareable views.`,
+    openGraph: ogCard("maps", alt),
+    twitter: ogCard("maps", alt),
   };
 }
 

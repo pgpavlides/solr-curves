@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import App from "@/components/App";
+import { ogCard } from "@/lib/og";
 import { maneuvers } from "@/data/maneuvers";
 import { glossary } from "@/data/glossary";
 
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
   title: "Simulator — wardogspilot",
   description:
     "Seven WARDOGS helicopter maneuvers flown in 3D with the pilot's collective, cyclic and pedal inputs shown live.",
+  openGraph: ogCard("simulator", "The wardogspilot maneuver simulator"),
+  twitter: ogCard("simulator", "The wardogspilot maneuver simulator"),
 };
 
 /*

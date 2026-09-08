@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import DocShell from "@/components/DocShell";
+import { ogCard } from "@/lib/og";
 import TermExplorer from "@/components/TermExplorer";
 import { listedTerms, termCount } from "@/data/glossary";
 import { controls } from "@/data/controls";
@@ -9,6 +10,8 @@ export const metadata: Metadata = {
   title: "Terminology — wardogspilot",
   description:
     "Helicopter terminology as WARDOGS uses it: collective, cyclic, yaw, lift vector, crab, flare, J-hook, AGL and ASL — what each word actually means, and the traps in them.",
+  openGraph: ogCard("terminology", "WARDOGS helicopter terminology"),
+  twitter: ogCard("terminology", "WARDOGS helicopter terminology"),
 };
 
 export default function TerminologyPage() {

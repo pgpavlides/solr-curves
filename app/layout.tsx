@@ -4,6 +4,7 @@
 */
 import "../styles/globals.css";
 import type { Metadata, Viewport } from "next";
+import { ogCard } from "@/lib/og";
 import PageTransition from "@/components/PageTransition";
 
 export const metadata: Metadata = {
@@ -18,8 +19,12 @@ export const metadata: Metadata = {
     title: "wardogspilot — the WARDOGS helicopter reference",
     description:
       "A 3D maneuver simulator, community guides with every author credited, and the terminology.",
+    ...ogCard("default", "wardogspilot — the WARDOGS helicopter reference"),
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    ...ogCard("default", "wardogspilot — the WARDOGS helicopter reference"),
+  },
   icons: { icon: "/favicon.svg" },
 };
 

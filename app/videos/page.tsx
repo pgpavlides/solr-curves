@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import DocShell from "@/components/DocShell";
+import { ogCard } from "@/lib/og";
 import YouTubeThumb from "@/components/YouTubeThumb";
 import {
   creators,
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
   title: "Videos — wardogspilot",
   description:
     "Every WARDOGS helicopter video this site was built from, grouped by the creator who made it, with what each channel is good for and a link straight back to them.",
+  openGraph: ogCard("videos", "The creators wardogspilot is built on"),
+  twitter: ogCard("videos", "The creators wardogspilot is built on"),
 };
 
 /*

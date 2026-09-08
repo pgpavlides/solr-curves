@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import DocShell from "@/components/DocShell";
+import { ogCard } from "@/lib/og";
 import GuideBlocks from "@/components/GuideBlocks";
 import YouTubeThumb from "@/components/YouTubeThumb";
 import { guides, guideBySlug, videoUrl } from "@/data/guides";
@@ -17,9 +18,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const g = guideBySlug(slug);
   if (!g) return { title: "Guide — wardogspilot" };
+  const alt = `${g.title} — written up from ${g.source.channel}`;
   return {
     title: `${g.title} — wardogspilot`,
     description: `${g.summary} Written up from “${g.source.title}” by ${g.source.channel}.`,
+    openGraph: ogCard("guides", alt),
+    twitter: ogCard("guides", alt),
   };
 }
 
