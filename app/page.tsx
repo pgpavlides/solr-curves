@@ -147,7 +147,7 @@ export default function Home() {
           <p className="home-sig">
             Created with much love from{" "}
             <a
-              href="https://steamcommunity.com/id/BroccoliGr/"
+              href="https://steamcommunity.com/id/broccolipilot/"
               rel="noopener"
               target="_blank"
             >
