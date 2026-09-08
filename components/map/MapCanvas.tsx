@@ -19,6 +19,8 @@ import {
 */
 import "leaflet/dist/leaflet.css";
 
+import DrawLayer from "./DrawLayer";
+import type { Stroke, Tool } from "./draw";
 import { makeCRS, worldBounds } from "./crs";
 import {
   layerKey,
@@ -48,6 +50,16 @@ interface Props {
   onSelect: (m: MapMarker | null) => void;
   onView: (v: View) => void;
   onCursor: (p: { lat: number; lng: number } | null) => void;
+  draw: {
+    active: boolean;
+    tool: Tool;
+    erasing: boolean;
+    color: string;
+    widthPx: number;
+    strokes: Stroke[];
+    onCommit: (s: Stroke) => void;
+    onErase: (id: string) => void;
+  };
 }
 
 /* ---------------------------------------------------------------- icons */
@@ -180,6 +192,7 @@ export default function MapCanvas({
   onSelect,
   onView,
   onCursor,
+  draw,
 }: Props) {
   const crs = useMemo(() => makeCRS(game.bounds), [game.bounds]);
   const bounds = useMemo(() => worldBounds(game.bounds), [game.bounds]);
@@ -299,6 +312,19 @@ export default function MapCanvas({
             keyboard={false}
           />
         ))}
+
+      <DrawLayer
+        mapId={mapId}
+        bounds={game.bounds}
+        active={draw.active}
+        tool={draw.tool}
+        erasing={draw.erasing}
+        color={draw.color}
+        widthPx={draw.widthPx}
+        strokes={draw.strokes}
+        onCommit={draw.onCommit}
+        onErase={draw.onErase}
+      />
 
       <Reporter onView={onView} onCursor={onCursor} onSelect={onSelect} />
       <Framing map={game} initialView={initialView} />

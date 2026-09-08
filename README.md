@@ -227,6 +227,26 @@ under their key, `wardogs:map-tint:v3`, absent meaning default.
 the markers, polygons and name plates along with the terrain. metaforge hangs
 it on `.leaflet-layer`, a child of the pane — equivalent here.
 
+### Drawing
+
+`components/map/draw.ts` + `DrawLayer.tsx`, modelled on thespires.gr — same
+geometry (perfect-freehand), same tools, same idea that a circle or square is
+just a stroke with computed points so it goes down the same road as anything
+drawn by hand: one store, one eraser, one undo.
+
+One deliberate difference: thespires is **collaborative**, backed by Supabase
+realtime and auth. This site is a static export with no server and no accounts,
+so there is nothing to broadcast to. Strokes live in `localStorage`, per map.
+
+Two things that are load-bearing:
+
+- **Points and widths are in game units**, not pixels, so ink stays on the
+  ground it was drawn on through any pan or zoom, and keeps its real width.
+- **Input is taken on the map container, not on an overlay div.** An overlay
+  that swallows pointer events also swallows the wheel, and losing scroll-zoom
+  while drawing is worse than anything it buys. Leaflet's dragging is disabled
+  for the duration and the right button pans instead.
+
 ### Things about the data that look like bugs and are not
 
 - **Ozeti has no point markers** beyond its four towers — no facilities, no

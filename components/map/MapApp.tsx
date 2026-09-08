@@ -20,6 +20,15 @@ import {
   readStoredTint,
   storeTint,
 } from "./tint";
+import DrawToolbar from "./DrawToolbar";
+import {
+  COLORS,
+  WIDTHS,
+  loadStrokes,
+  saveStrokes,
+  type Stroke,
+  type Tool,
+} from "./draw";
 
 /*
   Leaflet touches window at import time, so the canvas is client-only. This
@@ -104,6 +113,29 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
   */
   const [tint, setTint] = useState(DEFAULT_TINT_PCT);
 
+  /*
+    Drawing. thespires keeps its strokes in Supabase and broadcasts them; this
+    is a static export with no server, so they live in this browser and are
+    loaded after mount, like every other stored value here.
+  */
+  const [drawOn, setDrawOn] = useState(false);
+  const [tool, setTool] = useState<Tool>("pen");
+  const [erasing, setErasing] = useState(false);
+  const [inkColor, setInkColor] = useState(COLORS[0]);
+  const [inkWidth, setInkWidth] = useState(WIDTHS[1]);
+  /*
+    Both stacks in ONE piece of state, on purpose. The obvious version keeps
+    them apart and has undo call setUndone from inside the setStrokes updater —
+    but an updater must be pure, and React re-invokes it (StrictMode does so
+    every time). That pushed the stroke onto the redo stack twice, so a single
+    redo brought back two lines. One object, one pure updater, no double.
+  */
+  const [ink, setInk] = useState<{ done: Stroke[]; undone: Stroke[] }>({
+    done: [],
+    undone: [],
+  });
+  const strokes = ink.done;
+
   // read the shared view out of the URL, once
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -122,6 +154,7 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
     const stored = readStoredTint();
     if (q.get("t") !== null && Number.isFinite(t)) setTint(Math.min(100, Math.max(0, t)));
     else if (stored !== null) setTint(stored);
+    setInk({ done: loadStrokes(mapId), undone: [] });
     setHydrated(true);
     // rows/game are stable for a given mapId, which is keyed upstream
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,6 +195,41 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
     if (hydrated) storeTint(tint);
   }, [tint, hydrated]);
 
+  useEffect(() => {
+    if (hydrated) saveStrokes(mapId, strokes);
+  }, [mapId, strokes, hydrated]);
+
+  // a new line, or a rubbed-out one, ends the redo trail
+  const commitStroke = useCallback((s: Stroke) => {
+    setInk((cur) => ({ done: [...cur.done, s], undone: [] }));
+  }, []);
+
+  const eraseStroke = useCallback((id: string) => {
+    setInk((cur) => ({ done: cur.done.filter((s) => s.id !== id), undone: [] }));
+  }, []);
+
+  const undo = useCallback(() => {
+    setInk((cur) =>
+      cur.done.length
+        ? {
+            done: cur.done.slice(0, -1),
+            undone: [...cur.undone, cur.done[cur.done.length - 1]],
+          }
+        : cur
+    );
+  }, []);
+
+  const redo = useCallback(() => {
+    setInk((cur) =>
+      cur.undone.length
+        ? {
+            done: [...cur.done, cur.undone[cur.undone.length - 1]],
+            undone: cur.undone.slice(0, -1),
+          }
+        : cur
+    );
+  }, []);
+
   const toggle = useCallback((key: string) => {
     setActive((prev) => {
       const next = new Set(prev);
@@ -193,6 +261,16 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
         onSelect={setSelected}
         onView={setView}
         onCursor={setCursor}
+        draw={{
+          active: drawOn,
+          tool,
+          erasing,
+          color: inkColor,
+          widthPx: inkWidth,
+          strokes,
+          onCommit: commitStroke,
+          onErase: eraseStroke,
+        }}
       />
 
       <header className="wm-bar">
@@ -219,6 +297,25 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
           ))}
         </nav>
       </header>
+
+      <DrawToolbar
+        open={drawOn}
+        onOpen={setDrawOn}
+        tool={tool}
+        onTool={setTool}
+        erasing={erasing}
+        onErasing={setErasing}
+        color={inkColor}
+        onColor={setInkColor}
+        width={inkWidth}
+        onWidth={setInkWidth}
+        canUndo={strokes.length > 0}
+        canRedo={ink.undone.length > 0}
+        onUndo={undo}
+        onRedo={redo}
+        onClear={() => setInk({ done: [], undone: [] })}
+        count={strokes.length}
+      />
 
       <aside className="wm-left">
         <LayerPanel

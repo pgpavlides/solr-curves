@@ -465,3 +465,98 @@
   letter-spacing: 0.02em;
   pointer-events: none;
 }
+
+/* -------------------------------------------------------------------------
+   Drawing
+
+   The ink sits over the tiles but under the chrome, and never takes pointer
+   events — input is handled on the map container itself so the wheel still
+   reaches Leaflet and scroll-zoom keeps working while the pen is out.
+   ------------------------------------------------------------------------- */
+.wm-ink {
+  position: absolute;
+  inset: 0;
+  z-index: 450; /* over the marker pane (400), under the chrome (500) */
+  pointer-events: none;
+}
+
+.wm-draw {
+  position: absolute;
+  top: var(--space-md);
+  right: 300px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+.wm-draw-toggle { display: inline-flex; align-items: center; gap: var(--space-2xs); }
+.wm-draw-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.wm-draw-tray {
+  width: 236px;
+  padding: var(--space-sm);
+  border-radius: var(--radius-lg);
+  background: rgba(26, 26, 26, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.wm-draw-tools { flex-wrap: wrap; }
+
+.wm-swatches { display: flex; gap: var(--space-2xs); flex-wrap: wrap; }
+.wm-swatch-btn {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: var(--rim-inset);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+.wm-swatch-btn:hover { transform: translateY(-1px); }
+.wm-swatch-btn.is-active { box-shadow: var(--rim-inset-strong), 0 0 0 2px var(--color-foreground); }
+.wm-swatch-btn:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+
+.wm-nibs { display: flex; gap: var(--space-2xs); align-items: center; }
+.wm-nib {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-graphite);
+  box-shadow: var(--rim-inset);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.wm-nib span { display: block; border-radius: var(--radius-full); }
+.wm-nib.is-active { box-shadow: var(--rim-inset-strong), 0 0 0 1px var(--color-lumen); }
+.wm-nib:focus-visible { outline: none; box-shadow: var(--rim-inset-strong), var(--focus-ring); }
+
+.wm-draw-acts { display: flex; gap: 2px; }
+.wm-draw-acts .btn[disabled] { opacity: 0.4; }
+.wm-draw-hint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+@media (max-width: 720px) {
+  .wm-draw { right: var(--space-sm); top: 52px; }
+  .wm-draw-tray { width: 208px; }
+}
