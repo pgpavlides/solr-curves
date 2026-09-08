@@ -5,7 +5,6 @@ out/
 .env
 .env.local
 .env*.local
-.env.production
 
 # Map tiles are 2.0 GB across 27k files. They are served from object storage
 # via NEXT_PUBLIC_TILE_BASE and must never enter the repo or public/.
@@ -14,3 +13,6 @@ out/
 .DS_Store
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# the tile upload ledger, for resuming scripts/upload-tiles.mjs
+.tiles-uploaded.log

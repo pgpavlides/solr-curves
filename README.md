@@ -163,16 +163,34 @@ the debt is recorded, and permission from them has not been given.
 
 ### The tiles are not in this repo
 
-They are **27,306 files, 2.0 GB**, which will break most deploy pipelines. They
-live outside the tree and are served from object storage:
+They are **27,306 files, 2.0 GB**, which will break most deploy pipelines
+(Cloudflare Pages caps a deployment at 20,000 files). They live in an R2 bucket,
+`wardogspilot-tiles`, served on a custom domain:
 
 ```
-NEXT_PUBLIC_TILE_BASE=https://…      # must contain tiles/<map>/<z>/<x>_<y>.webp
+NEXT_PUBLIC_TILE_BASE=https://tiles.wardogspilot.com
 ```
 
-Locally, `npm run tiles` serves the source directory on :8788 with CORS, so the
-app code is identical either way. Copy `.env.example` to `.env.local` first.
+That is pinned in `.env.production` and `.env.development`, so dev and
+production show the same thing and nothing needs setting to work on the site.
 `public/tiles/` and `/tiles/` are gitignored so they cannot be added by accident.
+
+`npm run tiles:upload` pushes the pyramid to R2. It is resumable — every key is
+appended to `.tiles-uploaded.log` and a re-run skips what is already there —
+which matters, because it is **paced at about three files a second**.
+Cloudflare's management API allows roughly 1200 requests per five minutes and
+answers `429` (code 971) above that. The fast path is the S3 API, which has no
+such limit, but it needs an R2 access key pair that neither wrangler's OAuth
+token nor the MCP token is allowed to mint.
+
+`npm run tiles` still serves the source directory on :8788 for offline work; put
+`NEXT_PUBLIC_TILE_BASE=http://localhost:8788` in `.env.local` to use it.
+
+**`.env.local` overrides `.env.production` for `next build`.** That is how the
+first deploy shipped `http://localhost:8788` to the whole internet: the map
+loaded, markers and zones drew, and the terrain was blank for everyone whose
+machine was not mine. `scripts/check-tile-base.mjs` runs in `prebuild` and now
+refuses any build whose tile base is missing or local.
 
 The icons (250 KB) and `markers.json` (148 KB) *are* committed, in `public/`.
 

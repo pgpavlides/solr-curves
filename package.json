@@ -9,8 +9,10 @@
     "start": "npx serve out",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "prebuild": "node scripts/no-dev-server.mjs && node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
-    "clean": "node -e \"for(const d of ['.next','.next-build','out'])require('fs').rmSync(d,{recursive:true,force:true})\""
+    "prebuild": "node scripts/no-dev-server.mjs && node scripts/check-tile-base.mjs && node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "clean": "node -e \"for(const d of ['.next','.next-build','out'])require('fs').rmSync(d,{recursive:true,force:true})\"",
+    "og": "node scripts/make-og.mjs",
+    "tiles:upload": "node scripts/upload-tiles.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
