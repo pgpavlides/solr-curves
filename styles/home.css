@@ -46,7 +46,7 @@ body:has(.home) {
 .home-inner {
   width: 100%;
   height: 100%;
-  max-width: 1260px;
+  max-width: 1400px;
   margin-inline: auto;
   padding: clamp(16px, 3.6vh, 44px) clamp(16px, 4vw, 40px);
   display: grid;
@@ -103,39 +103,51 @@ body:has(.home) {
   margin-inline: auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr);
-  gap: clamp(10px, 1.4vw, 20px);
+  gap: clamp(10px, 1.1vw, 18px);
 }
 
 /*
-  Four abreast needs about 240px a card to stay readable. Below that the row
-  folds back to the 2x2 — still one screen, still no scrolling.
+  Five abreast needs about 230px a card to stay readable. Below that it folds
+  to three then two columns — still one screen, still no scrolling. With five
+  cards the last row is short, which is why the rows are equal-height rather
+  than auto: a lone card should not be twice the height of its neighbours.
 */
-@media (max-width: 1020px) {
+@media (max-width: 1180px) {
   .home-grid {
-    width: min(100%, 760px);
-    height: min(100%, 440px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 860px);
+    height: min(100%, 400px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }
-  /* two rows of cards need the height back that the mark was taking */
   .home-mark {
-    width: clamp(130px, 28vh, 320px);
-    height: clamp(130px, 28vh, 320px);
+    width: clamp(110px, 22vh, 260px);
+    height: clamp(110px, 22vh, 260px);
+  }
+}
+@media (max-width: 1020px) {
+  .home-grid {
+    width: min(100%, 640px);
+    height: min(100%, 560px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+  }
+  /* two rows of cards need the height back that the mark was taking */
+  /* three rows of cards need the height back that the mark was taking */
+  .home-mark {
+    width: clamp(88px, 16vh, 200px);
+    height: clamp(88px, 16vh, 200px);
   }
 }
 /*
-  A card in the two-row fallback is about 215px tall whatever the screen does,
+  A card in the multi-row fallback is about 160px tall whatever the screen does,
   because the grid is capped and the row it sits in is what is left after a
   large mark. That is not enough for a paragraph at full type size — measured
   clipping at 900x800, 768x1024, 820x1180 and 1000x1400, tall screens included,
   which is why this is not conditional on height. The title and the stat still
   say what the door is.
 */
-@media (max-width: 1020px) {
-  .home-card-body { display: none; }
-}
 .home-grid > li { display: flex; min-width: 0; min-height: 0; }
 
 .home-card {
@@ -305,6 +317,43 @@ body:has(.home) {
 @media (max-height: 580px), (max-width: 640px) {
   .home-card-body { display: none; }
 }
+/*
+  ORDER MATTERS HERE. These override the base card rules above, and CSS breaks
+  ties on source order, not on the media query being more specific — the same
+  block sitting further up the file lost to `.home-card-kicker { display: block }`
+  and the kicker stayed visible however narrow the screen got.
+*/
+@media (max-width: 1180px) {
+  /* the row has folded, so the card is short; its furniture comes down too */
+  .home-card-body { display: none; }
+  .home-card { padding: clamp(11px, 1.6vh, 16px); }
+  .home-card-top { margin-bottom: clamp(6px, 1vh, 10px); }
+  .home-card-icon { width: clamp(26px, 3.6vh, 34px); height: clamp(26px, 3.6vh, 34px); }
+  .home-card-title { font-size: clamp(14px, 2vh, 19px); }
+  .home-card-foot { padding-top: clamp(6px, 1vh, 10px); }
+  .home-card-no { display: none; }
+}
+@media (max-width: 1020px) {
+  /* at two and three columns the card is barely 100px tall and every part of
+     it counts: the title already says what the door is, so the kicker goes */
+  .home-card-kicker { display: none; }
+  .home-card-go svg { width: 15px; height: 15px; }
+}
+
+/*
+  Under about 420px "24 videos · 20 creators" cannot fit one line in a 117px
+  card, so the foot takes two and the card needs the height from somewhere.
+  It comes from the mark and the strapline, which are the two things a 320px
+  screen can most afford to lose.
+*/
+@media (max-width: 420px) {
+  .home-mark {
+    width: clamp(64px, 11vh, 130px);
+    height: clamp(64px, 11vh, 130px);
+  }
+  .home-lede { display: none; }
+}
+
 @media (max-width: 640px) {
   .home-word { letter-spacing: 0.1em; }
   .home-card-no { display: none; }
@@ -322,14 +371,15 @@ body:has(.home) {
 }
 
 /*
-  Below this the four cards genuinely cannot be shown legibly at any size — a
-  landscape phone leaves about 320px of usable height. Scrolling a little beats
-  clipping content away where nobody can reach it.
+  Below this the five cards genuinely cannot be shown legibly at any size — a
+  landscape phone leaves about 320px of usable height, and a 320x568 portrait
+  screen gives each card 113px against the ~132px its own contents need.
+  Scrolling a little beats clipping content away where nobody can reach it.
 */
-@media (max-height: 440px) {
+@media (max-height: 440px), (max-width: 480px) and (max-height: 620px) {
   body:has(.home), .home { height: auto; min-height: 100svh; overflow: visible; }
   .home-inner { height: auto; }
-  .home-grid { grid-template-rows: repeat(2, minmax(132px, 1fr)); }
+  .home-grid { height: auto; grid-template-rows: repeat(3, minmax(124px, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

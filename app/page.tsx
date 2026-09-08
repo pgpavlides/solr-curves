@@ -1,19 +1,35 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import Icon, { type IconName } from "@/components/Icon";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { maneuvers } from "@/data/maneuvers";
 import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
 /*
-  The front door. The mark, at the size it deserves, and four destinations in
+  The map counts come from public/markers.json, read here at BUILD time off the
+  filesystem. It is 151 KB and is fetched by the map route at runtime, so
+  importing it would put all of it in this page's JavaScript for the sake of
+  two numbers. This read happens in Node during `next build` and ships nothing.
+*/
+function mapCounts() {
+  const raw = JSON.parse(
+    readFileSync(join(process.cwd(), "public", "markers.json"), "utf8")
+  ) as { maps: Record<string, { zones: unknown[] }> };
+  const maps = Object.values(raw.maps);
+  return { maps: maps.length, zones: maps.reduce((n, m) => n + m.zones.length, 0) };
+}
+
+/*
+  The front door. The mark, at the size it deserves, and five destinations in
   a single row beneath it — the simulator, the videos the site is built from,
-  the vocabulary, and the desktop app.
+  the game maps, the vocabulary, and the desktop app.
 
   It is one screen and it does not scroll, and the mark is the subject of it,
   so the cards are capped rather than stretching to fill what is left. That
-  makes the copy budget tight: a card in the row of four is about 260px wide,
-  so a body is one short sentence and no more.
+  makes the copy budget tight: a card in the row of five is about 250px wide,
+  so a body is one short sentence of roughly fifty characters and no more.
 
   Everything the cards say is counted from the data modules rather than typed
   in, so a number on this page cannot drift away from what is behind the link.
@@ -30,6 +46,8 @@ interface Door {
   soon?: boolean;
 }
 
+const { maps: mapCount, zones: zoneCount } = mapCounts();
+
 const doors: Door[] = [
   {
     href: "/simulator/",
@@ -37,7 +55,7 @@ const doors: Door[] = [
     title: "Simulation",
     kicker: "Fly it",
     body:
-      "Every maneuver flown in 3D, with the pilot's inputs live beside it.",
+      "Every maneuver flown in 3D with the pilot's inputs.",
     stat: `${maneuvers.length} maneuvers`,
   },
   {
@@ -46,8 +64,16 @@ const doors: Door[] = [
     title: "Videos",
     kicker: "Watch them",
     body:
-      "Every video the site is built from, and the creator who made it.",
+      "Every video the site is built from, and who made it.",
     stat: `${creatorVideoCount} videos · ${creatorCount} creators`,
+  },
+  {
+    href: "/map/ozeti/",
+    icon: "map",
+    title: "Maps",
+    kicker: "Find it",
+    body: "Ozeti and Bakurani, with towers and zones as layers.",
+    stat: `${mapCount} maps · ${zoneCount} zones`,
   },
   {
     href: "/terminology/",
