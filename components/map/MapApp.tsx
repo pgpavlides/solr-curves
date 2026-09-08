@@ -1,0 +1,268 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Logo from "../Logo";
+import LayerPanel, { buildRows } from "./LayerPanel";
+import {
+  DEFAULT_ON,
+  MAP_IDS,
+  labelFor,
+  type MapData,
+  type MapId,
+  type MapMarker,
+} from "./types";
+import type { View } from "./MapCanvas";
+
+/*
+  Leaflet touches window at import time, so the canvas is client-only. This
+  module is already a client component, which is what makes ssr:false legal in
+  the App Router.
+*/
+const MapCanvas = dynamic(() => import("./MapCanvas"), {
+  ssr: false,
+  loading: () => <div className="wm-loading">Loading map…</div>,
+});
+
+const TILE_BASE = (process.env.NEXT_PUBLIC_TILE_BASE ?? "").replace(/\/+$/, "");
+
+/** `?layers=` is a comma list; "-" means "explicitly nothing". */
+function encodeLayers(active: Set<string>) {
+  return active.size ? [...active].sort().join(",") : "-";
+}
+function decodeLayers(raw: string | null): Set<string> | null {
+  if (raw === null) return null;
+  if (raw === "-") return new Set();
+  const s = new Set(raw.split(",").filter(Boolean));
+  return s.size ? s : new Set();
+}
+
+export default function MapApp({ mapId }: { mapId: MapId }) {
+  /*
+    Fetched rather than imported: see the note in app/map/[mapId]/page.tsx.
+    151 KB of JSON in the route's JavaScript would be paid on every visit; as a
+    static asset it is cached and parsed once.
+  */
+  const [data, setData] = useState<MapData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/markers.json")
+      .then((r) => {
+        if (!r.ok) throw new Error(`markers.json returned ${r.status}`);
+        return r.json();
+      })
+      .then((d: MapData) => live && setData(d))
+      .catch((e: unknown) => live && setLoadError(String(e)));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (loadError) {
+    return (
+      <div className="wm-loading wm-loading-error" role="alert">
+        Could not load the map data — {loadError}
+      </div>
+    );
+  }
+  if (!data) return <div className="wm-loading">Loading map data…</div>;
+
+  return <MapView mapId={mapId} data={data} />;
+}
+
+function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
+  const game = data.maps[mapId];
+  const rows = useMemo(() => buildRows(game), [game]);
+
+  /*
+    Deliberately NOT seeded from the URL during the first render: reading
+    location while rendering makes the server and client disagree. The deep
+    link is applied once, after mount, the same way the simulator does it.
+  */
+  const [active, setActive] = useState<Set<string>>(
+    () => new Set([...DEFAULT_ON].filter((k) => rows.some((r) => r.key === k)))
+  );
+  const [controlZone, setControlZone] = useState<string | null>(null);
+  const [selected, setSelected] = useState<MapMarker | null>(null);
+  const [cursor, setCursor] = useState<{ lat: number; lng: number } | null>(null);
+  const [view, setView] = useState<View | null>(null);
+  const [initialView, setInitialView] = useState<View | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // read the shared view out of the URL, once
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const z = Number(q.get("z"));
+    const lat = Number(q.get("lat"));
+    const lng = Number(q.get("lng"));
+    if (Number.isFinite(z) && Number.isFinite(lat) && Number.isFinite(lng) && q.get("z")) {
+      setInitialView({ lat, lng, zoom: z });
+    }
+    const layers = decodeLayers(q.get("layers"));
+    if (layers) setActive(new Set([...layers].filter((k) => rows.some((r) => r.key === k))));
+    const cz = q.get("cz");
+    if (cz && game.controlZones.some((c) => c.key === cz)) setControlZone(cz);
+    setHydrated(true);
+    // rows/game are stable for a given mapId, which is keyed upstream
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ...and write it back as it changes, without touching history
+  const write = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (write.current !== null) window.clearTimeout(write.current);
+    write.current = window.setTimeout(() => {
+      const q = new URLSearchParams();
+      if (view) {
+        q.set("z", String(Math.round(view.zoom * 100) / 100));
+        q.set("lat", String(Math.round(view.lat)));
+        q.set("lng", String(Math.round(view.lng)));
+      }
+      q.set("layers", encodeLayers(active));
+      if (controlZone) q.set("cz", controlZone);
+      window.history.replaceState(null, "", `?${q.toString()}`);
+    }, 250);
+    return () => {
+      if (write.current !== null) window.clearTimeout(write.current);
+    };
+  }, [view, active, controlZone, hydrated]);
+
+  const toggle = useCallback((key: string) => {
+    setActive((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  const setAll = useCallback(
+    (on: boolean) => setActive(on ? new Set(rows.map((r) => r.key)) : new Set()),
+    [rows]
+  );
+
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+
+  return (
+    <div className="wm" style={{ background: data.legend.backgroundColor }}>
+      <MapCanvas
+        // the CRS cannot be swapped on a live Leaflet map; rebuild it per map
+        key={mapId}
+        mapId={mapId}
+        map={game}
+        legend={data.legend}
+        tileBase={TILE_BASE}
+        active={active}
+        controlZone={controlZone}
+        selectedId={selected?.id ?? null}
+        initialView={initialView}
+        onSelect={setSelected}
+        onView={setView}
+        onCursor={setCursor}
+      />
+
+      <header className="wm-bar">
+        <Link className="wm-brand" href="/">
+          <span className="logo-wrap">
+            <Logo />
+          </span>
+          <span className="wm-brand-text">
+            <span className="brand-word">wardogspilot</span>
+            <span className="brand-sub">Maps</span>
+          </span>
+        </Link>
+
+        <nav className="wm-maps" aria-label="Map">
+          {MAP_IDS.map((id) => (
+            <Link
+              key={id}
+              href={`/map/${id}/`}
+              className={`tab${id === mapId ? " is-active" : ""}`}
+              aria-current={id === mapId ? "page" : undefined}
+            >
+              {data.maps[id].displayName}
+            </Link>
+          ))}
+        </nav>
+      </header>
+
+      <aside className="wm-left">
+        <LayerPanel
+          game={game}
+          legend={data.legend}
+          rows={rows}
+          active={active}
+          onToggle={toggle}
+          onAll={setAll}
+          controlZone={controlZone}
+          onControlZone={setControlZone}
+        />
+      </aside>
+
+      {selected && (
+        <aside className="wm-detail" role="dialog" aria-label={selected.name}>
+          <button
+            type="button"
+            className="wm-close"
+            onClick={() => setSelected(null)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <span className="wm-detail-kicker">
+            {labelFor(data.legend, selected.category, selected.subcategory)}
+          </span>
+          <h2 className="wm-detail-title">{selected.name}</h2>
+          <dl className="wm-facts">
+            <div>
+              <dt>X (lng)</dt>
+              <dd>{fmt(selected.lng)}</dd>
+            </div>
+            <div>
+              <dt>Y (lat)</dt>
+              <dd>{fmt(selected.lat)}</dd>
+            </div>
+            <div>
+              <dt>Alt</dt>
+              <dd>{selected.alt === null ? "—" : fmt(selected.alt)}</dd>
+            </div>
+            {selected.parts != null && (
+              <div>
+                <dt>Parts</dt>
+                <dd>{selected.parts}</dd>
+              </div>
+            )}
+            {selected.faction && (
+              <div>
+                <dt>Position</dt>
+                {/* Alpha/Bravo/Charlie are map positions, not the three
+                    factions, so they are labelled as such and never coloured */}
+                <dd>{selected.faction}</dd>
+              </div>
+            )}
+          </dl>
+        </aside>
+      )}
+
+      <div className="wm-readout" aria-live="off">
+        <span className="wm-readout-k">X</span>
+        <span className="wm-readout-v">{cursor ? fmt(cursor.lng) : "—"}</span>
+        <span className="wm-readout-k">Y</span>
+        <span className="wm-readout-v">{cursor ? fmt(cursor.lat) : "—"}</span>
+        <span className="wm-readout-k">Z</span>
+        <span className="wm-readout-v">{view ? view.zoom.toFixed(2) : "—"}</span>
+      </div>
+
+      {!TILE_BASE && (
+        <p className="wm-warn">
+          <strong>NEXT_PUBLIC_TILE_BASE is not set.</strong> Markers will draw
+          but no tiles will load. Copy <code>.env.example</code> to{" "}
+          <code>.env.local</code>, then run <code>npm run tiles</code>.
+        </p>
+      )}
+    </div>
+  );
+}

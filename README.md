@@ -13,6 +13,7 @@ app/guides/             written write-ups, index + one route per guide
 app/youtubers/          the credit page: every creator and every video
 app/pilot-app/          status page for the desktop companion
 app/terminology/        the words, defined
+app/map/[mapId]/        the interactive Ozeti and Bakurani maps
 
 components/App.tsx      HUD state, keyboard, deep links, loader gate
 components/three/       the full-viewport WebGPU canvas and the airframe
@@ -148,6 +149,65 @@ aircraft; straight black would vanish on the void ground, so the shield is
 lifted to `#2b303b` and the aircraft takes Lumen. The loading screen holds until
 both the GLB and the renderer are up — WebGPU init finishes after the last byte
 arrives, so gating on load progress alone drops the curtain on an empty scene.
+
+## The maps
+
+`/map/ozeti/` and `/map/bakurani/` are Leaflet over a raster tile pyramid.
+
+### The tiles are not in this repo
+
+They are **27,306 files, 2.0 GB**, which will break most deploy pipelines. They
+live outside the tree and are served from object storage:
+
+```
+NEXT_PUBLIC_TILE_BASE=https://…      # must contain tiles/<map>/<z>/<x>_<y>.webp
+```
+
+Locally, `npm run tiles` serves the source directory on :8788 with CORS, so the
+app code is identical either way. Copy `.env.example` to `.env.local` first.
+`public/tiles/` and `/tiles/` are gitignored so they cannot be added by accident.
+
+The icons (250 KB) and `markers.json` (148 KB) *are* committed, in `public/`.
+
+### The coordinate system is not geographic
+
+`lat` is the game Y axis and `lng` is X, already in Leaflet's `[lat, lng]`
+order. `components/map/crs.ts` maps the world square onto the 0..256 units that
+`CRS.Simple` expects:
+
+```
+x = (lng - minX) * k              k = 256 / span
+y = (minY + span - lat) * k       negative Y scale, so north is up
+```
+
+Flip the sign of the third `Transformation` argument and the map renders
+vertically mirrored. Verified by measurement rather than by eye: every tower on
+both maps renders within 1px of where that formula puts it, and the
+control-zone circle measures 100,008 game units across against a specified
+100,000.
+
+Tiles exist only at integer zooms `0..maxZoom` (Ozeti 7, Bakurani 6) and the
+filename separator is an **underscore**, `{z}/{x}_{y}.webp`. `maxNativeZoom`
+plus the layer's `bounds` keep Leaflet from asking for tiles that do not exist —
+checked with 559 tile requests across every zoom level and all four world
+corners on both maps, zero failures.
+
+### Things about the data that look like bugs and are not
+
+- **Ozeti has no point markers** beyond its four towers — no facilities, no
+  ladders, no spawns. The layer panel builds its rows from what is present, so
+  it shows no dead checkboxes.
+- **101 of Bakurani's 131 markers are ladders.** That layer is off by default.
+- **`faction` on a facility is `Alpha`/`Bravo`/`Charlie`** — map position
+  labels, not the three real factions. The detail panel calls it "Position" and
+  never colours a pin from it.
+
+### One image, eight colours
+
+The tile set ships three marker images. Every coloured pin is `zone.webp` used
+as a CSS mask with the legend colour behind it (`.wm-pin` in `styles/map.css`),
+so eight legend colours cost no extra files. Inactive towers use the same trick
+with their `#9F9F9E` tint.
 
 ## Credit
 

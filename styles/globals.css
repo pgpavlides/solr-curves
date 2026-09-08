@@ -12,6 +12,8 @@
 @import "./home.css";
 /* Reading-page chrome for /guides. Must sit with the other @imports, at the top. */
 @import "./doc.css";
+/* The interactive maps at /map. Must sit with the other @imports, at the top. */
+@import "./map.css";
 
 /* -------------------------------------------------------------------------
    App shell — locked to the viewport; only the drawer scrolls
@@ -125,7 +127,8 @@ a.btn { text-decoration: none; }
    ------------------------------------------------------------------------- */
 .home-mark,
 .doc-brand .logo-wrap,
-.hud-topleft .brand .logo-wrap {
+.hud-topleft .brand .logo-wrap,
+.wm-brand .logo-wrap {
   view-transition-name: crest;
 }
 
