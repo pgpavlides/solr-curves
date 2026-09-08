@@ -294,6 +294,13 @@ npm run typecheck
 running `next dev` will then 500 with `Cannot find module './NNN.js'` until the
 cache is cleared — `npm run clean` does that.
 
+`prebuild` now enforces this: `scripts/no-dev-server.mjs` refuses to build
+while anything is listening on 3000–3002. It detects by **connecting**, not by
+binding — on Windows, binding a port another process is already listening on
+succeeds without `EADDRINUSE`, so the obvious version of that check silently
+passes while the dev server it is protecting gets corrupted. Override with
+`SKIP_DEV_CHECK=1`.
+
 Do **not** try to fix this with a custom `distDir`. With `output: "export"` a
 non-default `distDir` makes the exported site land in that directory instead of
 `out/`, silently stranding the deploy target while builds still report success.

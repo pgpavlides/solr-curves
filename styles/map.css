@@ -44,9 +44,20 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  background: inherit;
-  /* Leaflet's own default is a light grey that flashes before tiles arrive */
   outline: none;
+}
+
+/*
+  Leaflet ships `.leaflet-container { background: #ddd }` and its stylesheet is
+  imported by the map component, so it loads AFTER this file and wins the tie
+  on source order — a light grey ground behind and around the tiles, which is
+  glaring against a dark map. Two classes beat one, so this takes it back.
+
+  `inherit` rather than a literal: .wm carries legend.backgroundColor inline,
+  so the ground stays whatever the data says it is.
+*/
+.wm .leaflet-container {
+  background: inherit;
 }
 
 .wm-loading {
