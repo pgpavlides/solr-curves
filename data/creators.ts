@@ -116,20 +116,53 @@ export const creators: Creator[] = [
     ],
   },
   {
+    name: "Liaxxy",
+    channelUrl: "https://www.youtube.com/@Liaxxy_",
+    tag: "Study material",
+    note:
+      "Ten thousand hours of ARMA rotary time, brought to WARDOGS. Not a tutorial and not narrated as one — it is playtest footage of someone who is simply very good, which makes it the best thing here to watch and copy.",
+    videos: [
+      {
+        id: "NfhDgMJ1_sw",
+        title: "+10,000 Hour ARMA Pilot tries WARDOGS",
+        length: "14:01",
+        published: "8 September 2026",
+        covers: "Combat landings · Study material",
+        transcribed: false,
+        why:
+          "There is nothing to write up — it is flying, not instruction. Watch the landings.",
+        marks: [
+          { at: 0, clock: "0:00", label: "Little Bird combat landings" },
+          { at: 370, clock: "6:10", label: "Armed helicopter work" },
+        ],
+      },
+    ],
+  },
+  {
     name: "Sim Controls",
     channelUrl: "https://www.youtube.com/@SimControls",
     tag: "HOTAS",
     note:
-      "The deep dive on why a flight stick feels wrong out of the box — dead zone, sensitivity and the response curve that fixes it, worked out on camera.",
+      "The deep dive on why a flight stick feels wrong out of the box — dead zone, sensitivity and the response curve that fixes it, worked out on camera. Two passes at it: the beginner tips, then a full setup guide.",
     videos: [
       {
         id: "TciRy5CzvDQ",
         title: "How I Made HOTAS Helicopter Controls Feel Better in WARDOGS",
         length: "18:46",
         published: "6 September 2026",
-        covers: "HOTAS · Curves · Landings",
+        covers: "HOTAS · Beginner tips",
         transcribed: true,
         guide: "hotas-setup",
+      },
+      {
+        id: "wtRRZ8nPfFM",
+        title: "WARDOGS HOTAS Setup Guide | Better Controls & Sensitivity",
+        length: "10:04",
+        published: "7 September 2026",
+        covers: "HOTAS · Full setup",
+        transcribed: false,
+        why:
+          "Newer than the write-up above and not yet gone through. The settings in it are his current ones — watch it before trusting the older guide.",
       },
     ],
   },
@@ -231,7 +264,7 @@ export const creators: Creator[] = [
         title: "WARDOGS Pilot Guide: How to Fly & Profit (Beginner friendly)",
         length: "10:03",
         published: "24 August 2026",
-        covers: "Theory · Landing",
+        covers: "Pilot Foundations, part 1",
         transcribed: true,
       },
       {
@@ -239,7 +272,7 @@ export const creators: Creator[] = [
         title: "WARDOGS Pilot Guide: J-Hooks & Double Your Profit From A Real Pilot",
         length: "6:51",
         published: "3 September 2026",
-        covers: "Lift vector · NOE",
+        covers: "Pilot Foundations, part 2",
         transcribed: true,
       },
     ],
