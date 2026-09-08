@@ -10,6 +10,7 @@ import Telemetry from "./hud/Telemetry";
 import Reference, { type Tab } from "./hud/Reference";
 import SceneBoundary from "./three/SceneBoundary";
 import { maneuvers } from "@/data/maneuvers";
+import { markUrl } from "@/data/creators";
 import { sample } from "@/lib/sample";
 import type { CamMode, Sim } from "@/lib/sim";
 
@@ -160,6 +161,18 @@ export default function App() {
           <span className="hud-label">{man.tag}</span>
           <h2>{man.name}</h2>
           <p className="blurb">{man.blurb}</p>
+          {man.source && (
+            <p className="brief-source">
+              Read off{" "}
+              <a
+                href={markUrl(man.source.videoId, man.source.at)}
+                target="_blank"
+                rel="noopener"
+              >
+                {man.source.creator}, {man.source.clock}
+              </a>
+            </p>
+          )}
           <ol className="phases">
             {man.phases.map((p, i) => (
               <li key={p.title} className={i === phase ? "is-active" : undefined}>

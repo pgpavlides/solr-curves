@@ -85,6 +85,7 @@ export const creators: Creator[] = [
           "YouTube carries no captions for it, auto-generated or otherwise, so there is nothing to read — only to watch.",
         marks: [
           { at: 218, to: 236, clock: "3:38–3:56", label: "A landing worth copying" },
+          { at: 225, to: 227, clock: "3:45–3:47", label: "The flip — flown in the simulator" },
         ],
       },
     ],

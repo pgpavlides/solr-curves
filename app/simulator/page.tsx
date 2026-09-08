@@ -7,7 +7,7 @@ import { glossary } from "@/data/glossary";
 export const metadata: Metadata = {
   title: "Simulator — wardogspilot",
   description:
-    "Seven WARDOGS helicopter maneuvers flown in 3D with the pilot's collective, cyclic and pedal inputs shown live.",
+    "Eight WARDOGS helicopter maneuvers flown in 3D with the pilot's collective, cyclic and pedal inputs shown live.",
   openGraph: ogCard("simulator", "The wardogspilot maneuver simulator"),
   twitter: ogCard("simulator", "The wardogspilot maneuver simulator"),
 };
