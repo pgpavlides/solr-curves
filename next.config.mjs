@@ -11,6 +11,8 @@ const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   reactStrictMode: true,
+  // the dev overlay lands bottom-left, exactly on the map's dock
+  devIndicators: { position: "top-right" },
 
   /*
     distDir is deliberately left at the default. Pointing it elsewhere makes

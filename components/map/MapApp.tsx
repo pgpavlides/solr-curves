@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Logo from "../Logo";
 import LayerPanel, { buildRows } from "./LayerPanel";
@@ -21,6 +22,7 @@ import {
   storeTint,
 } from "./tint";
 import DrawToolbar from "./DrawToolbar";
+import Shortcuts from "./Shortcuts";
 import {
   COLORS,
   WIDTHS,
@@ -89,6 +91,7 @@ export default function MapApp({ mapId }: { mapId: MapId }) {
 }
 
 function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
+  const router = useRouter();
   const game = data.maps[mapId];
   const rows = useMemo(() => buildRows(game), [game]);
 
@@ -135,6 +138,8 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
     undone: [],
   });
   const strokes = ink.done;
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [keysOpen, setKeysOpen] = useState(false);
 
   // read the shared view out of the URL, once
   useEffect(() => {
@@ -230,6 +235,83 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
     );
   }, []);
 
+  /*
+    App-level keys. Map panning and zooming live in MapKeys, inside the canvas,
+    because they need the Leaflet instance; everything here is chrome.
+
+    Anything typed into a field is left alone, so the layer search and the tint
+    slider keep working normally.
+  */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing =
+        el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        if (typing) return;
+        e.preventDefault();
+        e.shiftKey ? redo() : undo();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey || typing) return;
+
+      switch (e.key) {
+        case "?":
+          e.preventDefault();
+          return setKeysOpen((v) => !v);
+        case "Escape":
+          if (keysOpen) return setKeysOpen(false);
+          if (selected) return setSelected(null);
+          if (drawOn) return setDrawOn(false);
+          return;
+        case "d":
+        case "D":
+          return setDrawOn((v) => !v);
+        case "l":
+        case "L":
+          return setPanelOpen((v) => !v);
+        case "m":
+        case "M": {
+          const next = MAP_IDS[(MAP_IDS.indexOf(mapId) + 1) % MAP_IDS.length];
+          router.push(`/map/${next}/`);
+          return;
+        }
+        case "p":
+        case "P":
+          setErasing(false);
+          return setTool("pen");
+        case "c":
+        case "C":
+          setErasing(false);
+          return setTool("circle");
+        case "s":
+        case "S":
+          setErasing(false);
+          return setTool("square");
+        case "e":
+        case "E":
+          return setErasing((v) => !v);
+        case "[":
+          return setInkWidth((w) => WIDTHS[Math.max(0, WIDTHS.indexOf(w) - 1)]);
+        case "]":
+          return setInkWidth(
+            (w) => WIDTHS[Math.min(WIDTHS.length - 1, WIDTHS.indexOf(w) + 1)]
+          );
+        default:
+          if (/^[1-6]$/.test(e.key)) {
+            const c = COLORS[Number(e.key) - 1];
+            if (c) {
+              setErasing(false);
+              setInkColor(c);
+            }
+          }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mapId, router, keysOpen, selected, drawOn, undo, redo]);
+
   const toggle = useCallback((key: string) => {
     setActive((prev) => {
       const next = new Set(prev);
@@ -283,41 +365,9 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
             <span className="brand-sub">Maps</span>
           </span>
         </Link>
-
-        <nav className="wm-maps" aria-label="Map">
-          {MAP_IDS.map((id) => (
-            <Link
-              key={id}
-              href={`/map/${id}/`}
-              className={`tab${id === mapId ? " is-active" : ""}`}
-              aria-current={id === mapId ? "page" : undefined}
-            >
-              {data.maps[id].displayName}
-            </Link>
-          ))}
-        </nav>
       </header>
 
-      <DrawToolbar
-        open={drawOn}
-        onOpen={setDrawOn}
-        tool={tool}
-        onTool={setTool}
-        erasing={erasing}
-        onErasing={setErasing}
-        color={inkColor}
-        onColor={setInkColor}
-        width={inkWidth}
-        onWidth={setInkWidth}
-        canUndo={strokes.length > 0}
-        canRedo={ink.undone.length > 0}
-        onUndo={undo}
-        onRedo={redo}
-        onClear={() => setInk({ done: [], undone: [] })}
-        count={strokes.length}
-      />
-
-      <aside className="wm-left">
+      <aside className={`wm-left${panelOpen ? "" : " is-closed"}`}>
         <LayerPanel
           game={game}
           legend={data.legend}
@@ -377,26 +427,78 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
         </aside>
       )}
 
-      {/*
-        The tiles, marker positions and zone polygons are metaforge.app's
-        extraction and survey work, not the game's raw files. Credit is
-        required and deliberately easy to change.
-      */}
-      <p className="wm-credit">
-        Map data and tiles by{" "}
-        <a href="https://metaforge.app/wardogs/map/bakurani" rel="noopener" target="_blank">
-          metaforge.app
-        </a>
-      </p>
 
-      <div className="wm-readout" aria-live="off">
-        <span className="wm-readout-k">X</span>
-        <span className="wm-readout-v">{cursor ? fmt(cursor.lng) : "—"}</span>
-        <span className="wm-readout-k">Y</span>
-        <span className="wm-readout-v">{cursor ? fmt(cursor.lat) : "—"}</span>
-        <span className="wm-readout-k">Z</span>
-        <span className="wm-readout-v">{view ? view.zoom.toFixed(2) : "—"}</span>
-      </div>
+      {keysOpen && <Shortcuts onClose={() => setKeysOpen(false)} />}
+
+      {/*
+        One bar along the bottom: where you are on the left, the pen in the
+        middle, where the cursor is on the right.
+      */}
+      <footer className="wm-dock">
+        <div className="wm-dock-left">
+          <button
+            type="button"
+            className={`btn btn-sm${panelOpen ? "" : " btn-ghost"}`}
+            onClick={() => setPanelOpen((v) => !v)}
+            aria-expanded={panelOpen}
+            title="Layers (L)"
+          >
+            Layers
+          </button>
+          <nav className="wm-maps" aria-label="Map">
+            {MAP_IDS.map((id) => (
+              <Link
+                key={id}
+                href={`/map/${id}/`}
+                className={`tab${id === mapId ? " is-active" : ""}`}
+                aria-current={id === mapId ? "page" : undefined}
+                title="Switch map (M)"
+              >
+                {data.maps[id].displayName}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <DrawToolbar
+          open={drawOn}
+          onOpen={setDrawOn}
+          tool={tool}
+          onTool={setTool}
+          erasing={erasing}
+          onErasing={setErasing}
+          color={inkColor}
+          onColor={setInkColor}
+          width={inkWidth}
+          onWidth={setInkWidth}
+          canUndo={strokes.length > 0}
+          canRedo={ink.undone.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+          onClear={() => setInk({ done: [], undone: [] })}
+          count={strokes.length}
+        />
+
+        <div className="wm-dock-right">
+          <div className="wm-readout" aria-live="off">
+            <span className="wm-readout-k">X</span>
+            <span className="wm-readout-v">{cursor ? fmt(cursor.lng) : "—"}</span>
+            <span className="wm-readout-k">Y</span>
+            <span className="wm-readout-v">{cursor ? fmt(cursor.lat) : "—"}</span>
+            <span className="wm-readout-k">Z</span>
+            <span className="wm-readout-v">{view ? view.zoom.toFixed(2) : "—"}</span>
+          </div>
+          <button
+            type="button"
+            className={`btn btn-sm${keysOpen ? "" : " btn-ghost"} wm-keys-btn`}
+            onClick={() => setKeysOpen((v) => !v)}
+            aria-expanded={keysOpen}
+            title="Keyboard shortcuts (?)"
+          >
+            ?
+          </button>
+        </div>
+      </footer>
 
       {!TILE_BASE && (
         <p className="wm-warn">

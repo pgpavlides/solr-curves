@@ -156,9 +156,10 @@ arrives, so gating on load progress alone drops the curtain on an empty scene.
 
 The tiles, marker positions and zone polygons are **metaforge.app's** extraction
 and survey work, not the game's raw files — the game's own paks are AES
-encrypted and nothing is extractable from them. Credit is shown in the map UI
-and is a single element (`.wm-credit` in `components/map/MapApp.tsx`) so it is
-easy to change if the arrangement does.
+encrypted and nothing is extractable from them.
+
+The on-map credit line was removed on request. This note is now the only place
+the debt is recorded, and permission from them has not been given.
 
 ### The tiles are not in this repo
 
@@ -226,6 +227,18 @@ under their key, `wardogs:map-tint:v3`, absent meaning default.
 **The filter goes on the tile pane only.** On the map container it desaturates
 the markers, polygons and name plates along with the terrain. metaforge hangs
 it on `.leaflet-layer`, a child of the pane — equivalent here.
+
+### Keyboard and the dock
+
+Everything sits in one bar along the bottom: where you are on the left, the pen
+in the middle, the cursor readout on the right. Press `?` on the map for the
+key list.
+
+Map keys live in `MapKeys.tsx`, inside the canvas, because they need the
+Leaflet instance; the chrome keys are in `MapApp`. Both bow out when a field
+has focus. Arrows pan and letters pick tools — WASD is the obvious second pan
+binding and cannot be had, because `D` is the draw toggle and `S` is the square,
+so half of WASD would pan and half would not.
 
 ### Drawing
 

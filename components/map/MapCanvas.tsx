@@ -20,6 +20,7 @@ import {
 import "leaflet/dist/leaflet.css";
 
 import DrawLayer from "./DrawLayer";
+import MapKeys from "./MapKeys";
 import type { Stroke, Tool } from "./draw";
 import { makeCRS, worldBounds } from "./crs";
 import {
@@ -325,6 +326,8 @@ export default function MapCanvas({
         onCommit={draw.onCommit}
         onErase={draw.onErase}
       />
+
+      <MapKeys game={game} enabled />
 
       <Reporter onView={onView} onCursor={onCursor} onSelect={onSelect} />
       <Framing map={game} initialView={initialView} />

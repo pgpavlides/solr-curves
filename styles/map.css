@@ -89,11 +89,15 @@
 /* -------------------------------------------------------------------------
    Floating chrome
    ------------------------------------------------------------------------- */
+/*
+  The floating chrome. The readout is NOT in this list any more — it lives in
+  the dock now, and leaving it absolutely positioned took it out of flow: its
+  container measured 36px while the readout itself was 224px and hung past the
+  dock's right edge.
+*/
 .wm-bar,
 .wm-left,
 .wm-detail,
-.wm-readout,
-.wm-credit,
 .wm-warn {
   position: absolute;
   z-index: 500; /* Leaflet panes top out around 400 */
@@ -141,8 +145,14 @@
   top: 84px;
   left: var(--space-md);
   width: 268px;
-  max-height: calc(100svh - 84px - var(--space-md) - 44px);
+  max-height: calc(100svh - 84px - 64px - var(--space-md));
   display: flex;
+  transition: transform var(--motion-medium), opacity var(--motion-medium);
+}
+.wm-left.is-closed {
+  transform: translateX(calc(-100% - var(--space-md)));
+  opacity: 0;
+  pointer-events: none;
 }
 .wm-panel {
   display: flex;
@@ -310,8 +320,6 @@
 
 /* --- cursor readout --- */
 .wm-readout {
-  bottom: var(--space-md);
-  right: var(--space-md);
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2xs);
@@ -329,24 +337,6 @@
 .wm-readout-k { color: var(--color-muted); opacity: 0.7; }
 .wm-readout-v { color: var(--color-foreground); min-width: 62px; }
 .wm-readout-v:last-child { min-width: 34px; }
-
-.wm-credit {
-  bottom: var(--space-md);
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 5px var(--space-sm);
-  border-radius: var(--radius-sm);
-  background: rgba(26, 26, 26, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
-.wm-credit a { color: var(--color-lumen); }
 
 .wm-warn {
   bottom: var(--space-md);
@@ -446,8 +436,6 @@
     width: auto;
   }
   .wm-bar { top: var(--space-sm); left: var(--space-sm); right: var(--space-sm); }
-  .wm-readout { bottom: var(--space-sm); right: var(--space-sm); }
-  .wm-credit { bottom: auto; top: 52px; left: var(--space-sm); transform: none; }
   .wm-warn { display: none; }
 }
 
@@ -481,16 +469,11 @@
 }
 
 .wm-draw {
-  position: absolute;
-  top: var(--space-md);
-  right: 300px;
-  z-index: 500;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-xs);
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
 }
-.wm-draw-toggle { display: inline-flex; align-items: center; gap: var(--space-2xs); }
 .wm-draw-count {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -499,19 +482,13 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
-.wm-draw-tray {
-  width: 236px;
-  padding: var(--space-sm);
-  border-radius: var(--radius-lg);
-  background: rgba(26, 26, 26, 0.92);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: var(--rim-inset), var(--shadow-card);
+.wm-draw-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-sm);
+  flex-wrap: wrap;
+  min-width: 0;
 }
-.wm-draw-tools { flex-wrap: wrap; }
 
 .wm-swatches { display: flex; gap: var(--space-2xs); flex-wrap: wrap; }
 .wm-swatch-btn {
@@ -547,16 +524,139 @@
 
 .wm-draw-acts { display: flex; gap: 2px; }
 .wm-draw-acts .btn[disabled] { opacity: 0.4; }
-.wm-draw-hint {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--color-muted);
-  opacity: 0.75;
+
+/* -------------------------------------------------------------------------
+   The dock
+
+   One bar along the bottom: where you are on the left, the pen in the middle,
+   where the cursor is on the right. It replaces four things that used to float
+   separately — the map switcher, the pen tray, the readout, and the credit.
+   ------------------------------------------------------------------------- */
+.wm-dock {
+  position: absolute;
+  left: var(--space-md);
+  right: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 500;
+  /*
+    Flex-wrap, not a three-column grid. With a grid the pen row was pinned to
+    the middle column and pushed the coordinate readout off the right edge; as
+    a wrapping row it simply drops onto its own line when it stops fitting.
+  */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-sm);
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-lg);
+  background: rgba(26, 26, 26, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--rim-inset), var(--shadow-card);
+}
+/* the horizon line, as on every other raised surface here */
+.wm-dock::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 1px;
+  background: var(--horizon-line);
+  opacity: 0.25;
+  pointer-events: none;
 }
 
-@media (max-width: 720px) {
-  .wm-draw { right: var(--space-sm); top: 52px; }
-  .wm-draw-tray { width: 208px; }
+.wm-dock-left,
+.wm-dock-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+/*
+  Order, so the wrap falls in the right place: the readout belongs on the first
+  line beside the buttons, and the pen row on a line of its own beneath. In DOM
+  order the row comes first and pushed the readout onto a third line.
+*/
+.wm-dock-left { order: 0; }
+.wm-draw > .btn { order: 1; }
+.wm-dock-right { order: 2; margin-left: auto; }
+.wm-draw-row { order: 3; }
+
+/*
+  `display: contents` so the toggle and the pen row become direct children of
+  the dock: the button sits on the first line with everything else, and the row
+  takes a line of its own.
+*/
+.wm-draw { display: contents; }
+.wm-draw-row {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  padding-top: var(--space-2xs);
+  margin-top: var(--space-3xs);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.wm-dock .wm-maps { background: none; box-shadow: none; padding: 0; }
+.wm-dock .btn { white-space: nowrap; }
+.wm-keys-btn { min-width: 32px; }
+
+.wm-dock .wm-readout {
+  padding: 5px var(--space-sm);
+  background: var(--color-graphite);
+}
+
+/* -------------------------------------------------------------------------
+   Keyboard card
+   ------------------------------------------------------------------------- */
+.wm-keys {
+  position: absolute;
+  right: var(--space-md);
+  bottom: 72px;
+  z-index: 520;
+  width: min(360px, calc(100vw - var(--space-md) * 2));
+  max-height: min(60svh, 560px);
+  overflow: auto;
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: rgba(26, 26, 26, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--rim-inset), var(--shadow-raised);
+}
+.wm-keys-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+.wm-keys-body section + section { margin-top: var(--space-md); }
+.wm-keys-body .wm-group-title { display: block; margin-bottom: var(--space-2xs); }
+.wm-keys-list { margin: 0; }
+.wm-keys-list > div {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: 3px 0;
+}
+.wm-keys-list dt { margin: 0; }
+.wm-keys-list dd {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+.wm-keys-list kbd { font-size: 10px; padding: 2px 6px; }
+
+@media (max-width: 860px) {
+  .wm-left { max-height: calc(100svh - 84px - 140px); }
+}
+@media (max-width: 560px) {
+  .wm-dock { left: var(--space-sm); right: var(--space-sm); bottom: var(--space-sm); }
+  .wm-readout .wm-readout-v { min-width: 44px; }
 }
