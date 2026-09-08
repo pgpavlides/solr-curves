@@ -14,6 +14,12 @@ import {
   type MapMarker,
 } from "./types";
 import type { View } from "./MapCanvas";
+import {
+  DEFAULT_TINT_PCT,
+  applyTint,
+  readStoredTint,
+  storeTint,
+} from "./tint";
 
 /*
   Leaflet touches window at import time, so the canvas is client-only. This
@@ -91,6 +97,12 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
   const [view, setView] = useState<View | null>(null);
   const [initialView, setInitialView] = useState<View | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  /*
+    Not seeded from localStorage during render either — the server has no
+    localStorage, so reading it here would be a hydration mismatch. The stored
+    value is applied in the same effect that reads the URL.
+  */
+  const [tint, setTint] = useState(DEFAULT_TINT_PCT);
 
   // read the shared view out of the URL, once
   useEffect(() => {
@@ -105,6 +117,11 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
     if (layers) setActive(new Set([...layers].filter((k) => rows.some((r) => r.key === k))));
     const cz = q.get("cz");
     if (cz && game.controlZones.some((c) => c.key === cz)) setControlZone(cz);
+    // a shared link wins over what this browser last chose
+    const t = Number(q.get("t"));
+    const stored = readStoredTint();
+    if (q.get("t") !== null && Number.isFinite(t)) setTint(Math.min(100, Math.max(0, t)));
+    else if (stored !== null) setTint(stored);
     setHydrated(true);
     // rows/game are stable for a given mapId, which is keyed upstream
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,12 +141,26 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
       }
       q.set("layers", encodeLayers(active));
       if (controlZone) q.set("cz", controlZone);
+      if (tint !== DEFAULT_TINT_PCT) q.set("t", String(tint));
       window.history.replaceState(null, "", `?${q.toString()}`);
     }, 250);
     return () => {
       if (write.current !== null) window.clearTimeout(write.current);
     };
-  }, [view, active, controlZone, hydrated]);
+  }, [view, active, controlZone, tint, hydrated]);
+
+  /*
+    The filter is set as custom properties on the document rather than as React
+    style, so changing it never re-renders the Leaflet tree — dragging the
+    slider stays smooth with 101 markers on screen.
+  */
+  useEffect(() => {
+    applyTint(mapId, tint);
+  }, [mapId, tint]);
+
+  useEffect(() => {
+    if (hydrated) storeTint(tint);
+  }, [tint, hydrated]);
 
   const toggle = useCallback((key: string) => {
     setActive((prev) => {
@@ -199,6 +230,8 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
           onAll={setAll}
           controlZone={controlZone}
           onControlZone={setControlZone}
+          tint={tint}
+          onTint={setTint}
         />
       </aside>
 
@@ -246,6 +279,18 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
           </dl>
         </aside>
       )}
+
+      {/*
+        The tiles, marker positions and zone polygons are metaforge.app's
+        extraction and survey work, not the game's raw files. Credit is
+        required and deliberately easy to change.
+      */}
+      <p className="wm-credit">
+        Map data and tiles by{" "}
+        <a href="https://metaforge.app/wardogs/map/bakurani" rel="noopener" target="_blank">
+          metaforge.app
+        </a>
+      </p>
 
       <div className="wm-readout" aria-live="off">
         <span className="wm-readout-k">X</span>

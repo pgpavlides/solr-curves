@@ -46,6 +46,8 @@ export default function LayerPanel({
   onAll,
   controlZone,
   onControlZone,
+  tint,
+  onTint,
 }: {
   game: GameMap;
   legend: Legend;
@@ -55,6 +57,8 @@ export default function LayerPanel({
   onAll: (on: boolean) => void;
   controlZone: string | null;
   onControlZone: (key: string | null) => void;
+  tint: number;
+  onTint: (pct: number) => void;
 }) {
   const groups = ORDER.map((category) => ({
     category,
@@ -107,6 +111,30 @@ export default function LayerPanel({
             })}
           </fieldset>
         ))}
+
+        {/*
+          The tiles are vivid yellow terrain; the dark map is this filter. 0
+          leaves them untouched, 100 is metaforge's default treatment.
+        */}
+        <fieldset className="wm-group">
+          <legend className="wm-group-title">Map tint</legend>
+          <label className="wm-select">
+            <span className="wm-tint-row">
+              <span className="wm-row-label">Darkness</span>
+              <span className="wm-count">{tint}%</span>
+            </span>
+            <input
+              className="wm-range"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={tint}
+              aria-label="Map darkness"
+              onChange={(e) => onTint(Number(e.target.value))}
+            />
+          </label>
+        </fieldset>
 
         {game.controlZones.length > 0 && (
           <fieldset className="wm-group">

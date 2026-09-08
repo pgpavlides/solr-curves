@@ -21,6 +21,24 @@
   background: #1a1a1a;
 }
 
+/*
+  THE DARK MAP.
+
+  The tiles are vivid yellow-green terrain and that is correct — there is no
+  greyscale tile set upstream. This filter is what makes the map read as black
+  and white, and it goes on the TILE PANE ONLY: put it on the container and the
+  markers, polygons and name plates get desaturated with the terrain.
+
+  Order matters — saturate, then brightness, then contrast. The three values
+  are set as custom properties from components/map/tint.ts; the fallbacks here
+  are Ozeti's, so the map is never briefly fluorescent before the JS lands.
+*/
+.wm .leaflet-tile-pane {
+  filter: saturate(var(--wd-map-saturate, 0))
+          brightness(var(--wd-map-brightness, 0.4413))
+          contrast(var(--wd-map-contrast, 1.5419));
+}
+
 .wm-canvas {
   position: absolute;
   inset: 0;
@@ -64,6 +82,7 @@
 .wm-left,
 .wm-detail,
 .wm-readout,
+.wm-credit,
 .wm-warn {
   position: absolute;
   z-index: 500; /* Leaflet panes top out around 400 */
@@ -194,6 +213,8 @@
 }
 
 .wm-select { display: block; padding: 4px var(--space-xs) 0; }
+.wm-tint-row { display: flex; align-items: baseline; justify-content: space-between; }
+.wm-range { width: 100%; margin-top: var(--space-2xs); }
 .wm-sel {
   width: 100%;
   margin-top: var(--space-2xs);
@@ -298,6 +319,24 @@
 .wm-readout-v { color: var(--color-foreground); min-width: 62px; }
 .wm-readout-v:last-child { min-width: 34px; }
 
+.wm-credit {
+  bottom: var(--space-md);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 5px var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.wm-credit a { color: var(--color-lumen); }
+
 .wm-warn {
   bottom: var(--space-md);
   left: var(--space-md);
@@ -397,5 +436,21 @@
   }
   .wm-bar { top: var(--space-sm); left: var(--space-sm); right: var(--space-sm); }
   .wm-readout { bottom: var(--space-sm); right: var(--space-sm); }
+  .wm-credit { bottom: auto; top: 52px; left: var(--space-sm); transform: none; }
   .wm-warn { display: none; }
+}
+
+/* Tower nameplate — the name on a dark chip under the icon, as on the
+   reference render. Colours from legend.labelStyles.towerNameplate. */
+.wm-plate {
+  display: block;
+  white-space: nowrap;
+  transform: translate(-50%, 14px);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: "Barlow", var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }

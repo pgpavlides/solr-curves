@@ -85,6 +85,22 @@ function iconFor(m: MapMarker, selected: boolean) {
   return imageIcon(`/${m.icon}`, m.scale ?? 1, m.tint ?? null, selected);
 }
 
+/*
+  Tower nameplates, as on the reference render: the name on a dark chip under
+  the icon. Style comes from legend.labelStyles.towerNameplate, except the size
+  — 30 is the size in the source map's own units and reads enormous on screen,
+  so it is scaled to match the reference visually.
+*/
+function towerPlate(name: string, legend: Legend) {
+  const st = legend.labelStyles.towerNameplate;
+  return L.divIcon({
+    className: "",
+    html: `<span class="wm-plate" style="color:${st.fill};background:${st.background}">${name}</span>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
 /** Zone name plates: settlements loud, industry and terrain quiet. */
 function labelIcon(name: string, kind: string, legend: Legend) {
   const st =
@@ -271,6 +287,18 @@ export default function MapCanvas({
           }}
         />
       ))}
+
+      {shownMarkers
+        .filter((m) => m.subcategory === "towers")
+        .map((m) => (
+          <Marker
+            key={`${m.id}-plate`}
+            position={[m.lat, m.lng]}
+            icon={towerPlate(m.name, legend)}
+            interactive={false}
+            keyboard={false}
+          />
+        ))}
 
       <Reporter onView={onView} onCursor={onCursor} onSelect={onSelect} />
       <Framing map={game} initialView={initialView} />

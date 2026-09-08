@@ -154,6 +154,12 @@ arrives, so gating on load progress alone drops the curtain on an empty scene.
 
 `/map/ozeti/` and `/map/bakurani/` are Leaflet over a raster tile pyramid.
 
+The tiles, marker positions and zone polygons are **metaforge.app's** extraction
+and survey work, not the game's raw files — the game's own paks are AES
+encrypted and nothing is extractable from them. Credit is shown in the map UI
+and is a single element (`.wm-credit` in `components/map/MapApp.tsx`) so it is
+easy to change if the arrangement does.
+
 ### The tiles are not in this repo
 
 They are **27,306 files, 2.0 GB**, which will break most deploy pipelines. They
@@ -191,6 +197,35 @@ filename separator is an **underscore**, `{z}/{x}_{y}.webp`. `maxNativeZoom`
 plus the layer's `bounds` keep Leaflet from asking for tiles that do not exist —
 checked with 559 tile requests across every zoom level and all four world
 corners on both maps, zero failures.
+
+### The yellow tiles are correct — the dark map is CSS
+
+The tiles are vivid yellow-green terrain. That is not a bad download. There is
+no greyscale tile set upstream, and the tiles we serve are **byte-identical** to
+what metaforge serves today — verified at three zoom levels:
+
+```
+bakurani 5/15_17   sha1 6a426edb21192bdb   128,012 b   identical
+bakurani 6/31_27   sha1 2eba4ffba418055a    81,830 b   identical
+bakurani 4/7_8     sha1 6add7f6535770a32   141,844 b   identical
+```
+
+The black-and-white look is three CSS filter functions, in this order, driven
+by a per-map luminance measurement (`components/map/tint.ts`):
+
+```
+saturate(1 - r)   brightness(1 + (o-1)r)   contrast(1 + (s-1)r)
+```
+
+At the default 100% that gives `saturate(0) brightness(0.4413) contrast(1.5419)`
+for Ozeti and `saturate(0) brightness(0.4557) contrast(1.2629)` for Bakurani.
+Checked against metaforge's live page, whose `<html>` carries the same values to
+seventeen decimal places. The slider runs 0 (untouched) to 100 and persists
+under their key, `wardogs:map-tint:v3`, absent meaning default.
+
+**The filter goes on the tile pane only.** On the map container it desaturates
+the markers, polygons and name plates along with the terrain. metaforge hangs
+it on `.leaflet-layer`, a child of the pane — equivalent here.
 
 ### Things about the data that look like bugs and are not
 
