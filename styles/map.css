@@ -13,12 +13,43 @@
    used for the on-map name plates, so it loads with the map's CSS. */
 @import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap");
 
+/*
+  THE MAP IS AN INVERTED SURFACE.
+
+  Everything else on the site is ink on paper. This cannot be: the tiles are
+  dark terrain imagery, and chrome floating over them has to be dark too or it
+  glares. Mossforge has a name for this — a forest section — so rather than
+  rewriting sixty rules to use different tokens, the tokens themselves are
+  redefined for the subtree. Every `--color-foreground` inside .wm resolves to
+  paper instead of ink, and the rules underneath did not change at all.
+*/
 .wm {
   position: fixed;
   inset: 0;
   overflow: hidden;
   /* the inline style carries legend.backgroundColor; this is the fallback */
-  background: #1a1a1a;
+  background: #16281f;
+  /*
+    Set explicitly, not just via the tokens below. Redefining --color-foreground
+    only helps rules that ASK for it; anything without a colour of its own
+    inherits from body, which is ink on paper. Two labels in the layer panel
+    did exactly that and came out near-black on the forest panel.
+  */
+  color: var(--color-foreground);
+
+  --color-foreground: #f2efe6;
+  --color-muted: #a9b6ae;
+  --color-lumen: #ffffff;
+  --color-hairline: rgba(255, 255, 255, 0.12);
+  --color-slate-rise: #7d8c82;
+  --color-panel: rgba(27, 52, 43, 0.86);
+  --color-panel-raised: rgba(44, 74, 62, 0.92);
+  --color-void: #16281f;
+  --alpha-hairline: rgba(255, 255, 255, 0.10);
+  --alpha-hairline-strong: rgba(255, 255, 255, 0.18);
+  --alpha-foreground-12: rgba(255, 255, 255, 0.12);
+  --alpha-foreground-0: rgba(255, 255, 255, 0);
+  --focus-ring: 0 0 0 2px #16281f, 0 0 0 4px var(--color-accent);
 }
 
 /*
@@ -117,7 +148,7 @@
   gap: var(--space-sm);
   padding: 8px var(--space-md) 8px 8px;
   border-radius: var(--radius-lg);
-  background: rgba(26, 26, 26, 0.82);
+  background: rgba(27, 52, 43, 0.86);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--rim-inset), var(--shadow-card);
@@ -133,7 +164,7 @@
   gap: 2px;
   padding: 4px;
   border-radius: var(--radius-md);
-  background: rgba(26, 26, 26, 0.82);
+  background: rgba(27, 52, 43, 0.86);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--rim-inset);
@@ -160,7 +191,7 @@
   min-height: 0;
   width: 100%;
   border-radius: var(--radius-lg);
-  background: rgba(26, 26, 26, 0.9);
+  background: rgba(27, 52, 43, 0.90);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--rim-inset), var(--shadow-card);
@@ -257,7 +288,7 @@
   width: 264px;
   padding: var(--space-md) var(--space-md) var(--space-sm);
   border-radius: var(--radius-lg);
-  background: rgba(26, 26, 26, 0.92);
+  background: rgba(27, 52, 43, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--rim-inset), var(--shadow-card);
@@ -345,7 +376,7 @@
   margin: 0;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
-  background: rgba(26, 26, 26, 0.92);
+  background: rgba(27, 52, 43, 0.92);
   box-shadow: var(--rim-inset-strong);
   color: var(--color-muted);
   font-size: var(--text-body-sm);
@@ -409,7 +440,7 @@
 
 /* Leaflet's default control chrome is white-on-white against these tiles */
 .wm .leaflet-control-zoom a {
-  background: rgba(26, 26, 26, 0.9);
+  background: rgba(27, 52, 43, 0.90);
   color: var(--color-foreground);
   border-color: var(--color-hairline);
 }
@@ -549,7 +580,7 @@
   gap: var(--space-2xs) var(--space-sm);
   padding: var(--space-2xs) var(--space-sm);
   border-radius: var(--radius-lg);
-  background: rgba(26, 26, 26, 0.9);
+  background: rgba(27, 52, 43, 0.90);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--rim-inset), var(--shadow-card);

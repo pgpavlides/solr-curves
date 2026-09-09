@@ -54,7 +54,7 @@ const logo =
 const page = (c) => `<!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1200px; height: 630px; }
@@ -62,37 +62,37 @@ const page = (c) => `<!doctype html><html><head><meta charset="utf-8">
     display: flex; align-items: center; gap: 64px;
     padding: 0 84px;
     background:
-      radial-gradient(ellipse 90% 70% at 22% 50%, rgba(71,81,92,.34) 0%, rgba(27,28,34,0) 66%),
-      radial-gradient(ellipse 70% 60% at 92% 8%, rgba(71,81,92,.20) 0%, rgba(27,28,34,0) 60%),
-      #1b1c22;
-    color: #cfd8e6;
-    font-family: Inter, system-ui, sans-serif;
+      radial-gradient(ellipse 90% 70% at 22% 50%, rgba(197,242,110,.30) 0%, rgba(242,239,230,0) 66%),
+      radial-gradient(ellipse 70% 60% at 92% 8%, rgba(27,52,43,.08) 0%, rgba(242,239,230,0) 60%),
+      #f2efe6;
+    color: #1a2a22;
+    font-family: Manrope, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   /* square box, mark fitted inside it — the same deal as .logo on the site */
   .mark { width: 260px; height: 260px; flex: none; object-fit: contain; }
   .col { min-width: 0; }
   .word {
-    font-family: "Space Grotesk", Inter, sans-serif;
-    font-weight: 600; font-size: 34px; letter-spacing: .17em;
-    text-transform: uppercase; color: #cfd8e6;
+    font-family: Manrope, system-ui, sans-serif;
+    font-weight: 800; font-size: 34px; letter-spacing: .17em;
+    text-transform: uppercase; color: #1a2a22;
   }
   .rule { width: 190px; height: 1px; margin: 22px 0;
-    background: linear-gradient(90deg, rgba(207,216,230,.85), rgba(207,216,230,0)); }
+    background: linear-gradient(90deg, rgba(27,52,43,.55), rgba(27,52,43,0)); }
   .kicker {
     font-family: "JetBrains Mono", monospace; font-size: 19px;
-    letter-spacing: .16em; text-transform: uppercase; color: #8b93a1;
+    letter-spacing: .16em; text-transform: uppercase; color: #4c5a51;
   }
   .title {
-    font-family: "Space Grotesk", Inter, sans-serif;
-    font-weight: 600; font-size: 62px; line-height: 1.08; letter-spacing: -.02em;
-    color: #eef2f7; margin: 12px 0 20px; text-wrap: balance;
+    font-family: Manrope, system-ui, sans-serif;
+    font-weight: 800; font-size: 62px; line-height: 1.08; letter-spacing: -.022em;
+    color: #1a2a22; margin: 12px 0 20px; text-wrap: balance;
   }
-  .sub { font-size: 25px; line-height: 1.5; color: #98a1af; max-width: 30ch; }
+  .sub { font-size: 25px; line-height: 1.5; color: #4c5a51; max-width: 30ch; }
   .foot {
     position: absolute; right: 84px; bottom: 46px;
     font-family: "JetBrains Mono", monospace; font-size: 17px;
-    letter-spacing: .09em; color: #6d7684;
+    letter-spacing: .09em; color: #646f67;
   }
 </style></head><body>
   <img class="mark" src="${logo}" alt="">

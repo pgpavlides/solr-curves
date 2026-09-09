@@ -141,11 +141,12 @@ function Track({ man, sim }: { man: Maneuver; sim: React.RefObject<Sim> }) {
 function Lights() {
   return (
     <>
-      <ambientLight intensity={0.75} color={LUMEN.muted} />
-      <hemisphereLight intensity={0.8} color={LUMEN.lumen} groundColor={LUMEN.graphite} />
-      <directionalLight position={[14, 22, 10]} intensity={2.6} color={LUMEN.muted} />
-      <pointLight position={[0, -8, 6]} intensity={90} color={LUMEN.lumen} distance={70} decay={2} />
-      <pointLight position={[-18, 6, -18]} intensity={70} color={LUMEN.slateRise} distance={80} decay={2} />
+      {/* see the note in lumen.ts: lamps take the light tokens, never the palette */}
+      <ambientLight intensity={1.15} color={LUMEN.lightFill} />
+      <hemisphereLight intensity={1.1} color={LUMEN.lightKey} groundColor={LUMEN.lightBounce} />
+      <directionalLight position={[14, 22, 10]} intensity={2.2} color={LUMEN.lightKey} />
+      <pointLight position={[0, -8, 6]} intensity={55} color={LUMEN.lightBounce} distance={70} decay={2} />
+      <pointLight position={[-18, 6, -18]} intensity={45} color={LUMEN.lightFill} distance={80} decay={2} />
     </>
   );
 }

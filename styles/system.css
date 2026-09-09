@@ -4,64 +4,93 @@
    and a single luminous horizon line as the signal of focus and depth.
    ========================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 /* -------------------------------------------------------------------------
    Tokens
    ------------------------------------------------------------------------- */
 :root {
-  /* Color — luminance-only palette, no chromatic accent */
-  --color-void: #1b1c22;
-  --color-graphite: #0b151e;
-  --color-panel: #20222a;
-  --color-panel-raised: #262932;
-  --color-slate-rise: #47515c;
-  --color-hairline: #2f3441;
-  --color-foreground: #ffffff;
-  --color-muted: #a8aebb;
-  --color-lumen: #cfd8e6;
+  /*
+    Colour — Mossforge: cream paper, evergreen panels, one charged lime.
 
-  /* Alpha tokens for hairlines and overlays */
-  --alpha-hairline: rgba(255, 255, 255, 0.1);
-  --alpha-hairline-strong: rgba(255, 255, 255, 0.16);
-  --alpha-foreground-66: rgba(255, 255, 255, 0.66);
-  --alpha-foreground-12: rgba(255, 255, 255, 0.12);
-  --alpha-foreground-0: rgba(255, 255, 255, 0);
+    The token NAMES are inherited from the system this replaced, which was
+    dark and had no accent at all. Keeping them meant every stylesheet in the
+    project followed this file without being touched, so the names describe a
+    role rather than a shade: `void` is the page ground whether that ground is
+    near-black or cream, `lumen` is the strongest ink whether it is the
+    lightest thing on a dark page or the darkest thing on a light one.
 
-  /* Surface gradients — the system's material vocabulary */
-  --surface-gradient: radial-gradient(
-    ellipse at bottom,
-    rgba(71, 81, 92, 1) 0%,
-    rgba(11, 21, 30, 1) 45%
-  );
-  --surface-gradient-soft: radial-gradient(
-    ellipse at bottom,
-    rgba(71, 81, 92, 0.55) 0%,
-    rgba(11, 21, 30, 0.95) 55%
-  );
-  --surface-panel-gradient: radial-gradient(
-    ellipse at bottom,
-    rgba(47, 52, 65, 0.6) 0%,
-    rgba(20, 22, 30, 1) 65%
-  );
+    The one genuinely new token is `--color-accent`. The old system was
+    luminance-only on purpose; this one has a single chromatic accent and
+    almost nothing should use it — a primary action, a focus ring, the active
+    state of a control. If it starts appearing everywhere it stops meaning
+    anything.
+  */
+  --color-void: #f2efe6;          /* paper — the page ground */
+  --color-graphite: #1b342b;      /* forest — inverted panels and the deepest ground */
+  --color-panel: #ffffff;         /* surface — cards and elevated panels */
+  --color-panel-raised: #faf8f2;  /* the same surface, one step warmer, for hover */
+  /*
+    The dim tier. Measured, not chosen by eye: at Mossforge's own lichen weight
+    this sat at 2.74:1 on paper, which is below AA, and it is the token every
+    mono caption on the site uses. #646f67 is the lightest value that clears
+    4.5:1 against the page ground (4.55) and 5.2:1 on a white card.
+  */
+  --color-slate-rise: #646f67;
+  --color-hairline: #ddd7c6;      /* borders and dividers */
+  --color-foreground: #1a2a22;    /* pine ink — primary text */
+  /* Darkened a step from Mossforge's #5a6a60 so the dim tier above stays a
+     visibly different thing rather than collapsing into it. 6.3:1 on paper. */
+  --color-muted: #4c5a51;
+  --color-lumen: #1b342b;         /* forest — emphasis, hover, the strongest ink */
 
-  /* Horizon — the signature 70%-wide gradient highlight at the base */
+  /* The accent. Used sparingly and deliberately. */
+  --color-accent: #c5f26e;
+  --color-accent-pressed: #b6e254;
+  --color-on-accent: #1b342b;
+
+  /* Ink on a forest panel, where the light/dark relationship inverts */
+  --color-on-inverse: #f2efe6;
+  --color-on-inverse-muted: #a9b6ae;
+  --color-hairline-inverse: rgba(255, 255, 255, 0.10);
+
+  /*
+    Alpha tokens. These were white-on-dark; on paper they are ink-on-light, so
+    every overlay, rim and fade in the project inverted with one edit here.
+  */
+  --alpha-hairline: rgba(26, 42, 34, 0.10);
+  --alpha-hairline-strong: rgba(26, 42, 34, 0.18);
+  --alpha-foreground-66: rgba(26, 42, 34, 0.66);
+  --alpha-foreground-12: rgba(26, 42, 34, 0.12);
+  --alpha-foreground-0: rgba(26, 42, 34, 0);
+
+  /*
+    Surfaces. The old system's material was a radial gradient lifting out of
+    the dark; the equivalent here is paper barely warming into white, because
+    on a light ground a gradient that reads at all reads as dirt.
+  */
+  --surface-gradient: linear-gradient(180deg, #ffffff 0%, #fbf9f2 100%);
+  --surface-gradient-soft: linear-gradient(180deg, #f7f4ea 0%, #f2efe6 100%);
+  --surface-panel-gradient: linear-gradient(180deg, #ffffff 0%, #f6f3ea 100%);
+  --surface-forest: linear-gradient(180deg, #1b342b 0%, #16281f 100%);
+
+  /* Horizon — the signature 70%-wide highlight along a card's base edge */
   --horizon-line: linear-gradient(
     90deg,
     var(--alpha-foreground-0) 0%,
-    var(--color-foreground) 50%,
+    var(--alpha-foreground-12) 50%,
     var(--alpha-foreground-0) 100%
   );
   --horizon-line-lumen: linear-gradient(
     90deg,
-    var(--alpha-foreground-0) 0%,
-    var(--color-lumen) 50%,
-    var(--alpha-foreground-0) 100%
+    rgba(197, 242, 110, 0) 0%,
+    var(--color-accent) 50%,
+    rgba(197, 242, 110, 0) 100%
   );
 
   /* Typography */
-  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Manrope", system-ui, -apple-system, sans-serif;
+  --font-body: "Manrope", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   --text-display-lg: 44px;
@@ -98,24 +127,28 @@
 
   /* Radius */
   --radius-none: 0;
-  --radius-sm: 4px;
-  --radius-md: 7px;   /* primary control radius */
-  --radius-lg: 14px;  /* card and panel radius */
-  --radius-xl: 20px;
+  --radius-sm: 8px;
+  --radius-md: 14px;  /* primary control radius */
+  --radius-lg: 20px;  /* card and panel radius */
+  --radius-xl: 28px;
   --radius-full: 999px;
 
   /* Borders & focus */
   --border-hairline: 1px solid var(--color-hairline);
   --rim-inset: inset 0 0 0 1px var(--alpha-hairline);
   --rim-inset-strong: inset 0 0 0 1px var(--alpha-hairline-strong);
-  --focus-ring: 0 0 0 1px var(--color-lumen), 0 0 16px rgba(207, 216, 230, 0.25);
+  --focus-ring: 0 0 0 2px var(--color-void), 0 0 0 4px var(--color-accent);
 
-  /* Elevation — soft, very dark drop shadows only */
+  /*
+    Elevation. The old shadows were near-opaque black, which is invisible on a
+    dark page and filthy on a light one. These are the forest colour at low
+    alpha, thrown long and soft — the way a paper surface actually lifts.
+  */
   --shadow-none: none;
-  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4),
-                 0 12px 32px -12px rgba(0, 0, 0, 0.6);
-  --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.5),
-                   0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  --shadow-card: 0 1px 0 rgba(27, 52, 43, 0.04),
+                 0 10px 30px -18px rgba(27, 52, 43, 0.25);
+  --shadow-raised: 0 2px 0 rgba(27, 52, 43, 0.05),
+                   0 24px 48px -24px rgba(27, 52, 43, 0.35);
 
   /* Motion */
   --motion-slow: 1s cubic-bezier(0.15, 0.83, 0.66, 1);
@@ -133,7 +166,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -250,8 +283,14 @@ body {
 /* -------------------------------------------------------------------------
    Button
    ------------------------------------------------------------------------- */
+/*
+  Controls are pills. In the system this replaced they were 7px-radius slabs
+  lifting out of a dark ground on a gradient; here a primary action is the one
+  lime object on the page and it is fully rounded, which is what makes the
+  accent read as a button rather than as decoration.
+*/
 .btn {
-  --btn-color: var(--alpha-foreground-66);
+  --btn-color: var(--color-on-accent);
 
   position: relative;
   display: inline-flex;
@@ -260,14 +299,13 @@ body {
   gap: var(--space-xs);
   min-width: 120px;
   padding: 12px 18px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-gradient);
-  box-shadow: var(--rim-inset);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
   color: var(--btn-color);
   font-family: var(--font-display);
-  font-size: var(--text-body-md);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-body-sm);
+  font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-normal);
   line-height: 1;
   cursor: pointer;
@@ -279,9 +317,10 @@ body {
 }
 
 .btn:hover {
-  color: var(--color-foreground);
-  transform: scale(1.04) translateY(-3px);
-  box-shadow: var(--rim-inset-strong);
+  background: var(--color-accent-pressed);
+  border-color: var(--color-accent-pressed);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
 }
 .btn:hover::before { opacity: 1; }
 
@@ -311,12 +350,18 @@ body {
   box-shadow: var(--rim-inset);
 }
 
+/* The quiet one: paper, a hairline, and ink. Most buttons on the site are these. */
 .btn-ghost {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-hairline);
-  color: var(--color-muted);
+  background: var(--color-panel);
+  border-color: var(--color-hairline);
+  box-shadow: none;
+  color: var(--color-foreground);
 }
-.btn-ghost:hover { color: var(--color-foreground); }
+.btn-ghost:hover {
+  background: var(--color-panel-raised);
+  border-color: var(--color-slate-rise);
+  color: var(--color-lumen);
+}
 
 .btn-sm {
   min-width: 0;
@@ -548,9 +593,9 @@ body {
 .tab:hover { color: var(--color-foreground); }
 
 .tab.is-active {
-  color: var(--color-foreground);
-  background: var(--surface-gradient);
-  box-shadow: var(--rim-inset);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  box-shadow: none;
 }
 .tab.is-active::before { opacity: 1; }
 
@@ -621,18 +666,21 @@ body {
 /* -------------------------------------------------------------------------
    Chip / Tag (pill)
    ------------------------------------------------------------------------- */
+/* Mossforge tags: a real hairline rather than an inner rim, and wide mono. */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: var(--radius-full);
   background: var(--color-panel);
-  box-shadow: var(--rim-inset);
+  border: 1px solid var(--color-hairline);
+  box-shadow: none;
   color: var(--color-muted);
   font-family: var(--font-mono);
   font-size: var(--text-label-sm);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 /* -------------------------------------------------------------------------

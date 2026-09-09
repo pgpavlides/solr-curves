@@ -33,8 +33,8 @@ body:has(.home) {
   overflow: hidden;
   display: flex;
   background:
-    radial-gradient(ellipse 90% 60% at 50% 100%, rgba(71, 81, 92, 0.26) 0%, rgba(27, 28, 34, 0) 64%),
-    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(71, 81, 92, 0.16) 0%, rgba(27, 28, 34, 0) 58%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, rgba(197, 242, 110, 0.20) 0%, rgba(242, 239, 230, 0) 62%),
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(27, 52, 43, 0.06) 0%, rgba(242, 239, 230, 0) 58%),
     var(--color-void);
 }
 /* svh is recent enough to be worth a floor for anything that lacks it. */
@@ -180,9 +180,12 @@ body:has(.home) {
   border-radius: var(--radius-lg);
   background: var(--color-panel);
   background-image: var(--surface-panel-gradient);
-  box-shadow: var(--rim-inset), var(--shadow-card);
+  /* a real hairline, not an inner rim: on paper a card needs an edge */
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
-  transition: transform var(--motion-slow), box-shadow var(--motion-slow);
+  transition: transform var(--motion-slow), box-shadow var(--motion-slow),
+              border-color var(--motion-fast);
 }
 .home-card::after {
   content: "";
@@ -198,12 +201,13 @@ body:has(.home) {
 }
 .home-card:hover {
   transform: translateY(-3px);
-  box-shadow: var(--rim-inset-strong), var(--shadow-raised);
+  border-color: var(--color-slate-rise);
+  box-shadow: var(--shadow-raised);
 }
 .home-card:hover::after { opacity: 0.85; background: var(--horizon-line-lumen); }
 .home-card:focus-visible {
   outline: none;
-  box-shadow: var(--rim-inset-strong), var(--shadow-raised), var(--focus-ring);
+  box-shadow: var(--shadow-raised), var(--focus-ring);
 }
 
 .home-card-top {
@@ -231,7 +235,7 @@ body:has(.home) {
   font-family: var(--font-mono);
   font-size: var(--text-label-sm);
   letter-spacing: 0.1em;
-  color: var(--color-hairline);
+  color: var(--color-slate-rise);
   font-variant-numeric: tabular-nums;
 }
 

@@ -11,7 +11,7 @@
   z-index: 1;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(71, 81, 92, 0.22) 0%, rgba(27, 28, 34, 0) 60%),
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(27, 52, 43, 0.05) 0%, rgba(242, 239, 230, 0) 60%),
     var(--color-void);
 }
 .doc a { color: var(--color-lumen); }
@@ -25,7 +25,7 @@
   justify-content: space-between;
   gap: var(--space-md);
   padding: var(--space-sm) clamp(var(--space-lg), 5vw, var(--space-3xl));
-  background: rgba(27, 28, 34, 0.82);
+  background: rgba(242, 239, 230, 0.86);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--color-hairline);
@@ -260,7 +260,7 @@ body:has(.guide-grid) .doc-foot.is-wide { max-width: 1520px; }
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(11,21,30,0.15) 0%, rgba(11,21,30,0.55) 100%);
+  background: linear-gradient(180deg, rgba(27,52,43,0.05) 0%, rgba(27,52,43,0.35) 100%);
   pointer-events: none;
 }
 .thumb-play {
@@ -286,11 +286,12 @@ body:has(.guide-grid) .doc-foot.is-wide { max-width: 1520px; }
   z-index: 2;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
-  background: rgba(11, 21, 30, 0.82);
-  box-shadow: var(--rim-inset);
+  background: rgba(27, 52, 43, 0.82);
+  box-shadow: none;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-foreground);
+  /* an inverted chip, sitting on the thumbnail — page ink is invisible here */
+  color: var(--color-on-inverse);
   font-variant-numeric: tabular-nums;
 }
 
@@ -437,7 +438,7 @@ body:has(.guide-grid) .doc-foot.is-wide { max-width: 1520px; }
   padding: var(--space-sm) 0;
   /* 0.92 let definition text read through the bar while scrolling; the page
      gradient still runs this far down, so a fully opaque void would band. */
-  background: rgba(27, 28, 34, 0.97);
+  background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--color-hairline);
@@ -485,7 +486,7 @@ body:has(.guide-grid) .doc-foot.is-wide { max-width: 1520px; }
 }
 .term-item {
   padding: var(--space-md) 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--color-hairline);
   min-width: 0;
 }
 .term-item dt {
