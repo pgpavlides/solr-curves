@@ -204,6 +204,14 @@ export const videos: Video[] = [
     transcribed: false,
   },
   {
+    id: "e5yLSJFMreU",
+    channel: "Sim Controls",
+    title: "How to Setup Your VKB Gladiator for WARDOGS | Curves & Deadzones",
+    length: "15:00",
+    covers: "VKB Gladiator · Curves & dead zones",
+    transcribed: false,
+  },
+  {
     id: "wtfImr6eKAc",
     channel: "Wardogs Pilot",
     title: "WARDOGS Head Tracking Setup | Full TrackIR Guide",

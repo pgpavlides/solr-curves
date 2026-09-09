@@ -144,7 +144,7 @@ export const creators: Creator[] = [
     channelUrl: "https://www.youtube.com/@SimControls",
     tag: "HOTAS",
     note:
-      "The deep dive on why a flight stick feels wrong out of the box — dead zone, sensitivity and the response curve that fixes it, worked out on camera. Two passes at it: the beginner tips, then a full setup guide.",
+      "The deep dive on why a flight stick feels wrong out of the box — dead zone, sensitivity and the response curve that fixes it, worked out on camera. Three passes at it now: the beginner tips, a full setup guide, and the same job done end to end on a VKB Gladiator.",
     videos: [
       {
         id: "TciRy5CzvDQ",
@@ -164,6 +164,16 @@ export const creators: Creator[] = [
         transcribed: false,
         why:
           "Newer than the write-up above and not yet gone through. The settings in it are his current ones — watch it before trusting the older guide.",
+      },
+      {
+        id: "e5yLSJFMreU",
+        title: "How to Setup Your VKB Gladiator for WARDOGS | Curves & Deadzones",
+        length: "15:00",
+        published: "9 September 2026",
+        covers: "VKB Gladiator · Curves & dead zones",
+        transcribed: false,
+        why:
+          "Published the same day it went up here and not yet gone through. It is the same curve-and-dead-zone argument as his other two, worked through on one specific stick.",
       },
     ],
   },
