@@ -17,6 +17,7 @@
 */
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, appendFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(process.argv[2] || "E:/WARDOGSPILOT");
 const BUCKET = process.argv[3] || "wardogspilot-tiles";
@@ -35,22 +36,88 @@ const CONCURRENCY = Number(process.env.TILE_CONCURRENCY || 4);
 const GAP_MS = Number(process.env.TILE_GAP_MS || 120);
 const LEDGER = resolve("./.tiles-uploaded.log");
 
-function token() {
-  if (process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN;
-  const p = join(
-    process.env.APPDATA || process.env.HOME || "",
-    "xdg.config", ".wrangler", "config", "default.toml"
-  );
-  const alt = join(process.env.HOME || "", ".wrangler", "config", "default.toml");
-  for (const f of [p, alt]) {
-    if (existsSync(f)) {
-      const m = readFileSync(f, "utf8").match(/oauth_token\s*=\s*"([^"]+)"/);
-      if (m) return m[1];
-    }
+/*
+  THE TOKEN EXPIRES AFTER AN HOUR, AND THIS UPLOAD TAKES LONGER THAN THAT.
+
+  The first run of this script learned that the hard way: it uploaded for an
+  hour, the wrangler OAuth token expired at 20:30, and it then spent eleven
+  hours retrying 401s forty times each — 5,500 "throttled" and 201 "failed"
+  lines, and not one further byte uploaded. It looked like rate limiting in the
+  log and was nothing of the sort.
+
+  So: read the expiry, refresh before it lapses, and treat an auth failure as
+  fatal-unless-a-refresh-fixes-it rather than as something to grind on.
+
+  Refreshing is delegated to wrangler itself — any wrangler command renews the
+  token on disk using the refresh_token — so there is no OAuth client id or
+  grant flow reimplemented here.
+*/
+const WRANGLER_CONFIG = [
+  join(process.env.APPDATA || process.env.HOME || "", "xdg.config", ".wrangler", "config", "default.toml"),
+  join(process.env.HOME || "", ".wrangler", "config", "default.toml"),
+].find(existsSync);
+
+function readToken() {
+  if (process.env.CLOUDFLARE_API_TOKEN) return { token: process.env.CLOUDFLARE_API_TOKEN, expires: Infinity };
+  if (!WRANGLER_CONFIG) {
+    throw new Error("no Cloudflare token: run `wrangler login` or set CLOUDFLARE_API_TOKEN");
   }
-  throw new Error("no Cloudflare token: run `wrangler login` or set CLOUDFLARE_API_TOKEN");
+  const raw = readFileSync(WRANGLER_CONFIG, "utf8");
+  const tok = raw.match(/oauth_token\s*=\s*"([^"]+)"/);
+  const exp = raw.match(/expiration_time\s*=\s*"([^"]+)"/);
+  if (!tok) throw new Error(`no oauth_token in ${WRANGLER_CONFIG}: run \`wrangler login\``);
+  return { token: tok[1], expires: exp ? Date.parse(exp[1]) : Infinity };
 }
-const TOKEN = token();
+
+let auth = readToken();
+let refreshing = null;
+let lastRefresh = 0;
+
+/** Renew the token on disk, at most one wrangler process at a time. */
+function refresh(why) {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    console.log(`  refreshing the token (${why})`);
+    try {
+      execFileSync("npx", ["wrangler", "whoami"], { stdio: "ignore", timeout: 90_000, shell: true });
+    } catch {
+      // whoami can fail for reasons that are not the token; the re-read decides
+    }
+    const next = readToken();
+    const moved = next.token !== auth.token;
+    auth = next;
+    console.log(
+      moved
+        ? `  token renewed, good until ${new Date(auth.expires).toISOString()}`
+        : `  token did NOT change — run \`npx wrangler login\` in this terminal`
+    );
+    lastRefresh = Date.now();
+    refreshing = null;
+    return moved;
+  })();
+  return refreshing;
+}
+
+/*
+  The current token, renewed if it is within ten minutes of lapsing.
+
+  The cooldown matters: wrangler will not always renew a token it still
+  considers valid, so without it a refusal here would spawn a wrangler process
+  for every single upload. If the proactive renewal does not take, the 401
+  handler picks it up once the token has actually lapsed.
+*/
+async function token() {
+  const soon = Number.isFinite(auth.expires) && Date.now() > auth.expires - 10 * 60_000;
+  if (soon && Date.now() - lastRefresh > 60_000) {
+    lastRefresh = Date.now();
+    await refresh("expiring");
+  }
+  return auth.token;
+}
+
+if (Number.isFinite(auth.expires)) {
+  console.log(`token good until ${new Date(auth.expires).toISOString()}`);
+}
 
 /** Every .webp under tiles/, as a key relative to the root. */
 function walk(dir, out = []) {
@@ -87,9 +154,25 @@ async function put(job, attempt = 1) {
   try {
     const r = await fetch(url, {
       method: "PUT",
-      headers: { authorization: `Bearer ${TOKEN}`, "content-type": "image/webp" },
+      headers: { authorization: `Bearer ${await token()}`, "content-type": "image/webp" },
       body,
     });
+    if (r.status === 401 || r.status === 403) {
+      // Not transient. Renew once; if that changes nothing, stop the whole run
+      // rather than hammering a dead credential for eleven hours.
+      await r.arrayBuffer();
+      if (await refresh(`HTTP ${r.status}`)) return put(job, attempt);
+      console.error(
+        `
+  ${r.status} from Cloudflare and the token would not renew.` +
+        `
+  Run \`npx wrangler login\`, then re-run this script — it resumes from` +
+        `
+  .tiles-uploaded.log and re-sends nothing.
+`
+      );
+      process.exit(2);
+    }
     if (r.status === 429) {
       // a rate limit is a queue, not a failure: wait and come back to it
       const wait = Number(r.headers.get("retry-after") || 0) * 1000 || 2000 * attempt;
