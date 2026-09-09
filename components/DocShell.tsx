@@ -33,6 +33,9 @@ export default function DocShell({
           <Link className="btn btn-sm btn-ghost" href="/videos/">
             Videos
           </Link>
+          <Link className="btn btn-sm btn-ghost" href="/books/">
+            Books
+          </Link>
           <Link className="btn btn-sm btn-ghost" href="/map/ozeti/">
             Maps
           </Link>

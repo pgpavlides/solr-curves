@@ -103,27 +103,33 @@ body:has(.home) {
   margin-inline: auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr);
   gap: clamp(10px, 1.1vw, 18px);
 }
 
 /*
-  Five abreast needs about 230px a card to stay readable. Below that it folds
-  to three then two columns — still one screen, still no scrolling. With five
-  cards the last row is short, which is why the rows are equal-height rather
-  than auto: a lone card should not be twice the height of its neighbours.
+  A card needs about 215px to keep its body on two lines, so six abreast wants
+  roughly 1320px of viewport. Below that it folds to three columns and then to
+  two — six divides evenly into both, so no row is ever left short. Still one
+  screen, still no scrolling.
 */
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
   .home-grid {
-    width: min(100%, 860px);
-    height: min(100%, 400px);
+    width: min(100%, 900px);
+    /* two rows: 400px gave each card 200px, and every body overflowed it */
+    height: min(100%, 560px);
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }
+  /*
+    Six cards in two rows need about 520px. On an 800px-tall window that only
+    exists if the mark gives some back — at 22vh it was 176px and the cards
+    below it lost two lines each.
+  */
   .home-mark {
-    width: clamp(110px, 22vh, 260px);
-    height: clamp(110px, 22vh, 260px);
+    width: clamp(88px, 14vh, 200px);
+    height: clamp(88px, 14vh, 200px);
   }
 }
 @media (max-width: 1020px) {

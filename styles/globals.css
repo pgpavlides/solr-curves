@@ -740,3 +740,54 @@ kbd {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
 }
+
+/* =========================================================================
+   The holding page at /pilot-app.
+
+   Black, one sentence, and a way back. It is deliberately not a .panel and
+   deliberately not on the void gradient every other route uses: nothing is
+   shipped, so nothing should look built.
+   ========================================================================= */
+
+body:has(.soon) {
+  min-height: 0;
+  height: 100svh;
+  overflow: hidden;
+  background: #000;
+}
+@supports not (height: 100svh) {
+  body:has(.soon) { height: 100vh; }
+}
+
+.soon {
+  height: 100svh;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  text-align: center;
+}
+@supports not (height: 100svh) {
+  .soon { height: 100vh; }
+}
+
+.soon-word {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 2.4vw, 17px);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.soon-back {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.14em;
+  color: var(--color-slate-rise);
+  text-decoration: none;
+}
+.soon-back:hover { color: var(--color-muted); }

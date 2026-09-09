@@ -4,6 +4,7 @@ import Icon, { type IconName } from "@/components/Icon";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { maneuvers } from "@/data/maneuvers";
+import { guides } from "@/data/guides";
 import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
@@ -22,13 +23,14 @@ function mapCounts() {
 }
 
 /*
-  The front door. The mark, at the size it deserves, and five destinations in
+  The front door. The mark, at the size it deserves, and six destinations in
   a single row beneath it — the simulator, the videos the site is built from,
   the game maps, the vocabulary, and the desktop app.
 
   It is one screen and it does not scroll, and the mark is the subject of it,
   so the cards are capped rather than stretching to fill what is left. That
-  makes the copy budget tight: a card in the row of five is about 250px wide,
+  makes the copy budget tight: a card in the row of six is about 205px wide at
+  1600px and above, which is four short lines,
   so a body is one short sentence of roughly fifty characters and no more.
 
   Everything the cards say is counted from the data modules rather than typed
@@ -46,7 +48,7 @@ interface Door {
   soon?: boolean;
 }
 
-const { maps: mapCount, zones: zoneCount } = mapCounts();
+const { zones: zoneCount } = mapCounts();
 
 const doors: Door[] = [
   {
@@ -64,16 +66,24 @@ const doors: Door[] = [
     title: "Videos",
     kicker: "Watch them",
     body:
-      "Every video the site is built from, and who made it.",
-    stat: `${creatorVideoCount} videos · ${creatorCount} creators`,
+      "Every video it is built from, and who made it.",
+    stat: `${creatorVideoCount} videos`,
   },
   {
     href: "/map/ozeti/",
     icon: "map",
     title: "Maps",
     kicker: "Find it",
-    body: "Ozeti and Bakurani, with towers and zones as layers.",
-    stat: `${mapCount} maps · ${zoneCount} zones`,
+    body: "Ozeti and Bakurani, with zones as layers.",
+    stat: `${zoneCount} zones`,
+  },
+  {
+    href: "/books/",
+    icon: "book",
+    title: "Books",
+    kicker: "Read it",
+    body: "The write-ups: settings, numbers and technique.",
+    stat: `${guides.length} write-ups`,
   },
   {
     href: "/terminology/",
@@ -90,7 +100,7 @@ const doors: Door[] = [
     title: "Pilot App",
     kicker: "Fly with it",
     body:
-      "The reference beside the game instead of behind it.",
+      "The reference beside the game, not behind it.",
     stat: "In development",
     soon: true,
   },

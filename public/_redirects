@@ -3,8 +3,9 @@
 # which is gone — so both need to land somewhere real rather than 404 or, worse,
 # render a stale page with dead navigation.
 #
-# Exact paths only: /guides/<slug>/ write-ups are still live and must not match.
-/guides      /videos/  301
-/guides/     /videos/  301
+# Exact paths only: /guides/<slug>/ write-ups are still live and must not match —
+# /books/ is now their index, which is where the old index URL should land.
+/guides      /books/   301
+/guides/     /books/   301
 /youtubers   /videos/  301
 /youtubers/  /videos/  301
