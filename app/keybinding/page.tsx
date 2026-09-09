@@ -36,8 +36,8 @@ export default function Keybinding() {
         <span className="doc-eyebrow">Keybinding</span>
         <h1>Four axes, and nowhere obvious to put them.</h1>
         <p className="doc-lede">
-          It does not matter which of these you pick. What matters is that one
-          of them feels natural under your hands — so try a few, keep the one
+          <strong>It does not matter which of these you pick.</strong> What
+          matters is that one of them feels natural under your hands — so try a few, keep the one
           you stop having to think about, and then{" "}
           <strong>go into training and fly it</strong>. That is the part people
           skip, and it is the only part that makes anyone good. An hour in

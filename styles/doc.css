@@ -71,6 +71,9 @@
   text-wrap: balance;
 }
 .doc-lede { color: var(--color-muted); font-size: var(--text-body-lg); line-height: 1.6; margin: 0; }
+/* Bold in a lede was only bold: the lede is muted, and `strong` inherited that,
+   so an emphasised sentence sat at the same luminance as the rest of it. */
+.doc-lede strong { color: var(--color-foreground); font-weight: var(--weight-semibold); }
 
 .doc-section { margin-top: var(--space-3xl); scroll-margin-top: 92px; }
 .doc-section h2 {
