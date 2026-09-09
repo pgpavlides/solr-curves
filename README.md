@@ -383,7 +383,35 @@ Cloudflare Pages, static:
 - Output directory: `out`
 - Node version: 22+
 
-Then add `broccolipilot.com` as a custom domain in the Pages project.
+### The domains, and why they are arranged this way
+
+The site was called `wardogspilot` until someone took the name on YouTube. The
+Pages project is still *named* `wardogspilot` — a Pages project cannot be
+renamed, and the name is invisible to visitors, so renaming it would mean
+recreating the project and re-pointing every domain for nothing.
+
+| Hostname | Serves |
+| --- | --- |
+| `broccolipilot.com`, `www` | the site, from the Pages project |
+| `tiles.broccolipilot.com` | R2 bucket `wardogspilot-tiles` — 27,306 map tiles |
+| `books.broccolipilot.com` | R2 bucket `wardogspilot-books` — eight PDFs, 252 MB |
+| `wardogspilot.com`, `www` | **301 to the new domain**, path and query intact |
+| `tiles.` / `books.wardogspilot.com` | still serve, deliberately |
+
+The buckets kept their old names for the same reason as the project: renaming a
+bucket means copying every object to change a label nobody sees.
+
+The old apex redirects through a zone-level Single Redirect rule rather than a
+Worker or a parked page, so it costs nothing and runs at the edge. Its
+expression matches the apex and `www` **only** — the `tiles.` and `books.`
+subdomains on the old zone are excluded on purpose, because a browser that
+cached the pre-rename bundle is still asking them for tiles. They can be
+removed once that is no longer true.
+
+Cloudflare assigns a nameserver pair per zone on the Free plan, at random. The
+new zone got `alexandra`/`brian` while every other zone on the account uses
+`emma`/`jaime`; account-level custom nameservers are a paid feature. Do not
+assume a new domain gets the same pair.
 
 ## Sourcing
 
