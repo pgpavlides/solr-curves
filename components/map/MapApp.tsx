@@ -434,6 +434,20 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
         One bar along the bottom: where you are on the left, the pen in the
         middle, where the cursor is on the right.
       */}
+      {/*
+        The coordinate readout sits top-right rather than in the dock. In the
+        dock it was competing for the one row the drawing tools need, and it is
+        a thing you glance at rather than operate.
+      */}
+      <div className="wm-readout" aria-live="off">
+        <span className="wm-readout-k">X</span>
+        <span className="wm-readout-v">{cursor ? fmt(cursor.lng) : "—"}</span>
+        <span className="wm-readout-k">Y</span>
+        <span className="wm-readout-v">{cursor ? fmt(cursor.lat) : "—"}</span>
+        <span className="wm-readout-k">Z</span>
+        <span className="wm-readout-v">{view ? view.zoom.toFixed(2) : "—"}</span>
+      </div>
+
       <footer className="wm-dock">
         <div className="wm-dock-left">
           <button
@@ -480,14 +494,6 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
         />
 
         <div className="wm-dock-right">
-          <div className="wm-readout" aria-live="off">
-            <span className="wm-readout-k">X</span>
-            <span className="wm-readout-v">{cursor ? fmt(cursor.lng) : "—"}</span>
-            <span className="wm-readout-k">Y</span>
-            <span className="wm-readout-v">{cursor ? fmt(cursor.lat) : "—"}</span>
-            <span className="wm-readout-k">Z</span>
-            <span className="wm-readout-v">{view ? view.zoom.toFixed(2) : "—"}</span>
-          </div>
           <button
             type="button"
             className={`btn btn-sm${keysOpen ? "" : " btn-ghost"} wm-keys-btn`}

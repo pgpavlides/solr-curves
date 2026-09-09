@@ -350,7 +350,16 @@
 }
 
 /* --- cursor readout --- */
+/*
+  Top right, on its own, out of the dock. It is a thing you read while moving
+  the cursor, not a control, and in the dock it was taking the width the
+  drawing tools needed to stay on one line.
+*/
 .wm-readout {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 500;
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2xs);
@@ -610,26 +619,40 @@
   line beside the buttons, and the pen row on a line of its own beneath. In DOM
   order the row comes first and pushed the readout onto a third line.
 */
+/*
+  Reading order along the dock: what map you are on, the pen toggle, the pen
+  itself, then help pushed to the far right.
+
+  `.wm-draw` is display:contents, so its two children order themselves against
+  the dock's other children rather than against each other. The help button was
+  order 2 while the pen row was 3, which put "?" in between the Draw button and
+  the tools it opens.
+*/
 .wm-dock-left { order: 0; }
 .wm-draw > .btn { order: 1; }
-.wm-dock-right { order: 2; margin-left: auto; }
-.wm-draw-row { order: 3; }
+.wm-draw-row { order: 2; }
+.wm-dock-right { order: 3; margin-left: auto; }
 
 /*
   `display: contents` so the toggle and the pen row become direct children of
-  the dock: the button sits on the first line with everything else, and the row
-  takes a line of its own.
+  the dock and sit on the SAME line as everything else.
+
+  This used to be `flex-basis: 100%` with a rule above it, which put the pen on
+  a second row that appeared under the bar the moment you pressed Draw. Getting
+  the space back for it meant moving the coordinate readout out of the dock —
+  see .wm-readout below.
+
+  It can still wrap when the window is genuinely too narrow for one line; it
+  just no longer does it by design.
 */
 .wm-draw { display: contents; }
 .wm-draw-row {
-  flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs) var(--space-sm);
-  padding-top: var(--space-2xs);
-  margin-top: var(--space-3xs);
-  border-top: 1px solid var(--color-hairline);
+  padding-left: var(--space-sm);
+  border-left: 1px solid var(--color-hairline);
 }
 
 .wm-dock .wm-maps { background: none; box-shadow: none; padding: 0; }
