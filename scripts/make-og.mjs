@@ -22,7 +22,7 @@ const CHROME =
 
 /* The cards. One per section; the four write-ups share the guides card. */
 const CARDS = [
-  { file: "default", kicker: "wardogspilot.com", title: "The WARDOGS helicopter reference",
+  { file: "default", kicker: "broccolipilot.com", title: "The WARDOGS helicopter reference",
     sub: "A 3D maneuver simulator, the community's videos with every author credited, the game maps, and the terminology." },
   { file: "simulator", kicker: "Simulator", title: "Fly the maneuvers",
     sub: "Every maneuver flown in 3D, with the pilot's collective, cyclic and pedals moving live beside it." },
@@ -38,13 +38,18 @@ const CARDS = [
     sub: "A desktop companion — the reference beside the game instead of behind it. In development." },
 ];
 
-/* The mark, recoloured the way components/Logo.tsx does it. */
-const logo = readFileSync(join(ROOT, "public", "logo.svg"), "utf8")
-  .replace(/<\?xml[^>]*\?>/, "")
-  .replace(/<style>[\s\S]*?<\/style>/, "")
-  .replace(/<defs>\s*<\/defs>/, "")
-  .replace(/class="cls-1"/g, 'fill="#2b303b"')
-  .replace("<svg ", '<svg class="mark" ');
+/*
+  The mark, inlined as a data URI.
+
+  It used to be the SVG with its fills rewritten, because the old mark was
+  two-tone and took the system palette. This one is a full-colour webp, so it
+  goes in as-is — and as a data URI rather than a file:// src, because the card
+  is rendered from a data: URL page and a relative path has nothing to resolve
+  against.
+*/
+const logo =
+  "data:image/webp;base64," +
+  readFileSync(join(ROOT, "public", "logo.webp")).toString("base64");
 
 const page = (c) => `<!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,9 +69,8 @@ const page = (c) => `<!doctype html><html><head><meta charset="utf-8">
     font-family: Inter, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .mark { width: 260px; height: 260px; flex: none; }
-  /* the shield body sits over the dark polygon, exactly as on the site */
-  .mark path, .mark polygon:not([fill]) { fill: #cfd8e6; }
+  /* square box, mark fitted inside it — the same deal as .logo on the site */
+  .mark { width: 260px; height: 260px; flex: none; object-fit: contain; }
   .col { min-width: 0; }
   .word {
     font-family: "Space Grotesk", Inter, sans-serif;
@@ -91,15 +95,15 @@ const page = (c) => `<!doctype html><html><head><meta charset="utf-8">
     letter-spacing: .09em; color: #6d7684;
   }
 </style></head><body>
-  ${logo}
+  <img class="mark" src="${logo}" alt="">
   <div class="col">
-    <div class="word">wardogspilot</div>
+    <div class="word">broccolipilot</div>
     <div class="rule"></div>
     <div class="kicker">${c.kicker}</div>
     <h1 class="title">${c.title}</h1>
     <p class="sub">${c.sub}</p>
   </div>
-  <div class="foot">wardogspilot.com</div>
+  <div class="foot">broccolipilot.com</div>
 </body></html>`;
 
 /* ------------------------------------------------------------------ CDP */

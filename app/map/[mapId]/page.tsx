@@ -32,12 +32,12 @@ export async function generateMetadata({
   params: Promise<{ mapId: string }>;
 }): Promise<Metadata> {
   const { mapId } = await params;
-  if (!(MAP_IDS as string[]).includes(mapId)) return { title: "Map — wardogspilot" };
+  if (!(MAP_IDS as string[]).includes(mapId)) return { title: "Map — broccolipilot" };
   const data = readData();
   const game = data.maps[mapId as MapId];
   const alt = `Interactive WARDOGS map of ${game.displayName}`;
   return {
-    title: `${game.displayName} map — wardogspilot`,
+    title: `${game.displayName} map — broccolipilot`,
     description: `Interactive WARDOGS map of ${game.displayName}: ${game.zones.length} zones and ${game.markers.length} markers, with filterable layers and shareable views.`,
     openGraph: ogCard("maps", alt),
     twitter: ogCard("maps", alt),

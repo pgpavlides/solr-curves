@@ -3,11 +3,11 @@ import Link from "next/link";
 import { ogCard } from "@/lib/og";
 
 export const metadata: Metadata = {
-  title: "Pilot App — wardogspilot",
+  title: "Pilot App — broccolipilot",
   description:
     "A desktop companion for WARDOGS pilots. Under development — there is nothing to download yet.",
-  openGraph: ogCard("pilot-app", "The wardogspilot desktop companion"),
-  twitter: ogCard("pilot-app", "The wardogspilot desktop companion"),
+  openGraph: ogCard("pilot-app", "The broccolipilot desktop companion"),
+  twitter: ogCard("pilot-app", "The broccolipilot desktop companion"),
 };
 
 /*
@@ -25,7 +25,7 @@ export default function PilotApp() {
     <main className="soon">
       <p className="soon-word">Under development</p>
       <Link className="soon-back" href="/">
-        wardogspilot
+        broccolipilot
       </Link>
     </main>
   );

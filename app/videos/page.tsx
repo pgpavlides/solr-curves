@@ -12,11 +12,11 @@ import {
 } from "@/data/creators";
 
 export const metadata: Metadata = {
-  title: "Videos — wardogspilot",
+  title: "Videos — broccolipilot",
   description:
     "Every WARDOGS helicopter video this site was built from, grouped by the creator who made it, with what each channel is good for and a link straight back to them.",
-  openGraph: ogCard("videos", "The creators wardogspilot is built on"),
-  twitter: ogCard("videos", "The creators wardogspilot is built on"),
+  openGraph: ogCard("videos", "The creators broccolipilot is built on"),
+  twitter: ogCard("videos", "The creators broccolipilot is built on"),
 };
 
 /*

@@ -20,7 +20,7 @@ export default function DocShell({
             <Logo />
           </span>
           <span>
-            <span className="brand-word">wardogspilot</span>
+            <span className="brand-word">broccolipilot</span>
             <span className="brand-sub">Rotary flight guide</span>
           </span>
         </Link>

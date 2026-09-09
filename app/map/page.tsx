@@ -3,7 +3,7 @@ import MapRedirect from "@/components/map/MapRedirect";
 import { ogCard } from "@/lib/og";
 
 export const metadata: Metadata = {
-  title: "Maps — wardogspilot",
+  title: "Maps — broccolipilot",
   description: "Interactive WARDOGS maps: Ozeti and Bakurani.",
   openGraph: ogCard("maps", "Interactive WARDOGS maps"),
   twitter: ogCard("maps", "Interactive WARDOGS maps"),

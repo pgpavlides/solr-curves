@@ -6,7 +6,7 @@ import { ogCard } from "@/lib/og";
 import { entries, termCount } from "@/data/glossary";
 
 export const metadata: Metadata = {
-  title: "Terminology — wardogspilot",
+  title: "Terminology — broccolipilot",
   description:
     "Helicopter terminology as WARDOGS uses it: collective, cyclic, yaw, lift vector, crab, flare, J-hook, AGL and ASL — what each word actually means, and the traps in them.",
   openGraph: ogCard("terminology", "WARDOGS helicopter terminology"),
@@ -37,7 +37,7 @@ export default function TerminologyPage() {
             <Logo />
           </span>
           <span>
-            <span className="brand-word">wardogspilot</span>
+            <span className="brand-word">broccolipilot</span>
             <span className="brand-sub">Terminology</span>
           </span>
         </Link>

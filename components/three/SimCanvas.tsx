@@ -300,7 +300,7 @@ export default function SimCanvas({
           await renderer.init();
         } catch (err) {
           if (!hasWebGPU) throw err;
-          console.warn("[wardogspilot] WebGPU init failed, using WebGL2", err);
+          console.warn("[broccolipilot] WebGPU init failed, using WebGL2", err);
           renderer = new THREE.WebGPURenderer({ ...opts, forceWebGL: true });
           await renderer.init();
         }

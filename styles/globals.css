@@ -1,5 +1,5 @@
 /* =========================================================================
-   wardogspilot.com — an application, not a document.
+   broccolipilot.com — an application, not a document.
 
    The whole viewport is a 3D scene; everything below is HUD chrome layered
    over it. The Lumen Edge design system is imported here ONCE and every
@@ -56,16 +56,24 @@ a.btn { text-decoration: none; }
 /* -------------------------------------------------------------------------
    The mark
    ------------------------------------------------------------------------- */
-.logo { display: block; width: 100%; height: 100%; }
 /*
-  The brand mark is a dark shield with a light aircraft breaking out of it.
-  In the source file the shield is the single `lg-light` polygon and the paths
-  on top are the aircraft. Straight black would vanish against the void, so
-  the shield is lifted just far enough to read as a form and the aircraft
-  takes the Lumen highlight — brand order preserved, contrast recovered.
+  The mark is a raster illustration with an alpha channel, and it is taller
+  than it is wide (4:5). Every call site wraps it in a SQUARE box, so it is
+  fitted rather than stretched — `contain` keeps its proportions and centres it
+  in whatever space the box gives it.
+
+  There is nothing to recolour here. The previous mark was a two-tone SVG that
+  took the system palette; this one is full colour by design, and the green is
+  the brand.
 */
-.logo .lg-light { fill: var(--logo-shield, #2b303b); }
-.logo path, .logo polygon:not(.lg-light) { fill: var(--logo-craft, #cfd8e6); }
+.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
+}
 
 /* -------------------------------------------------------------------------
    Loading screen

@@ -122,10 +122,10 @@ export default function App() {
       <div className="hud">
         <div className="hud-topleft">
           {/* The mark is the way out of the simulator, back to the four doors. */}
-          <Link className="panel brand" href="/" aria-label="wardogspilot home">
+          <Link className="panel brand" href="/" aria-label="broccolipilot home">
             <span className="logo-wrap"><Logo /></span>
             <span>
-              <span className="brand-word">wardogspilot</span>
+              <span className="brand-word">broccolipilot</span>
               <span className="brand-sub">Rotary flight guide</span>
             </span>
           </Link>

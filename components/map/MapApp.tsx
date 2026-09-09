@@ -361,7 +361,7 @@ function MapView({ mapId, data }: { mapId: MapId; data: MapData }) {
             <Logo />
           </span>
           <span className="wm-brand-text">
-            <span className="brand-word">wardogspilot</span>
+            <span className="brand-word">broccolipilot</span>
             <span className="brand-sub">Maps</span>
           </span>
         </Link>

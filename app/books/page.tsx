@@ -11,11 +11,11 @@ import {
 } from "@/data/books";
 
 export const metadata: Metadata = {
-  title: "Books — wardogspilot",
+  title: "Books — broccolipilot",
   description:
     "The rotary-wing library: the FAA Helicopter Flying Handbook, the Robinson R22 and R44 flight manuals, ICAO radiotelephony and more — the real manuals, free to read.",
-  openGraph: ogCard("guides", "The wardogspilot reference library"),
-  twitter: ogCard("guides", "The wardogspilot reference library"),
+  openGraph: ogCard("guides", "The broccolipilot reference library"),
+  twitter: ogCard("guides", "The broccolipilot reference library"),
 };
 
 /*

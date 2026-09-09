@@ -18,7 +18,7 @@ export default class SceneBoundary extends React.Component<
   }
 
   componentDidCatch(err: unknown) {
-    console.error("[wardogspilot] scene failed:", err);
+    console.error("[broccolipilot] scene failed:", err);
   }
 
   render() {

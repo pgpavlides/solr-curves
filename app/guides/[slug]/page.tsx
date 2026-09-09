@@ -17,10 +17,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const g = guideBySlug(slug);
-  if (!g) return { title: "Guide — wardogspilot" };
+  if (!g) return { title: "Guide — broccolipilot" };
   const alt = `${g.title} — written up from ${g.source.channel}`;
   return {
-    title: `${g.title} — wardogspilot`,
+    title: `${g.title} — broccolipilot`,
     description: `${g.summary} Written up from “${g.source.title}” by ${g.source.channel}.`,
     openGraph: ogCard("guides", alt),
     twitter: ogCard("guides", alt),

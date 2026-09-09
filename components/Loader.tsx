@@ -34,7 +34,7 @@ export default function Loader({
         <div className="logo-wrap">
           <Logo />
         </div>
-        <span className="loader-word">wardogspilot</span>
+        <span className="loader-word">broccolipilot</span>
         <div className="loader-bar">
           <span style={{ width: `${Math.max(4, Math.min(100, progress))}%` }} />
         </div>

@@ -1,4 +1,4 @@
-# wardogspilot.com
+# broccolipilot.com
 
 A WARDOGS helicopter flight guide, built out of the community's own videos with
 every author credited. The front door is four doors; behind one of them the site
@@ -375,7 +375,7 @@ non-default `distDir` makes the exported site land in that directory instead of
 `npm run build` purges `out/` first, so routes deleted from `app/` cannot
 survive into a deploy.
 
-## Deploying to wardogspilot.com
+## Deploying to broccolipilot.com
 
 Cloudflare Pages, static:
 
@@ -383,7 +383,7 @@ Cloudflare Pages, static:
 - Output directory: `out`
 - Node version: 22+
 
-Then add `wardogspilot.com` as a custom domain in the Pages project.
+Then add `broccolipilot.com` as a custom domain in the Pages project.
 
 ## Sourcing
 

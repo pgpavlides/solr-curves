@@ -127,11 +127,27 @@ export const newStrokeId = () =>
   the key so a change to the stroke shape can never half-load old data — a
   bumped version simply starts empty.
 */
-const key = (mapId: string) => `wardogspilot:map-draw:v1:${mapId}`;
+const key = (mapId: string) => `broccolipilot:map-draw:v1:${mapId}`;
+
+/*
+  The site used to be called something else, and the key carried that name.
+  Renaming it outright would have quietly thrown away every drawing anyone had
+  saved, so the old key is still read once — and rewritten under the new one,
+  which means each browser migrates itself the first time it opens a map.
+*/
+const legacyKey = (mapId: string) => `wardogspilot:map-draw:v1:${mapId}`;
 
 export function loadStrokes(mapId: string): Stroke[] {
   try {
-    const raw = window.localStorage.getItem(key(mapId));
+    let raw = window.localStorage.getItem(key(mapId));
+    if (!raw) {
+      const old = window.localStorage.getItem(legacyKey(mapId));
+      if (old) {
+        window.localStorage.setItem(key(mapId), old);
+        window.localStorage.removeItem(legacyKey(mapId));
+        raw = old;
+      }
+    }
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];

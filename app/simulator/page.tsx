@@ -5,11 +5,11 @@ import { maneuvers } from "@/data/maneuvers";
 import { glossary } from "@/data/glossary";
 
 export const metadata: Metadata = {
-  title: "Simulator — wardogspilot",
+  title: "Simulator — broccolipilot",
   description:
     "Eight WARDOGS helicopter maneuvers flown in 3D with the pilot's collective, cyclic and pedal inputs shown live.",
-  openGraph: ogCard("simulator", "The wardogspilot maneuver simulator"),
-  twitter: ogCard("simulator", "The wardogspilot maneuver simulator"),
+  openGraph: ogCard("simulator", "The broccolipilot maneuver simulator"),
+  twitter: ogCard("simulator", "The broccolipilot maneuver simulator"),
 };
 
 /*
@@ -36,7 +36,7 @@ export default function SimulatorPage() {
       <App />
       <noscript>
         <div style={{ padding: "32px 24px", maxWidth: 760, margin: "0 auto" }}>
-          <h1>wardogspilot — WARDOGS helicopter reference</h1>
+          <h1>broccolipilot — WARDOGS helicopter reference</h1>
           <p>
             The interactive simulator needs JavaScript and WebGL. The reference
             material it contains is summarised here.

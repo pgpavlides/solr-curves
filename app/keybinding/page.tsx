@@ -10,7 +10,7 @@ import {
 } from "@/data/keybindings";
 
 export const metadata: Metadata = {
-  title: "Keybinding — wardogspilot",
+  title: "Keybinding — broccolipilot",
   description:
     "Every sane way to bind a WARDOGS helicopter: mouse-roll, mouse-yaw, WASD and arrows, all-keyboard, HOTAS and controller — the full key table for each one, side by side.",
   openGraph: ogCard("guides", "WARDOGS helicopter keybinding layouts"),

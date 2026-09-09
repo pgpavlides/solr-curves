@@ -123,7 +123,7 @@ export default function Home() {
           <span className="home-mark">
             <Logo />
           </span>
-          <h1 className="home-word">wardogspilot</h1>
+          <h1 className="home-word">broccolipilot</h1>
           <p className="home-lede">
             Everything for flying helicopters in WARDOGS — built out of the
             community&rsquo;s own videos, with the people who made them credited
