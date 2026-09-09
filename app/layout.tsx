@@ -47,6 +47,19 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
+        {/*
+          Runs before anything paints. Without it a forest visitor gets one
+          full frame of cream while the JS loads, which is the flash every
+          theme toggle on the web is remembered for. It is inline and tiny for
+          the same reason: a separate file would be another round trip.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('broccolipilot:theme');" +
+              "if(t==='forest'||t==='paper')document.documentElement.dataset.theme=t;}catch(e){}",
+          }}
+        />
         {children}
         {/* sits above everything, inert until a navigation starts */}
         <PageTransition />

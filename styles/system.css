@@ -157,6 +157,55 @@
 }
 
 /* -------------------------------------------------------------------------
+   Forest — the dark theme
+
+   Not a filter and not a second stylesheet: the same token names with a second
+   set of values, so every rule in the project follows without knowing a second
+   theme exists. The two things that do not simply invert:
+
+   - the accent stays lime. It is the brand, it reads on both grounds, and a
+     theme that changed its accent would be a different design rather than a
+     dark version of this one.
+   - the shadows go nearly black. Forest-tinted shadows are invisible against a
+     forest ground, which is what makes most dark themes look flat.
+   ------------------------------------------------------------------------- */
+:root[data-theme="forest"] {
+  --color-void: #12211a;          /* the page ground */
+  --color-graphite: #0d1913;      /* deeper still, for wells and gradients */
+  --color-panel: #1b342b;         /* cards and elevated panels */
+  --color-panel-raised: #24463a;  /* the same surface, one step up, for hover */
+  /* Measured on the surface it is hardest on, which is a card and not the page
+     ground: 4.84:1 on --color-panel, 6.05:1 on the ground. */
+  --color-slate-rise: #8ea095;
+  --color-hairline: rgba(255, 255, 255, 0.11);
+  --color-foreground: #f2efe6;    /* paper — primary text */
+  --color-muted: #b3c1b8;         /* secondary copy — 8.6:1 */
+  --color-lumen: #ffffff;         /* the strongest ink */
+
+  --color-on-inverse: #1a2a22;    /* on the accent, and on any light chip */
+  --color-on-inverse-muted: #4c5a51;
+  --color-hairline-inverse: rgba(26, 42, 34, 0.14);
+
+  --alpha-hairline: rgba(255, 255, 255, 0.10);
+  --alpha-hairline-strong: rgba(255, 255, 255, 0.18);
+  --alpha-foreground-66: rgba(242, 239, 230, 0.66);
+  --alpha-foreground-12: rgba(242, 239, 230, 0.14);
+  --alpha-foreground-0: rgba(242, 239, 230, 0);
+
+  --surface-gradient: linear-gradient(180deg, #1f3b31 0%, #1a3128 100%);
+  --surface-gradient-soft: linear-gradient(180deg, #16281f 0%, #12211a 100%);
+  --surface-panel-gradient: linear-gradient(180deg, #1f3b31 0%, #182e26 100%);
+
+  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.30),
+                 0 10px 30px -18px rgba(0, 0, 0, 0.70);
+  --shadow-raised: 0 2px 0 rgba(0, 0, 0, 0.35),
+                   0 24px 48px -24px rgba(0, 0, 0, 0.80);
+  --focus-ring: 0 0 0 2px var(--color-void), 0 0 0 4px var(--color-accent);
+}
+
+:root[data-theme="forest"] { color-scheme: dark; }
+
+/* -------------------------------------------------------------------------
    Base
    ------------------------------------------------------------------------- */
 *,

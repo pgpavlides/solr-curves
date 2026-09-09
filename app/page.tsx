@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 import Icon, { type IconName } from "@/components/Icon";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -118,6 +119,7 @@ const doors: Door[] = [
 export default function Home() {
   return (
     <div className="home">
+      <ThemeToggle className="home-theme" />
       <div className="home-inner">
         <header className="home-head">
           <span className="home-mark">
