@@ -36,14 +36,13 @@ export default function Keybinding() {
         <span className="doc-eyebrow">Keybinding</span>
         <h1>Four axes, and nowhere obvious to put them.</h1>
         <p className="doc-lede">
-          Collective, pitch, roll and yaw all have to go somewhere, and there
-          are only so many places. These are the arrangements people actually
-          fly. Pitch is on the mouse&rsquo;s vertical axis in every layout that
-          uses the mouse at all — nobody argues about that one — so the whole
-          question comes down to what <strong>horizontal</strong> does:{" "}
-          <strong>roll</strong> banks the aircraft like every other shooter,{" "}
-          <strong>yaw</strong> aims the nose like a rifle. Or you take the mouse
-          out of it entirely and fly on keys.
+          It does not matter which of these you pick. What matters is that one
+          of them feels natural under your hands — so try a few, keep the one
+          you stop having to think about, and then{" "}
+          <strong>go into training and fly it</strong>. That is the part people
+          skip, and it is the only part that makes anyone good. An hour in
+          training will do more for you than any layout on this page. Nothing
+          here flies the aircraft for you.
         </p>
         <p className="doc-count">
           {layoutCount} layouts · {seenCount} caught on camera
