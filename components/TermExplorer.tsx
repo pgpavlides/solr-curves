@@ -1,21 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { GROUPS, termId, type Group, type Term } from "@/data/glossary";
-import type { Control } from "@/data/controls";
+import { usedGroups, type Entry, type Group } from "@/data/glossary";
 
 /*
-  The terminology page, made findable.
+  The terminology page, on one screen.
 
-  Thirty definitions in a single column is six thousand pixels of scrolling and
-  no way to answer the only question anyone brings to a glossary: "what does
-  this one word mean?" So the list filters as you type, and every term has its
-  own anchor so a word can be linked to directly.
+  It used to be a single column: every definition end to end, six thousand
+  pixels of scrolling, and the answer to "what does this one word mean?"
+  somewhere in the middle of it. Now the page never scrolls: cards pick a
+  section, a list picks a word, and the definition sits beside it — three panes
+  inside one viewport, and only the two inner panes move.
 
-  This is a client component, but it still renders on the server with the full,
-  unfiltered list — the definitions are in the HTML for crawlers and for anyone
-  who arrives at /terminology/#crab before the JS lands.
+  Two things survive from the old page and are worth keeping in mind before
+  changing anything here:
+
+  1. EVERY definition is in the HTML, always. Only the selected one is visible,
+     but the rest are rendered and hidden rather than left unmounted, so a
+     crawler and anyone landing on /terminology/#crab before the JS runs still
+     get the words. Do not swap this for conditional rendering.
+
+  2. Every entry keeps its own anchor. Selecting one rewrites the hash with
+     replaceState, so a link to a word can still be copied out of the address
+     bar and still lands on it.
 */
 
 /** Definitions carry markup, so match against the text with the tags removed. */
@@ -29,16 +37,88 @@ function matches(hay: string[], q: string) {
   return needle.split(/\s+/).every((w) => text.includes(w));
 }
 
-export default function TermExplorer({
-  controls,
-  terms,
-}: {
-  controls: Control[];
-  terms: Term[];
-}) {
+const haystack = (e: Entry) => [
+  e.name,
+  e.tag ?? "",
+  ...e.body.map(plain),
+  plain(e.note ?? ""),
+  plain(e.inGame ?? ""),
+];
+
+export default function TermExplorer({ entries }: { entries: Entry[] }) {
   const [q, setQ] = useState("");
-  const [group, setGroup] = useState<Group | null>(null);
+  const [group, setGroup] = useState<Group>(usedGroups[0]);
+  const [id, setId] = useState(entries[0].id);
   const input = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const hits = useMemo(
+    () => entries.filter((e) => matches(haystack(e), q)),
+    [entries, q]
+  );
+
+  /*
+    A search looks across every section, because the whole point of typing is
+    that you do not know which section the word is in. Without a search the
+    list is just the selected section.
+  */
+  const searching = q.trim() !== "";
+  const list = useMemo(
+    () => (searching ? hits : entries.filter((e) => e.group === group)),
+    [searching, hits, entries, group]
+  );
+
+  const counts = useMemo(() => {
+    const m = new Map<Group, number>();
+    for (const g of usedGroups) m.set(g, 0);
+    for (const e of hits) m.set(e.group, (m.get(e.group) ?? 0) + 1);
+    return m;
+  }, [hits]);
+
+  const select = useCallback((next: string) => {
+    setId(next);
+    // replaceState, not a hash assignment: assigning would scroll the pane
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${next}`);
+    }
+  }, []);
+
+  const pickGroup = useCallback(
+    (g: Group) => {
+      setGroup(g);
+      setQ("");
+      const first = entries.find((e) => e.group === g);
+      if (first) select(first.id);
+    },
+    [entries, select]
+  );
+
+  // Keep the selection inside whatever the list currently shows.
+  useEffect(() => {
+    if (list.length && !list.some((e) => e.id === id)) select(list[0].id);
+  }, [list, id, select]);
+
+  /*
+    Deep link: /terminology/#crab opens on that word, in its section.
+
+    On `hashchange` as well as on mount. Without the listener the hash only
+    worked on a cold load — pasting /terminology/#crab into the bar of a page
+    that was already open changed the URL and nothing else, because a hash is a
+    same-document navigation and the mount effect never ran again.
+  */
+  useEffect(() => {
+    const fromHash = () => {
+      const hash = decodeURIComponent(window.location.hash.slice(1));
+      const hit = entries.find((e) => e.id === hash);
+      if (!hit) return;
+      setGroup(hit.group);
+      setId(hit.id);
+      setQ(""); // a linked word must be visible, and a stale search would hide it
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, [entries]);
 
   // "/" jumps to the search the way it does in every other reference tool.
   useEffect(() => {
@@ -57,66 +137,36 @@ export default function TermExplorer({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /*
-    Re-run the jump once the webfonts are in. The browser scrolls to the hash
-    against fallback-font metrics, and on a narrow screen the reflow when Inter
-    and Space Grotesk land moves the target far enough that it ends up off
-    screen — measured at 390px wide, /terminology/#crab finished 220px above
-    the viewport. scrollIntoView honours the scroll-margin-top set in doc.css,
-    so this lands it under the bars rather than behind them.
-  */
-  useEffect(() => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
-    if (!id) return;
-    const settle = () => document.getElementById(id)?.scrollIntoView();
-    document.fonts?.ready.then(settle).catch(() => {});
-  }, []);
-
-  // `terms` arrives already deduplicated against the controls — see
-  // `listedTerms` in data/glossary.ts for why, and so that the count in the
-  // page header and the count in this toolbar are derived from one list.
-  const shownTerms = useMemo(
-    () =>
-      terms.filter(
-        (t) =>
-          (!group || t.group === group) &&
-          matches([t.term, plain(t.def), plain(t.note ?? "")], q)
-      ),
-    [terms, q, group]
+  /** Arrow keys walk the list, from the list or from the search box. */
+  const step = useCallback(
+    (delta: number) => {
+      const i = list.findIndex((e) => e.id === id);
+      const next = list[Math.min(Math.max(i + delta, 0), list.length - 1)];
+      if (next && next.id !== id) {
+        select(next.id);
+        listRef.current
+          ?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next.id)}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+      }
+    },
+    [list, id, select]
   );
 
-  /*
-    The four controls are a group of their own in the filter model even though
-    they are rendered long-form rather than as definitions — otherwise typing
-    "collective" would hide the fullest explanation of it on the page.
-  */
-  const controlsMatch = !group || group === "The controls";
-  const shownControls = useMemo(
-    () =>
-      controlsMatch
-        ? controls.filter((c) =>
-            matches(
-              [c.name, c.tag, ...c.real.map(plain), plain(c.inGame)],
-              q
-            )
-          )
-        : [],
-    [controls, q, controlsMatch]
-  );
+  const onListKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      step(e.key === "ArrowDown" ? 1 : -1);
+    }
+  };
 
-  const filtering = q.trim() !== "" || group !== null;
-  const total = shownControls.length + shownTerms.length;
-  const all = controls.length + terms.length;
-  const groupsInUse = GROUPS.filter(
-    (g) => g === "The controls" || terms.some((t) => t.group === g)
-  );
+  const active = entries.find((e) => e.id === id) ?? entries[0];
 
   return (
-    <>
-      <div className="term-bar">
-        <div className="field term-search">
+    <div className="tm-body">
+      <div className="tm-top">
+        <div className="field tm-search">
           <div className="input-wrap">
-            <span className="term-search-icon" aria-hidden="true">
+            <span className="tm-search-icon" aria-hidden="true">
               <Icon name="search" size={16} />
             </span>
             <input
@@ -124,137 +174,117 @@ export default function TermExplorer({
               className="input"
               type="search"
               value={q}
-              placeholder="Search the terminology…"
+              placeholder="Search every word…"
               aria-label="Search the terminology"
               onChange={(e) => setQ(e.target.value)}
+              onKeyDown={onListKey}
             />
-            <kbd className="term-search-key" aria-hidden="true">
+            <kbd className="tm-search-key" aria-hidden="true">
               /
             </kbd>
           </div>
         </div>
+        <p className="tm-count" aria-live="polite">
+          {searching ? `${hits.length} of ${entries.length}` : `${entries.length} terms`}
+        </p>
+      </div>
 
-        <div className="term-chips" role="group" aria-label="Filter by group">
-          <button
-            type="button"
-            className={`tab${group === null ? " is-active" : ""}`}
-            onClick={() => setGroup(null)}
-          >
-            All
-          </button>
-          {groupsInUse.map((g) => (
+      {/* The sections. Small cards, and the whole point of the layout. */}
+      <div className="tm-cards" role="tablist" aria-label="Sections">
+        {usedGroups.map((g) => {
+          const n = counts.get(g) ?? 0;
+          return (
             <button
               key={g}
               type="button"
-              className={`tab${group === g ? " is-active" : ""}`}
-              aria-pressed={group === g}
-              onClick={() => setGroup((cur) => (cur === g ? null : g))}
+              role="tab"
+              aria-selected={!searching && g === group}
+              className={`tm-card${!searching && g === group ? " is-active" : ""}${
+                searching && n === 0 ? " is-empty" : ""
+              }`}
+              onClick={() => pickGroup(g)}
             >
-              {g}
+              <span className="tm-card-name">{g}</span>
+              <span className="tm-card-n">
+                {searching ? `${n} match${n === 1 ? "" : "es"}` : `${entries.filter((e) => e.group === g).length} terms`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="tm-panes">
+        <div
+          className="tm-list"
+          ref={listRef}
+          role="listbox"
+          tabIndex={0}
+          aria-label={searching ? "Search results" : group}
+          onKeyDown={onListKey}
+        >
+          {list.length === 0 && (
+            <p className="tm-empty">
+              Nothing matches <strong>{q.trim()}</strong>.
+            </p>
+          )}
+          {list.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              role="option"
+              data-id={e.id}
+              aria-selected={e.id === id}
+              className={`tm-item${e.id === id ? " is-active" : ""}`}
+              onClick={() => select(e.id)}
+            >
+              <span className="tm-item-name">{e.name}</span>
+              {searching && <span className="tm-item-group">{e.group}</span>}
             </button>
           ))}
         </div>
 
-        <p className="term-count" aria-live="polite">
-          {filtering ? `${total} of ${all} shown` : `${all} terms`}
-        </p>
-      </div>
-
-      {total === 0 && (
-        <p className="term-empty">
-          Nothing matches <strong>{q.trim()}</strong>
-          {group ? ` in ${group}` : ""}.{" "}
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost"
-            onClick={() => {
-              setQ("");
-              setGroup(null);
-            }}
-          >
-            Clear the filter
-          </button>
-        </p>
-      )}
-
-      {/* The four controls get the long form; everything else is a definition. */}
-      {shownControls.length > 0 && (
-        <section className="doc-section" id="controls">
-          <h2>The four controls</h2>
-          <p className="doc-p">
-            A helicopter has one engine driving one rotor, and four ways to
-            point the force it makes. Every other word on this page is really a
-            statement about one of them.
-          </p>
-          <dl className="defs controls-list">
-            {shownControls.map((c) => (
-              <div key={c.name} id={termId(c.name)}>
-                <dt>
-                  <a className="term-anchor" href={`#${termId(c.name)}`}>
-                    {c.name}
-                    <span className="term-hash" aria-hidden="true">
-                      #
-                    </span>
-                  </a>
-                  <span className="tag">{c.tag}</span>
-                </dt>
-                <dd>
-                  {c.real.map((p, i) => (
-                    <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
-                  ))}
-                  <p className="ingame">
+        {/*
+          Every definition is rendered; all but one are hidden. See the note at
+          the top of this file — this is what keeps the page readable without
+          JavaScript and indexable by anything that does not run it.
+        */}
+        <div className="tm-detail">
+          {entries.map((e) => (
+            <article
+              key={e.id}
+              id={e.id}
+              className="tm-def"
+              hidden={e.id !== active.id}
+            >
+              <header className="tm-def-head">
+                <span className="tm-def-group">{e.group}</span>
+                <h2>{e.name}</h2>
+                {e.tag && <span className="tag">{e.tag}</span>}
+              </header>
+              <div className="tm-def-body">
+                {e.body.map((p, i) => (
+                  <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
+                ))}
+                {e.inGame && (
+                  <p className="tm-ingame">
                     <b>In WARDOGS:</b>{" "}
-                    <span dangerouslySetInnerHTML={{ __html: c.inGame }} />
+                    <span dangerouslySetInnerHTML={{ __html: e.inGame }} />
                   </p>
-                </dd>
+                )}
+                {e.note && (
+                  <p
+                    className="tm-note"
+                    dangerouslySetInnerHTML={{ __html: e.note }}
+                  />
+                )}
               </div>
-            ))}
-          </dl>
-        </section>
-      )}
-
-      {GROUPS.map((g) => {
-        /*
-          "The controls" is deliberately skipped here: collective, cyclic and
-          yaw are covered at full length in the section above, and printing
-          them twice on one page is how a reference stops being trusted.
-        */
-        if (g === "The controls") return null;
-        const inGroup = shownTerms.filter((t) => t.group === g);
-        if (!inGroup.length) return null;
-        return (
-          <section
-            key={g}
-            className="doc-section"
-            id={g.toLowerCase().replace(/\s+/g, "-")}
-          >
-            <h2>{g}</h2>
-            <dl className="term-grid">
-              {inGroup.map((t) => (
-                <div key={t.term} className="term-item" id={termId(t.term)}>
-                  <dt>
-                    <a className="term-anchor" href={`#${termId(t.term)}`}>
-                      {t.term}
-                      <span className="term-hash" aria-hidden="true">
-                        #
-                      </span>
-                    </a>
-                  </dt>
-                  <dd>
-                    <span dangerouslySetInnerHTML={{ __html: t.def }} />
-                    {t.note && (
-                      <span
-                        className="term-note"
-                        dangerouslySetInnerHTML={{ __html: t.note }}
-                      />
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        );
-      })}
-    </>
+              <a className="tm-def-link" href={`#${e.id}`}>
+                /terminology/#{e.id}
+              </a>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -92,6 +92,12 @@ export const glossary: Term[] = [
     def: "Speed resists a change of direction. Rule of thumb: <strong>double the speed and the turn radius roughly quadruples.</strong>",
   },
   {
+    term: "Skid / the skids",
+    group: "Attitude and forces",
+    def: "A <strong>skid</strong> is a flight condition: the tail is swinging out and the aircraft is sliding sideways through the air rather than flying straight. <strong>The skids</strong> are the landing gear you park on.",
+    note: "One word, two meanings, and they turn up in the same sentence on approach. Context is the only thing that separates them.",
+  },
+  {
     term: "Crab",
     group: "Attitude and forces",
     def: "Flying with the nose pointed somewhere other than the direction of travel. A large deliberate crab is what makes a J-hook brake so hard — the fuselage is presented to the airflow.",
@@ -227,5 +233,53 @@ export const listedTerms = glossary.filter(
   (t) => t.group !== "The controls" && !controlNames.has(t.term.toLowerCase())
 );
 
+/*
+  One shape for everything the terminology page shows.
+
+  The four controls carry two paragraphs and a "in WARDOGS" line; a glossary
+  term carries one definition and sometimes a note. The page renders them side
+  by side, so flattening both into a single `Entry` here is what stops the list
+  pane, the detail pane and the header count from each having their own idea of
+  what is on the page.
+*/
+export interface Entry {
+  id: string;
+  name: string;
+  group: Group;
+  /** short label beside the name, when there is one */
+  tag?: string;
+  /** the definition, as one or more paragraphs of HTML */
+  body: string[];
+  /** how the game names or binds it — controls only */
+  inGame?: string;
+  /** the word people get wrong, or the trap in it */
+  note?: string;
+}
+
+export const entries: Entry[] = [
+  ...controls.map(
+    (c): Entry => ({
+      id: termId(c.name),
+      name: c.name,
+      group: "The controls",
+      tag: c.tag,
+      body: c.real,
+      inGame: c.inGame,
+    })
+  ),
+  ...listedTerms.map(
+    (t): Entry => ({
+      id: termId(t.term),
+      name: t.term,
+      group: t.group,
+      body: [t.def],
+      note: t.note,
+    })
+  ),
+].sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group));
+
+/** The groups that actually have entries, in the canonical order. */
+export const usedGroups = GROUPS.filter((g) => entries.some((e) => e.group === g));
+
 /** Everything the terminology page actually shows: controls + listed terms. */
-export const termCount = controls.length + listedTerms.length;
+export const termCount = entries.length;

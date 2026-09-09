@@ -195,4 +195,12 @@ export const videos: Video[] = [
     covers: "Failure reel",
     transcribed: false,
   },
+  {
+    id: "wtfImr6eKAc",
+    channel: "Wardogs Pilot",
+    title: "WARDOGS Head Tracking Setup | Full TrackIR Guide",
+    length: "—",
+    covers: "Head tracking · TrackIR",
+    transcribed: false,
+  },
 ];

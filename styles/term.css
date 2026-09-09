@@ -1,0 +1,352 @@
+/* =========================================================================
+   Terminology — the whole glossary on one screen.
+
+   This page never scrolls. It is a fixed-height grid: a compact bar, the
+   search line, a row of section cards, and the two panes taking every pixel
+   that is left. Only those two panes move, and each one is short enough that
+   most words need no scrolling at all.
+
+   The same rules as home.css apply and for the same reasons:
+
+   - system.css sets `body { min-height: 100vh }`, and on a phone 100vh is the
+     LARGE viewport — taller than what you can see — which is enough on its own
+     to make a "fixed" page scroll by the height of the URL bar. Undo it here.
+   - Every media-query override MUST sit below the base rule it overrides.
+     Media queries carry no extra specificity, so an override placed above the
+     base rule silently loses on source order.
+
+   Same tokens as everywhere else, no hue: the selected card and the selected
+   word are simply the brightest things on the page.
+   Imported by globals.css; never imported anywhere else.
+   ========================================================================= */
+
+body:has(.tm) {
+  min-height: 0;
+  height: 100svh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.tm {
+  height: 100svh;
+  overflow: hidden;
+  display: grid;
+  /* bar · everything else */
+  grid-template-rows: auto minmax(0, 1fr);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(71, 81, 92, 0.18) 0%, rgba(27, 28, 34, 0) 60%),
+    var(--color-void);
+}
+
+@supports not (height: 100svh) {
+  body:has(.tm) { height: 100vh; }
+  .tm { height: 100vh; }
+}
+
+/* ------------------------------------------------------------------- bar */
+
+.tm-bar {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 40px);
+  padding: clamp(10px, 1.6vh, 16px) clamp(16px, 3vw, 32px);
+  border-bottom: 1px solid var(--color-hairline);
+  min-width: 0;
+}
+
+.tm-lede {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  max-width: 78ch;
+  color: var(--color-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+}
+.tm-lede a { color: var(--color-lumen); text-decoration: none; border-bottom: 1px solid var(--color-hairline); }
+.tm-lede a:hover { border-bottom-color: var(--color-slate-rise); }
+
+.tm-nav { display: flex; gap: var(--space-2xs); flex: none; }
+
+/* ------------------------------------------------------------------ body */
+
+.tm-body {
+  min-height: 0;
+  display: grid;
+  /* search · cards · panes */
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: clamp(10px, 1.8vh, 20px);
+  padding: clamp(12px, 2.2vh, 24px) clamp(16px, 3vw, 32px) clamp(14px, 2.4vh, 26px);
+  width: 100%;
+  max-width: 1500px;
+  margin-inline: auto;
+}
+
+.tm-top { display: flex; align-items: center; gap: var(--space-sm); }
+.tm-search { flex: 1 1 auto; min-width: 0; max-width: 460px; }
+.tm-search .input-wrap { display: flex; align-items: center; position: relative; }
+.tm-search .input { padding-left: 40px; padding-right: 40px; }
+/* the magnifier paints under the input's own fill without this */
+.tm-search-icon {
+  position: absolute;
+  left: 12px;
+  z-index: 1;
+  display: flex;
+  color: var(--color-slate-rise);
+  pointer-events: none;
+}
+.tm-search-key { position: absolute; right: 10px; z-index: 1; opacity: 0.6; }
+@media (pointer: coarse) { .tm-search-key { display: none; } }
+
+.tm-count {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.06em;
+  color: var(--color-slate-rise);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------- the cards */
+
+.tm-cards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: clamp(6px, 0.8vw, 12px);
+  min-width: 0;
+}
+
+.tm-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  padding: clamp(9px, 1.5vh, 15px) clamp(10px, 1vw, 16px);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+/* the 70%-wide horizon line, as on every other surface in the system */
+.tm-card::after {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--alpha-foreground-0), var(--alpha-foreground-12), var(--alpha-foreground-0));
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.tm-card:hover { background: var(--color-panel-raised); color: var(--color-lumen); }
+.tm-card:hover::after { opacity: 1; }
+
+.tm-card.is-active {
+  background: var(--color-panel-raised);
+  border-color: var(--color-slate-rise);
+  color: var(--color-foreground);
+}
+.tm-card.is-active::after { opacity: 1; }
+
+.tm-card.is-empty { opacity: 0.4; }
+
+.tm-card-name {
+  font-family: var(--font-display);
+  font-size: var(--text-body-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.25;
+  color: inherit;
+}
+.tm-card-n {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--color-slate-rise);
+}
+
+/* ---------------------------------------------------------- the panes */
+
+/*
+  The two panes are one surface, not two floating columns.
+
+  Most entries are shorter than the space available, so whatever holds them is
+  going to have empty room in it at the bottom. Inside a panel that reads as a
+  panel with room to spare; as bare page background under a full-height rule it
+  read as the layout having failed to fill.
+*/
+.tm-panes {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 0.85fr) minmax(0, 3fr);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  overflow: hidden;
+}
+
+.tm-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2xs);
+  border-right: 1px solid var(--color-hairline);
+  background: var(--color-void);
+}
+.tm-list:focus-visible { outline: 1px solid var(--color-slate-rise); outline-offset: 2px; }
+
+.tm-item {
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: grid;
+  gap: 1px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.tm-item:hover { background: var(--color-panel-raised); color: var(--color-lumen); }
+.tm-item.is-active { background: var(--color-panel-raised); color: var(--color-foreground); }
+
+.tm-item-name { font-size: var(--text-body-sm); line-height: 1.3; }
+.tm-item-group {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-rise);
+}
+
+.tm-empty { margin: 8px 10px; color: var(--color-muted); font-size: var(--text-body-sm); }
+.tm-empty strong { color: var(--color-foreground); }
+
+/* --------------------------------------------------------- the detail */
+
+.tm-detail {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(14px, 2.4vh, 26px) clamp(16px, 2.2vw, 34px);
+}
+
+.tm-def-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2xs) var(--space-sm); }
+.tm-def-group {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-slate-rise);
+  flex-basis: 100%;
+}
+.tm-def-head h2 {
+  margin: 2px 0 0;
+  font-size: clamp(20px, 3.4vh, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-foreground);
+}
+.tm-def-head .tag {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-sm);
+  letter-spacing: 0.06em;
+  color: var(--color-slate-rise);
+}
+
+.tm-def-body { margin-top: clamp(8px, 1.6vh, 16px); max-width: 68ch; }
+.tm-def-body p {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-muted);
+  font-size: var(--text-body-md);
+  line-height: 1.62;
+}
+.tm-def-body strong { color: var(--color-foreground); font-weight: var(--weight-semibold); }
+.tm-def-body em { font-style: normal; color: var(--color-lumen); }
+
+.tm-ingame {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+}
+.tm-ingame b { color: var(--color-lumen); font-weight: var(--weight-medium); }
+
+.tm-note {
+  padding-left: var(--space-sm);
+  border-left: 1px solid var(--color-slate-rise);
+  color: var(--color-muted);
+}
+.tm-note strong { color: var(--color-lumen); font-weight: var(--weight-medium); }
+
+.tm-def-link {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-rise);
+  text-decoration: none;
+}
+.tm-def-link:hover { color: var(--color-muted); }
+
+/* =========================================================================
+   Narrower screens. These override the rules above, so they must stay below
+   them — a media query adds no specificity and would otherwise lose.
+   ========================================================================= */
+
+/* The lede is the first thing to go: the nav and the mark are navigation. */
+@media (max-width: 1100px) {
+  .tm-lede { display: none; }
+  .tm-panes { grid-template-columns: minmax(190px, 1fr) minmax(0, 2fr); }
+}
+
+/* Five cards across stops fitting long before the panes do. */
+@media (max-width: 860px) {
+  .tm-cards {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .tm-card-n { display: none; }
+}
+
+/*
+  Below this the two panes cannot both be useful side by side, so the list
+  becomes a short scroller above the definition. The page still does not
+  scroll — the panes still do.
+*/
+@media (max-width: 620px) {
+  .tm-panes {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(72px, 24%) minmax(0, 1fr);
+  }
+  .tm-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-hairline);
+  }
+  /*
+    At 390px the mark, the wordmark and three buttons do not fit on one line,
+    and the last button was being clipped off the right edge. The logo still
+    goes home, so the word is what gives way.
+  */
+  .tm-bar { gap: var(--space-sm); }
+  .tm-bar .brand-word,
+  .tm-bar .brand-sub { display: none; }
+  .tm-nav { margin-left: auto; }
+  .tm-def-body { font-size: var(--text-body-sm); }
+}
+
+/* A short laptop is the case that actually overflows; trim the fixed parts. */
+@media (max-height: 720px) {
+  .tm-lede { display: none; }
+  .tm-def-head h2 { font-size: 20px; }
+  .tm-def-body p { margin-bottom: var(--space-xs); line-height: 1.5; }
+}
