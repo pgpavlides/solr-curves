@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
   Covers are real first pages, rendered by scripts/make-book-covers.mjs, not
   stock imagery — a shelf of actual documents. Each one links straight to the
-  PDF on books.wardogspilot.com; they are far too large to be site assets.
+  PDF on books.broccolipilot.com; they are far too large to be site assets.
 
   The size is printed next to every link on purpose. One of these is 171 MB,
   and a reader on a phone deserves to know that before tapping it.

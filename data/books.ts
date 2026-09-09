@@ -7,7 +7,7 @@
   from disk. Two of the files were named after documents they were not.
 
   The PDFs are 252 MB and are not in this repo. They live in the R2 bucket
-  `wardogspilot-books` behind books.wardogspilot.com — Cloudflare Pages refuses
+  `wardogspilot-books` behind books.broccolipilot.com — Cloudflare Pages refuses
   any asset over 25 MB and the Helicopter Flying Handbook alone is 171 MB.
   Upload with scripts/upload-books.mjs, covers with scripts/make-book-covers.mjs.
   R2 answers range requests, so opening page one of the big handbook does not
@@ -20,7 +20,7 @@
   removing one is a single line here and a delete in the bucket.
 */
 
-export const BOOKS_BASE = "https://books.wardogspilot.com";
+export const BOOKS_BASE = "https://books.broccolipilot.com";
 
 export interface Book {
   /** the object key in the bucket, and the cover filename, without extension */

@@ -4,7 +4,7 @@
   The PDFs are 252 MB across eight files and are NOT in this repo, and cannot
   be: Cloudflare Pages refuses any asset over 25 MB, and the Helicopter Flying
   Handbook alone is 171 MB. They live in the `wardogspilot-books` bucket behind
-  books.wardogspilot.com and are fetched by the browser at click time.
+  books.broccolipilot.com and are fetched by the browser at click time.
 
   Auth is wrangler's own OAuth token, renewed on a 401 the same way
   scripts/upload-tiles.mjs does it — see the long note in that file for why an
@@ -114,5 +114,5 @@ for (const g of good) {
     }
   }
 }
-console.log(`\n${sent}/${good.length} uploaded to https://books.wardogspilot.com/`);
+console.log(`\n${sent}/${good.length} uploaded to https://books.broccolipilot.com/`);
 process.exit(sent === good.length ? 0 : 1);

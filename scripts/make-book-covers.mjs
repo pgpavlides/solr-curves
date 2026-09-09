@@ -2,7 +2,7 @@
   Render a cover image for each book in public/books/.
 
   Drawn with pdf.js in headless Chrome, reading the PDFs straight off
-  books.wardogspilot.com. That matters for the 171 MB handbook: R2 answers
+  books.broccolipilot.com. That matters for the 171 MB handbook: R2 answers
   range requests, so pdf.js pulls the few hundred KB it needs for page one
   instead of the whole file.
 
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "public", "books");
 const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const BASE = "https://books.wardogspilot.com";
+const BASE = "https://books.broccolipilot.com";
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174";
 
 const KEYS = [

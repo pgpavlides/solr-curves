@@ -46,7 +46,7 @@ if (!value || local) {
       "  .env.production pins the public host. If .env.local is overriding it for",
       "  a deploy build, move it aside or run:",
       "",
-      "    NEXT_PUBLIC_TILE_BASE=https://tiles.wardogspilot.com npm run build",
+      "    NEXT_PUBLIC_TILE_BASE=https://tiles.broccolipilot.com npm run build",
       "",
       "  To build without tiles on purpose: SKIP_TILE_CHECK=1 npm run build",
       "",
