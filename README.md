@@ -396,17 +396,19 @@ recreating the project and re-pointing every domain for nothing.
 | `tiles.broccolipilot.com` | R2 bucket `wardogspilot-tiles` — 27,306 map tiles |
 | `books.broccolipilot.com` | R2 bucket `wardogspilot-books` — eight PDFs, 252 MB |
 | `wardogspilot.com`, `www` | **301 to the new domain**, path and query intact |
-| `tiles.` / `books.wardogspilot.com` | still serve, deliberately |
 
 The buckets kept their old names for the same reason as the project: renaming a
 bucket means copying every object to change a label nobody sees.
 
 The old apex redirects through a zone-level Single Redirect rule rather than a
 Worker or a parked page, so it costs nothing and runs at the edge. Its
-expression matches the apex and `www` **only** — the `tiles.` and `books.`
-subdomains on the old zone are excluded on purpose, because a browser that
-cached the pre-rename bundle is still asking them for tiles. They can be
-removed once that is no longer true.
+expression matches the apex and `www` only, which is now the whole of that
+zone: the `tiles.` and `books.` subdomains have been detached and their DNS
+records went with them. Detaching a custom domain does not touch the bucket —
+both still hold every object, reachable on the new hostnames.
+
+A browser still holding the pre-rename bundle will now fail to fetch tiles
+rather than being redirected. That was the trade, taken deliberately.
 
 Cloudflare assigns a nameserver pair per zone on the Free plan, at random. The
 new zone got `alexandra`/`brian` while every other zone on the account uses
