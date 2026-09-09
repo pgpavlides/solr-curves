@@ -177,6 +177,15 @@
 .doc-main.is-wide,
 .doc-foot.is-wide { max-width: 1180px; }
 
+/*
+  Four cards do not fit a 1180px reading shell — they come out at 255px, which
+  is too narrow for a thumbnail with a title and a video list under it. This
+  page opts into more room on its own, keyed off the grid it contains, so the
+  other wide pages keep the measure they were designed at.
+*/
+body:has(.guide-grid) .doc-main.is-wide,
+body:has(.guide-grid) .doc-foot.is-wide { max-width: 1520px; }
+
 .doc-count {
   font-family: var(--font-mono);
   font-size: var(--text-label-sm);
@@ -186,13 +195,18 @@
   margin: var(--space-md) 0 0;
 }
 
+/*
+  Four across, fixed rather than auto-fill: the point is the shape of the
+  shelf, and auto-fill gave three columns at most desk sizes and four only on
+  a very wide monitor. The featured card still spans the whole row.
+*/
 .guide-grid {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: var(--space-xl);
-  grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr));
+  gap: var(--space-lg);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .guide-item { display: flex; flex-direction: column; min-width: 0; }
 
@@ -362,7 +376,13 @@
 @media (max-width: 720px) {
   .credit.has-thumb { grid-template-columns: 1fr; }
 }
-@media (max-width: 460px) {
+@media (max-width: 1320px) {
+  .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 980px) {
+  .guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
   .guide-grid { grid-template-columns: 1fr; }
 }
 
