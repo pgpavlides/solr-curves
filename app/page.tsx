@@ -4,7 +4,7 @@ import Icon, { type IconName } from "@/components/Icon";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { maneuvers } from "@/data/maneuvers";
-import { guides } from "@/data/guides";
+import { bookCount } from "@/data/books";
 import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
@@ -82,8 +82,8 @@ const doors: Door[] = [
     icon: "book",
     title: "Books",
     kicker: "Read it",
-    body: "The write-ups: settings, numbers and technique.",
-    stat: `${guides.length} write-ups`,
+    body: "The real manuals, from the FAA handbook down.",
+    stat: `${bookCount} books`,
   },
   {
     href: "/terminology/",

@@ -1,93 +1,97 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import DocShell from "@/components/DocShell";
-import YouTubeThumb from "@/components/YouTubeThumb";
 import { ogCard } from "@/lib/og";
-import { guides, videoUrl } from "@/data/guides";
+import {
+  books,
+  bookCount,
+  bookUrl,
+  coverUrl,
+  readableSize,
+  totalPages,
+} from "@/data/books";
 
 export const metadata: Metadata = {
   title: "Books — wardogspilot",
   description:
-    "The written material: settings, numbers and technique from the community, written up in full with the author credited and the original one click away.",
-  openGraph: ogCard("guides", "The wardogspilot written guides"),
-  twitter: ogCard("guides", "The wardogspilot written guides"),
+    "The rotary-wing library: the FAA Helicopter Flying Handbook, the Robinson R22 and R44 flight manuals, ICAO radiotelephony and more — the real manuals, free to read.",
+  openGraph: ogCard("guides", "The wardogspilot reference library"),
+  twitter: ogCard("guides", "The wardogspilot reference library"),
 };
 
 /*
-  The reading section.
+  The library.
 
-  These write-ups existed but had nowhere to be found: the old /guides/ index
-  was deleted when the videos page absorbed it, which left four finished
-  articles reachable only from a single link buried in the terminology page.
-  This is their index.
+  Covers are real first pages, rendered by scripts/make-book-covers.mjs, not
+  stock imagery — a shelf of actual documents. Each one links straight to the
+  PDF on books.wardogspilot.com; they are far too large to be site assets.
 
-  Cards are the same markup as /videos/ on purpose — one set of classes for
-  every gallery on the site, so the two cannot drift apart.
-
-  Every entry credits its source in the card itself, not just inside the
-  article. A write-up here is someone else's work in our words, and the link
-  out to the original is part of the entry rather than a footnote to it.
+  The size is printed next to every link on purpose. One of these is 171 MB,
+  and a reader on a phone deserves to know that before tapping it.
 */
 export default function Books() {
-  const channels = new Set(guides.map((g) => g.source.channel));
-
   return (
     <DocShell wide crumb={{ href: "/", label: "Home" }}>
       <header className="doc-head">
         <span className="doc-eyebrow">Books</span>
-        <h1>The things worth reading twice.</h1>
+        <h1>The real manuals.</h1>
         <p className="doc-lede">
-          A video is the right way to be shown something and the wrong way to
-          check a number you half-remember. These are the write-ups: the
-          settings, the figures and the technique in text you can scan, each one
-          from a creator&rsquo;s work, credited, with the original a click away.
+          WARDOGS models a helicopter, and helicopters have a century of
+          literature behind them. These are the actual documents — the FAA
+          handbook the whole subject rests on, two flight manuals for aircraft
+          you could go and fly tomorrow, and the radio discipline that goes with
+          them. None of it mentions the game. All of it explains it.
         </p>
         <p className="doc-count">
-          {guides.length} write-ups · from {channels.size}{" "}
-          {channels.size === 1 ? "creator" : "creators"}
+          {bookCount} books · {totalPages.toLocaleString()} pages · free to read
         </p>
       </header>
 
-      <ul className="guide-grid">
-        {guides.map((g, i) => (
-          <li key={g.slug} className="guide-item">
-            <Link className="guide-card" href={`/guides/${g.slug}/`}>
-              <YouTubeThumb
-                videoId={g.source.videoId}
-                alt={`Thumbnail from ${g.source.title} by ${g.source.channel}`}
-                duration={g.source.duration}
-                eager={i < 3}
-              />
-              <span className="guide-body">
-                <span className="guide-kicker">{g.kicker}</span>
-                <span className="guide-title">{g.title}</span>
-                <span className="guide-sum">{g.summary}</span>
-                <span className="card-meta">
-                  {g.tags.map((t) => (
-                    <span key={t} className="chip">
-                      {t}
-                    </span>
-                  ))}
+      <ul className="book-grid">
+        {books.map((b, i) => (
+          <li key={b.key} className="book-item">
+            <a className="book-card" href={bookUrl(b)} target="_blank" rel="noopener">
+              <span className="book-cover">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverUrl(b)}
+                  alt={`Cover of ${b.title}`}
+                  loading={i < 4 ? "eager" : "lazy"}
+                  width={620}
+                  height={800}
+                />
+              </span>
+              <span className="book-body">
+                <span className="book-pub">{b.publisher}</span>
+                <span className="book-title">{b.title}</span>
+                {b.designation && (
+                  <span className="book-desig">{b.designation}</span>
+                )}
+                <span className="book-sum">{b.blurb}</span>
+                <span className="book-foot">
+                  <span className="chip">{b.pages} pages</span>
+                  <span className="chip">{readableSize(b.bytes)}</span>
+                  {b.year && <span className="chip">{b.year}</span>}
+                  {b.rights === "public-domain" && (
+                    <span className="chip is-open">Public domain</span>
+                  )}
                 </span>
               </span>
-            </Link>
-
-            {/* Outside the card link, so the creator's own link is its own. */}
-            <p className="guide-credit">
-              <span className="guide-date">From</span>{" "}
-              <a href={g.source.channelUrl} rel="noopener" target="_blank">
-                {g.source.channel}
-              </a>
-              <span className="sep">·</span>
-              <a href={videoUrl(g.source.videoId)} rel="noopener" target="_blank">
-                {g.source.title}
-              </a>
-              <span className="sep">·</span>
-              <span className="guide-date">{g.source.published}</span>
-            </p>
+            </a>
           </li>
         ))}
       </ul>
+
+      <aside className="callout spaced">
+        <span className="callout-label">Where these come from</span>
+        <p>
+          The two FAA handbooks are works of the United States government and
+          carry no copyright — they are yours already. The rest remain the
+          property of the people who published them and are mirrored here so a
+          pilot can find them in one place. If you are one of those publishers
+          and would rather they were not, say so and they come down the same
+          day.
+        </p>
+      </aside>
     </DocShell>
   );
 }

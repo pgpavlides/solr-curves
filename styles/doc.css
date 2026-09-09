@@ -627,3 +627,116 @@
 .channel-videos { list-style: none; margin: 0; padding: 0; }
 .channel-videos > li + li { margin-top: var(--space-sm); }
 .channel-readup { color: var(--color-lumen) !important; }
+
+/* =========================================================================
+   The library at /books.
+
+   A shelf: the real first page of each document beside what it is. The cover
+   is the identifying mark, so it leads at a size you can actually read the
+   title off — these are documents, and a document you cannot recognise is a
+   filename with extra steps.
+   ========================================================================= */
+
+.book-grid {
+  list-style: none;
+  margin: var(--space-lg) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--space-md);
+}
+
+.book-item { min-width: 0; display: flex; }
+
+.book-card {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  color: inherit;
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.book-card:hover { background: var(--color-panel-raised); border-color: var(--color-slate-rise); }
+
+/* the 70%-wide horizon line, as on every other surface in the system */
+.book-card::after {
+  content: "";
+  position: absolute;
+  left: 15%; right: 15%; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--alpha-foreground-0), var(--alpha-foreground-12), var(--alpha-foreground-0));
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.book-card:hover::after { opacity: 1; }
+
+.book-cover {
+  display: block;
+  align-self: start;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-void);
+  border: 1px solid var(--color-hairline);
+  line-height: 0;
+}
+/* Pages are every shape from A4 portrait to a 4:3 slide; crop to one block so
+   the shelf reads as a shelf rather than a ragged pile. */
+.book-cover img {
+  width: 100%;
+  height: 172px;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.book-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.book-pub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-slate-rise);
+}
+.book-title {
+  font-family: var(--font-display);
+  font-size: var(--text-body-lg);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
+  color: var(--color-foreground);
+}
+.book-desig {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+.book-sum {
+  margin-top: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-body-sm);
+  line-height: 1.55;
+}
+.book-foot {
+  margin-top: auto;
+  padding-top: var(--space-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.book-foot .chip.is-open { color: var(--color-lumen); border-color: var(--color-slate-rise); }
+
+/* One column below this: 132px of cover plus a readable measure needs ~360px,
+   and the grid's minmax already folds there. This keeps the cover from
+   dominating what is left. */
+@media (max-width: 520px) {
+  .book-card { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-sm); }
+  .book-cover img { height: 128px; }
+}
