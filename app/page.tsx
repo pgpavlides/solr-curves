@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { maneuvers } from "@/data/maneuvers";
 import { bookCount } from "@/data/books";
-import { schemeCount } from "@/data/keybindings";
+import { layoutCount } from "@/data/keybindings";
 import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
@@ -91,8 +91,8 @@ const doors: Door[] = [
     icon: "keyboard",
     title: "Keybinding",
     kicker: "Bind it",
-    body: "How each creator actually binds the aircraft.",
-    stat: `${schemeCount} schemes`,
+    body: "Every sane way to bind the four axes.",
+    stat: `${layoutCount} layouts`,
   },
   {
     href: "/terminology/",

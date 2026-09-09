@@ -2,136 +2,149 @@ import type { Metadata } from "next";
 import DocShell from "@/components/DocShell";
 import { ogCard } from "@/lib/og";
 import {
-  schemes,
-  schemeCount,
-  readCount,
-  EVIDENCE_NOTE,
+  FAMILIES,
+  byFamily,
+  generalBinds,
+  layoutCount,
+  seenCount,
 } from "@/data/keybindings";
 
 export const metadata: Metadata = {
   title: "Keybinding — wardogspilot",
   description:
-    "How the WARDOGS helicopter community actually binds its controls: one scheme per creator, read off their own settings screens, with the timestamp so you can check it.",
-  openGraph: ogCard("guides", "WARDOGS helicopter keybindings, per creator"),
-  twitter: ogCard("guides", "WARDOGS helicopter keybindings, per creator"),
+    "Every sane way to bind a WARDOGS helicopter: mouse-roll, mouse-yaw, WASD and arrows, all-keyboard, HOTAS and controller — the full key table for each one, side by side.",
+  openGraph: ogCard("guides", "WARDOGS helicopter keybinding layouts"),
+  twitter: ogCard("guides", "WARDOGS helicopter keybinding layouts"),
 };
 
 const markUrl = (id: string, at: number) =>
   `https://www.youtube.com/watch?v=${id}&t=${at}s`;
 
 /*
-  One scheme per creator.
+  A catalogue, not a ranking.
 
-  The evidence chip on each card is the point of the page, not decoration.
-  "Read off the settings screen" and "he said so once" are different kinds of
-  claim, and a reader about to rebind their aircraft is entitled to know which
-  one they are looking at.
+  Every layout prints the same five rows in the same order so two of them can
+  be read against each other without hunting for the matching line. Where a
+  layout has actually been seen in someone's video it says so at the foot of
+  the card — that is evidence the thing is in real use, not the reason it is
+  on the page.
 */
 export default function Keybinding() {
   return (
     <DocShell wide crumb={{ href: "/", label: "Home" }}>
       <header className="doc-head">
         <span className="doc-eyebrow">Keybinding</span>
-        <h1>Everybody binds it differently.</h1>
+        <h1>Four axes, and nowhere obvious to put them.</h1>
         <p className="doc-lede">
-          There is no correct layout, but there is one decision that splits the
-          whole community: what horizontal mouse movement does. Put{" "}
-          <strong>roll</strong> on it and the aircraft banks like every other
-          shooter you have played. Put <strong>yaw</strong> on it and you aim
-          the nose like a rifle, which is better for guns and harder to learn.
-          Everything else follows from that.
+          Collective, pitch, roll and yaw all have to go somewhere, and there
+          are only so many places. These are the arrangements people actually
+          fly. Pitch is on the mouse&rsquo;s vertical axis in every layout that
+          uses the mouse at all — nobody argues about that one — so the whole
+          question comes down to what <strong>horizontal</strong> does:{" "}
+          <strong>roll</strong> banks the aircraft like every other shooter,{" "}
+          <strong>yaw</strong> aims the nose like a rifle. Or you take the mouse
+          out of it entirely and fly on keys.
         </p>
         <p className="doc-count">
-          {schemeCount} schemes · {readCount} read off a creator&rsquo;s own
-          settings screen
+          {layoutCount} layouts · {seenCount} caught on camera
         </p>
       </header>
 
-      <ul className="kb-grid">
-        {schemes.map((s) => (
-          <li key={s.id} className="kb-item">
-            <div className="kb-head">
-              <div className="kb-who">
-                <span className="kb-tag">{s.tag}</span>
-                <h2>
-                  {s.channelUrl ? (
-                    <a href={s.channelUrl} rel="noopener" target="_blank">
-                      {s.creator}
+      {FAMILIES.map((fam) => (
+        <section className="doc-section" key={fam.name} id={fam.name.toLowerCase().replace(/\s+/g, "-")}>
+          <h2>{fam.name}</h2>
+          <p className="doc-p">{fam.blurb}</p>
+
+          <ul className="kb-grid">
+            {byFamily(fam.name).map((l) => (
+              <li key={l.id} className="kb-item">
+                <div className="kb-head">
+                  <div className="kb-who">
+                    <h2>{l.name}</h2>
+                  </div>
+                  <span className={`kb-mouse is-${l.mouse.toLowerCase().replace(/\s+/g, "-")}`}>
+                    Mouse L/R
+                    <b>{l.mouse}</b>
+                  </span>
+                </div>
+
+                <table className="kb-table">
+                  <tbody>
+                    {l.binds.map((b) => (
+                      <tr key={b.fn}>
+                        <th scope="row">{b.fn}</th>
+                        <td>
+                          <kbd>{b.key}</kbd>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <p className="kb-sum">
+                  <b>Suits</b> {l.suits}
+                </p>
+                <p className="kb-caveat">
+                  <b>Costs you</b> {l.cost}
+                </p>
+
+                {l.seen && (
+                  <p className="kb-evidence">
+                    <span className="chip">
+                      {l.seen.fromMenu ? "Seen on their settings screen" : "Said on camera"}
+                    </span>
+                    <a
+                      className="kb-src"
+                      href={markUrl(l.seen.videoId, l.seen.at)}
+                      rel="noopener"
+                      target="_blank"
+                    >
+                      {l.seen.who} · {l.seen.clock}
                     </a>
-                  ) : (
-                    s.creator
-                  )}
-                </h2>
-              </div>
-              {s.mouse && (
-                <span className={`kb-mouse is-${s.mouse.toLowerCase()}`}>
-                  Mouse L/R
-                  <b>{s.mouse}</b>
-                </span>
-              )}
-            </div>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
 
-            <p className="kb-sum">{s.summary}</p>
-
-            {s.binds && (
-              <table className="kb-table">
-                <caption>Keys</caption>
-                <tbody>
-                  {s.binds.map((b) => (
-                    <tr key={b.fn}>
-                      <th scope="row">{b.fn}</th>
-                      <td>
-                        <kbd>{b.key}</kbd>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {s.settings && (
-              <table className="kb-table">
-                <caption>Settings</caption>
-                <tbody>
-                  {s.settings.map((r) => (
-                    <tr key={r.name}>
-                      <th scope="row">{r.name}</th>
-                      <td>{r.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {s.caveat && <p className="kb-caveat">{s.caveat}</p>}
-
+      <section className="doc-section" id="everything-else">
+        <h2>Everything that is not an axis</h2>
+        <p className="doc-p">
+          These do not change between layouts. Two of them ship{" "}
+          <strong>unbound</strong>, and one of those two is how you do logistics
+          at all — worth fixing before your first run rather than while a squad
+          waits on the crate.
+        </p>
+        <ul className="kb-grid">
+          <li className="kb-item">
+            <table className="kb-table">
+              <tbody>
+                {generalBinds.map((b) => (
+                  <tr key={b.fn}>
+                    <th scope="row">{b.fn}</th>
+                    <td>
+                      <kbd>{b.key}</kbd>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             <p className="kb-evidence">
-              <span className="chip">{EVIDENCE_NOTE[s.evidence]}</span>
-              {s.video && (
-                <a
-                  className="kb-src"
-                  href={markUrl(s.video.id, s.video.at)}
-                  rel="noopener"
-                  target="_blank"
-                >
-                  {s.video.title} · {s.video.clock}
-                </a>
-              )}
+              <span className="chip">Seen on their settings screen</span>
+              <a
+                className="kb-src"
+                href={markUrl("Wg9ve3wWJ_E", 124)}
+                rel="noopener"
+                target="_blank"
+              >
+                VGAIN · 2:04
+              </a>
             </p>
           </li>
-        ))}
-      </ul>
-
-      <aside className="callout spaced">
-        <span className="callout-label">Adding to this</span>
-        <p>
-          A scheme only goes up when it can be sourced: the creator&rsquo;s own
-          settings screen on camera, or them saying it out loud. Nothing here is
-          reconstructed from what a layout &ldquo;probably&rdquo; is. If a
-          channel you follow has published theirs, point at the video and the
-          timestamp and it can be read off and added.
-        </p>
-      </aside>
+        </ul>
+      </section>
     </DocShell>
   );
 }
