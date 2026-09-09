@@ -84,6 +84,14 @@ export const videos: Video[] = [
     transcribed: true,
   },
   {
+    id: "SRpSrzV8dbk",
+    channel: "OnMapleWings",
+    title: "WARDOGS Pilot Guide: Advanced Flight & Survival (Real Pilot)",
+    length: "—",
+    covers: "Advanced flight · Survival",
+    transcribed: false,
+  },
+  {
     id: "HeVt0xkaEI4",
     channel: "Unlisted channel",
     title: "How To Get Started With Helicopters In WARDOGS…",

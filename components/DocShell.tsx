@@ -36,6 +36,9 @@ export default function DocShell({
           <Link className="btn btn-sm btn-ghost" href="/books/">
             Books
           </Link>
+          <Link className="btn btn-sm btn-ghost" href="/keybinding/">
+            Keybinding
+          </Link>
           <Link className="btn btn-sm btn-ghost" href="/map/ozeti/">
             Maps
           </Link>

@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { maneuvers } from "@/data/maneuvers";
 import { bookCount } from "@/data/books";
+import { schemeCount } from "@/data/keybindings";
 import { termCount } from "@/data/glossary";
 import { creatorCount, creatorVideoCount } from "@/data/creators";
 
@@ -23,7 +24,7 @@ function mapCounts() {
 }
 
 /*
-  The front door. The mark, at the size it deserves, and six destinations in
+  The front door. The mark, at the size it deserves, and seven destinations in
   a single row beneath it — the simulator, the videos the site is built from,
   the game maps, the vocabulary, and the desktop app.
 
@@ -84,6 +85,14 @@ const doors: Door[] = [
     kicker: "Read it",
     body: "The real manuals, from the FAA handbook down.",
     stat: `${bookCount} books`,
+  },
+  {
+    href: "/keybinding/",
+    icon: "keyboard",
+    title: "Keybinding",
+    kicker: "Bind it",
+    body: "How each creator actually binds the aircraft.",
+    stat: `${schemeCount} schemes`,
   },
   {
     href: "/terminology/",
