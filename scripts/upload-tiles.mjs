@@ -71,48 +71,44 @@ function readToken() {
 
 let auth = readToken();
 let refreshing = null;
-let lastRefresh = 0;
 
-/** Renew the token on disk, at most one wrangler process at a time. */
-function refresh(why) {
-  if (refreshing) return refreshing;
+/*
+  Renew REACTIVELY, never ahead of time.
+
+  `wrangler whoami` refreshes the token on disk, but only once it has actually
+  lapsed — asked while the token is still valid it does nothing and reports
+  success. A first attempt at this refreshed ten minutes early, which was
+  therefore a no-op, and the 401 handler then awaited that same in-flight
+  no-op, concluded the token could not be renewed, and stopped the run at 83%.
+
+  So the only thing that triggers a renewal is a 401, and the test for success
+  is whether the token differs from the one that just failed — not whether some
+  other worker's refresh happened to report a change.
+*/
+async function renew(stale) {
+  if (refreshing) {
+    await refreshing;
+    if (auth.token !== stale) return true; // another worker already fixed it
+  }
   refreshing = (async () => {
-    console.log(`  refreshing the token (${why})`);
+    console.log("  token expired — renewing");
     try {
       execFileSync("npx", ["wrangler", "whoami"], { stdio: "ignore", timeout: 90_000, shell: true });
     } catch {
       // whoami can fail for reasons that are not the token; the re-read decides
     }
-    const next = readToken();
-    const moved = next.token !== auth.token;
-    auth = next;
-    console.log(
-      moved
-        ? `  token renewed, good until ${new Date(auth.expires).toISOString()}`
-        : `  token did NOT change — run \`npx wrangler login\` in this terminal`
-    );
-    lastRefresh = Date.now();
-    refreshing = null;
-    return moved;
+    auth = readToken();
   })();
-  return refreshing;
-}
+  await refreshing;
+  refreshing = null;
 
-/*
-  The current token, renewed if it is within ten minutes of lapsing.
-
-  The cooldown matters: wrangler will not always renew a token it still
-  considers valid, so without it a refusal here would spawn a wrangler process
-  for every single upload. If the proactive renewal does not take, the 401
-  handler picks it up once the token has actually lapsed.
-*/
-async function token() {
-  const soon = Number.isFinite(auth.expires) && Date.now() > auth.expires - 10 * 60_000;
-  if (soon && Date.now() - lastRefresh > 60_000) {
-    lastRefresh = Date.now();
-    await refresh("expiring");
-  }
-  return auth.token;
+  const ok = auth.token !== stale;
+  console.log(
+    ok
+      ? `  renewed, good until ${new Date(auth.expires).toISOString()}`
+      : "  token did NOT change"
+  );
+  return ok;
 }
 
 if (Number.isFinite(auth.expires)) {
@@ -150,18 +146,20 @@ const started = Date.now();
 
 async function put(job, attempt = 1) {
   const body = readFileSync(job.file);
+  // the token this attempt uses, so a 401 can tell "renewed" from "unchanged"
+  const stale = auth.token;
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/r2/buckets/${BUCKET}/objects/${job.key}`;
   try {
     const r = await fetch(url, {
       method: "PUT",
-      headers: { authorization: `Bearer ${await token()}`, "content-type": "image/webp" },
+      headers: { authorization: `Bearer ${stale}`, "content-type": "image/webp" },
       body,
     });
     if (r.status === 401 || r.status === 403) {
-      // Not transient. Renew once; if that changes nothing, stop the whole run
+      // Not transient. Renew; if the token does not change, stop the whole run
       // rather than hammering a dead credential for eleven hours.
       await r.arrayBuffer();
-      if (await refresh(`HTTP ${r.status}`)) return put(job, attempt);
+      if (await renew(stale)) return put(job, attempt);
       console.error(
         `
   ${r.status} from Cloudflare and the token would not renew.` +
