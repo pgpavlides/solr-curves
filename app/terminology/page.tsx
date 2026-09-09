@@ -42,19 +42,6 @@ export default function TerminologyPage() {
           </span>
         </Link>
 
-        <p className="tm-lede">
-          Real rotary-wing vocabulary that WARDOGS inherits and never explains.
-          Pick a section, or search. Framing throughout leans on{" "}
-          <a
-            href="https://www.youtube.com/@CologneTM"
-            rel="noopener"
-            target="_blank"
-          >
-            Cologne TM
-          </a>
-          , a working pilot with 3,000 hours.
-        </p>
-
         <nav className="tm-nav">
           <Link className="btn btn-sm btn-ghost" href="/">
             Home

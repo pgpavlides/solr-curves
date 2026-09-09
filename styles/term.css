@@ -54,19 +54,7 @@ body:has(.tm) {
   min-width: 0;
 }
 
-.tm-lede {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  max-width: 78ch;
-  color: var(--color-muted);
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-}
-.tm-lede a { color: var(--color-lumen); text-decoration: none; border-bottom: 1px solid var(--color-hairline); }
-.tm-lede a:hover { border-bottom-color: var(--color-slate-rise); }
-
-.tm-nav { display: flex; gap: var(--space-2xs); flex: none; }
+.tm-nav { display: flex; gap: var(--space-2xs); flex: none; margin-left: auto; }
 
 /* ------------------------------------------------------------------ body */
 
@@ -305,7 +293,6 @@ body:has(.tm) {
 
 /* The lede is the first thing to go: the nav and the mark are navigation. */
 @media (max-width: 1100px) {
-  .tm-lede { display: none; }
   .tm-panes { grid-template-columns: minmax(190px, 1fr) minmax(0, 2fr); }
 }
 
@@ -340,13 +327,11 @@ body:has(.tm) {
   .tm-bar { gap: var(--space-sm); }
   .tm-bar .brand-word,
   .tm-bar .brand-sub { display: none; }
-  .tm-nav { margin-left: auto; }
   .tm-def-body { font-size: var(--text-body-sm); }
 }
 
 /* A short laptop is the case that actually overflows; trim the fixed parts. */
 @media (max-height: 720px) {
-  .tm-lede { display: none; }
   .tm-def-head h2 { font-size: 20px; }
   .tm-def-body p { margin-bottom: var(--space-xs); line-height: 1.5; }
 }
