@@ -28,7 +28,10 @@ export default function App() {
   const [manId, setManId] = useState(maneuvers[0].id);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [camMode, setCamMode] = useState<CamMode>("orbit");
+  // Chase by default: the aircraft fills the frame from the first moment. The
+  // orbit camera fits the whole track, which on a 240 m maneuver leaves the
+  // helicopter too small to read.
+  const [camMode, setCamMode] = useState<CamMode>("chase");
   const [phase, setPhase] = useState(0);
   const [scrub, setScrub] = useState(0);
   const [backend, setBackend] = useState<string | null>(null);
