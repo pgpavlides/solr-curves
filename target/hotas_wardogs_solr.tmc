@@ -1,0 +1,200 @@
+// =============================================================================
+//  WARDOGS  -  Thrustmaster Sol-R [R] Flightstick
+//  T.A.R.G.E.T. script, driven live by the Sol-R Curves app (solr-curves).
+//
+//  Roll, pitch and yaw are shaped by lookup tables that the app writes to
+//  E:/hotas_curves.txt. The script re-reads that file every 250 ms while it
+//  runs, so a change in the app reaches the game within a quarter second,
+//  without restarting the script or WARDOGS. After loading a table it writes
+//  its number to E:/hotas_curves.ack, which is how the app knows it landed.
+//
+//  No table file yet: the built-in default is used (S-curve +2, 2% centre
+//  deadzone on roll and pitch, 3% on yaw - the tuned profile).
+//
+//  The Sol-R 6 Throttle is left alone: the game reads it directly.
+//  The stick appears in the game as "Thrustmaster Combined".
+//  Start this script BEFORE WARDOGS.
+// =============================================================================
+include "target.tmh"
+
+alias CFG   = "E:/hotas_curves.txt";
+alias ACK   = "E:/hotas_curves.ack";
+alias RMODE = "rb";
+alias WMODE = "wb";
+
+// Table layout: 3 axes (roll, pitch, yaw) x 257 samples over stick -100%..+100%.
+// File: <gen> <771 values, -32767..32767> <gen>. The repeated <gen> at the end
+// proves the file was read whole, not halfway through a write.
+define NSAMP   257
+define NTAB    771
+define POLL_ID 20000			// AutoRepeat handler id, clear of target.tmh's
+
+int crv[771];					// live tables
+int nxt[771];					// staging while reading
+int gen = -1;					// table number currently loaded (-1 = built-in)
+int rv;							// NextInt() result
+
+int main()
+{
+	// Init() looks for every Thrustmaster device it knows and waits on each
+	// missing one. Skip them all except the Sol-R [R] Flightstick (Sol_SolR).
+	Configure(&Throttle, MODE_EXCLUDED); Configure(&Joystick, MODE_EXCLUDED); Configure(&JoystickF18, MODE_EXCLUDED); Configure(&LMFD, MODE_EXCLUDED);
+	Configure(&RMFD, MODE_EXCLUDED); Configure(&HCougar, MODE_EXCLUDED); Configure(&T16000, MODE_EXCLUDED); Configure(&T16000L, MODE_EXCLUDED);
+	Configure(&TWCSThrottle, MODE_EXCLUDED); Configure(&TFRPRudder, MODE_EXCLUDED); Configure(&TFRPHARudder, MODE_EXCLUDED); Configure(&A320Pilot, MODE_EXCLUDED);
+	Configure(&A320Copilot, MODE_EXCLUDED); Configure(&TCAQuadrant12, MODE_EXCLUDED); Configure(&TCAQuadrant34, MODE_EXCLUDED); Configure(&TCAQBoeing12, MODE_EXCLUDED);
+	Configure(&TCAQBoeing34, MODE_EXCLUDED); Configure(&TCAYokeBoeing, MODE_EXCLUDED); Configure(&ViperTQS, MODE_EXCLUDED); Configure(&ViperBBox, MODE_EXCLUDED);
+	Configure(&TCASidestickXPilot, MODE_EXCLUDED); Configure(&TCASidestickXCopilot, MODE_EXCLUDED); Configure(&FarmStickRight, MODE_EXCLUDED); Configure(&FarmStickLeft, MODE_EXCLUDED);
+	Configure(&AVA_F16, MODE_EXCLUDED); Configure(&AVA_F16L, MODE_EXCLUDED); Configure(&AVA_F18, MODE_EXCLUDED); Configure(&AVA_F18L, MODE_EXCLUDED);
+	Configure(&AVA_SolR, MODE_EXCLUDED); Configure(&AVA_SolRL, MODE_EXCLUDED); Configure(&Sol_F16, MODE_EXCLUDED); Configure(&Sol_F16L, MODE_EXCLUDED);
+	Configure(&Sol_F18, MODE_EXCLUDED); Configure(&Sol_F18L, MODE_EXCLUDED); Configure(&Sol_SolRL, MODE_EXCLUDED); Configure(&FarmStickXboxRight, MODE_EXCLUDED);
+	Configure(&FarmStickXboxLeft, MODE_EXCLUDED);
+
+	if(Init(&EventHandle)) return 1;
+
+	// Roll, pitch and yaw are NOT MapAxis'd: EventHandle drives them from the
+	// tables. The rest pass straight through, as in the GUI profile.
+	MapAxis(&Sol_SolR, MS_LR,    DX_XROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look left/right
+	MapAxis(&Sol_SolR, MS_UD,    DX_YROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look up/down
+	MapAxis(&Sol_SolR, THROTTLE, DX_Z_AXIS,        AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	MapAxis(&Sol_SolR, SLIDER0,  DX_THROTTLE_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	MapAxis(&Sol_SolR, DIAL,     DX_SLIDER_AXIS,   AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	// buttons + hat: target.tmh already maps them 1:1 (DX1..DX44, hat -> POV)
+
+	// built-in default, computed with T.A.R.G.E.T.'s own S-curve function
+	int i = 0;
+	float x;
+	while(i < NSAMP)
+	{
+		x = i / 128.0 - 1;
+		crv[i]         = AMAX * fcurve(x, 0, 0.02, 0, 0, 2);	// roll
+		crv[NSAMP+i]   = AMAX * fcurve(x, 0, 0.02, 0, 0, 2);	// pitch
+		crv[2*NSAMP+i] = AMAX * fcurve(x, 0, 0.03, 0, 0, 2);	// yaw
+		i = i + 1;
+	}
+
+	printf("\xa*** Sol-R Curves: watching E:/hotas_curves.txt\xa");
+	Poll(0);
+	if(gen < 0) printf("*** no table file yet - using the built-in S-curve\xa");
+	Refresh();
+	AutoRepeat(POLL_ID, 250, &Poll, 0);
+}
+
+// Stick value -> shaped value, linear between the two nearest samples.
+int Shape(int a, int raw)
+{
+	float p = (raw + AMAX) * 128.0 / AMAX;		// 0 .. 256
+	int i = p;
+	if(i < 0) i = 0;
+	if(i > NSAMP-2) i = NSAMP-2;
+	float f = p - i;
+	int b = a*NSAMP + i;
+	return crv[b] + (crv[b+1] - crv[b]) * f;
+}
+
+// Push the current stick position through the tables (after a reload, so a
+// stick held still does not keep the old value until it moves).
+int Refresh()
+{
+	DXAxis(DX_X_AXIS,    Shape(0, Sol_SolR[JOYX]));
+	DXAxis(DX_Y_AXIS,    Shape(1, Sol_SolR[JOYY]));
+	DXAxis(DX_ZROT_AXIS, Shape(2, Sol_SolR[ROCKER]));
+}
+
+// Next integer from the file into rv. 0 at end of file.
+int NextInt(int fp)
+{
+	int c = fgetc(fp);
+	while((c != -1) & (c != '-') & ((c < '0') | (c > '9'))) c = fgetc(fp);
+	if(c == -1) return 0;
+	int neg = 0;
+	if(c == '-')
+	{
+		neg = 1;
+		c = fgetc(fp);
+	}
+	rv = 0;
+	while((c >= '0') & (c <= '9'))
+	{
+		rv = rv*10 + c - '0';
+		c = fgetc(fp);
+	}
+	if(neg) rv = -rv;
+	return 1;
+}
+
+int Poll(int p)
+{
+	int fp = fopen(&CFG, &RMODE);
+	if(!fp) return 0;
+	if(!NextInt(fp))
+	{
+		fclose(fp);
+		return 0;
+	}
+	if(rv == gen)					// unchanged: one number read, done
+	{
+		fclose(fp);
+		return 0;
+	}
+	int g = rv;
+	int n = 0;
+	int more = 1;
+	while(more & (n < NTAB))
+	{
+		more = NextInt(fp);
+		if(more)
+		{
+			nxt[n] = rv;
+			n = n + 1;
+		}
+	}
+	int ok = 0;
+	if(n == NTAB) if(NextInt(fp)) if(rv == g) ok = 1;
+	fclose(fp);
+	if(!ok) return 0;				// caught mid-write: try again next poll
+
+	n = 0;
+	while(n < NTAB)
+	{
+		crv[n] = nxt[n];
+		n = n + 1;
+	}
+	gen = g;
+	Refresh();
+	Ack();
+	printf("curves loaded #%d\xa", g);
+}
+
+// Tell the app which table is live.
+int Ack()
+{
+	char t; Dim(&t, 32);
+	sprintf(&t, "%d", gen);
+	int fp = fopen(&ACK, &WMODE);
+	if(!fp) return 0;
+	fwrite(&t, 1, strlen(&t), fp);
+	fclose(fp);
+}
+
+int EventHandle(int type, alias o, int x)
+{
+	if(&o == &Sol_SolR)
+	{
+		if(x == JOYX)
+		{
+			DXAxis(DX_X_AXIS, Shape(0, o[x]));
+			return 0;
+		}
+		if(x == JOYY)
+		{
+			DXAxis(DX_Y_AXIS, Shape(1, o[x]));
+			return 0;
+		}
+		if(x == ROCKER)
+		{
+			DXAxis(DX_ZROT_AXIS, Shape(2, o[x]));
+			return 0;
+		}
+	}
+	DefaultMapping(&o, x);
+}
