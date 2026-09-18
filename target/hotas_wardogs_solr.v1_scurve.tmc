@@ -1,0 +1,58 @@
+// =============================================================================
+//  WARDOGS  -  Thrustmaster Sol-R [R] Flightstick
+//  T.A.R.G.E.T. script (open in T.A.R.G.E.T. Script Editor, then Run)
+//
+//  Flightstick only. The Sol-R 6 Throttle is left alone: the game reads it
+//  directly, so its in-game bindings stay as they are. (T.A.R.G.E.T. cannot
+//  capture it anyway - its filter driver refuses the device.)
+//
+//  The stick shows up in the game as "Thrustmaster Combined", on the same
+//  axes as the GUI profile hotas_wardogs_tuned.fcf.
+//  The settings only apply while this script is running.
+// =============================================================================
+include "target.tmh"
+
+// ------------------------------- TUNING -------------------------------------
+// S-curve. Positive = softer around centre, full rate still available at the
+// ends. Range -20..20. Centre = deadzone in % of travel.
+define CYC_CURVE     2
+define CYC_CENTRE    2
+define YAW_CURVE     2
+define YAW_CENTRE    3
+// ----------------------------------------------------------------------------
+
+int main()
+{
+	// Init() looks for every Thrustmaster device it knows and waits on each
+	// missing one. Skip them all except the Sol-R [R] Flightstick (Sol_SolR).
+	Configure(&Throttle, MODE_EXCLUDED); Configure(&Joystick, MODE_EXCLUDED); Configure(&JoystickF18, MODE_EXCLUDED); Configure(&LMFD, MODE_EXCLUDED);
+	Configure(&RMFD, MODE_EXCLUDED); Configure(&HCougar, MODE_EXCLUDED); Configure(&T16000, MODE_EXCLUDED); Configure(&T16000L, MODE_EXCLUDED);
+	Configure(&TWCSThrottle, MODE_EXCLUDED); Configure(&TFRPRudder, MODE_EXCLUDED); Configure(&TFRPHARudder, MODE_EXCLUDED); Configure(&A320Pilot, MODE_EXCLUDED);
+	Configure(&A320Copilot, MODE_EXCLUDED); Configure(&TCAQuadrant12, MODE_EXCLUDED); Configure(&TCAQuadrant34, MODE_EXCLUDED); Configure(&TCAQBoeing12, MODE_EXCLUDED);
+	Configure(&TCAQBoeing34, MODE_EXCLUDED); Configure(&TCAYokeBoeing, MODE_EXCLUDED); Configure(&ViperTQS, MODE_EXCLUDED); Configure(&ViperBBox, MODE_EXCLUDED);
+	Configure(&TCASidestickXPilot, MODE_EXCLUDED); Configure(&TCASidestickXCopilot, MODE_EXCLUDED); Configure(&FarmStickRight, MODE_EXCLUDED); Configure(&FarmStickLeft, MODE_EXCLUDED);
+	Configure(&AVA_F16, MODE_EXCLUDED); Configure(&AVA_F16L, MODE_EXCLUDED); Configure(&AVA_F18, MODE_EXCLUDED); Configure(&AVA_F18L, MODE_EXCLUDED);
+	Configure(&AVA_SolR, MODE_EXCLUDED); Configure(&AVA_SolRL, MODE_EXCLUDED); Configure(&Sol_F16, MODE_EXCLUDED); Configure(&Sol_F16L, MODE_EXCLUDED);
+	Configure(&Sol_F18, MODE_EXCLUDED); Configure(&Sol_F18L, MODE_EXCLUDED); Configure(&Sol_SolRL, MODE_EXCLUDED); Configure(&FarmStickXboxRight, MODE_EXCLUDED);
+	Configure(&FarmStickXboxLeft, MODE_EXCLUDED);
+
+	if(Init(&EventHandle)) return 1;
+
+	MapAxis(&Sol_SolR, JOYX,     DX_X_AXIS,        AXIS_NORMAL, MAP_ABSOLUTE);	// roll
+	SetSCurve(&Sol_SolR, JOYX, 0, CYC_CENTRE, 0, CYC_CURVE, 0);
+	MapAxis(&Sol_SolR, JOYY,     DX_Y_AXIS,        AXIS_NORMAL, MAP_ABSOLUTE);	// pitch
+	SetSCurve(&Sol_SolR, JOYY, 0, CYC_CENTRE, 0, CYC_CURVE, 0);
+	MapAxis(&Sol_SolR, ROCKER,   DX_ZROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// twist = yaw
+	SetSCurve(&Sol_SolR, ROCKER, 0, YAW_CENTRE, 0, YAW_CURVE, 0);
+	MapAxis(&Sol_SolR, MS_LR,    DX_XROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look left/right
+	MapAxis(&Sol_SolR, MS_UD,    DX_YROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look up/down
+	MapAxis(&Sol_SolR, THROTTLE, DX_Z_AXIS,        AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	MapAxis(&Sol_SolR, SLIDER0,  DX_THROTTLE_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	MapAxis(&Sol_SolR, DIAL,     DX_SLIDER_AXIS,   AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
+	// buttons + hat: target.tmh already maps them 1:1 (DX1..DX44, hat -> POV)
+}
+
+int EventHandle(int type, alias o, int x)
+{
+	DefaultMapping(&o, x);
+}
