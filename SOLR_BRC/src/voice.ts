@@ -108,6 +108,22 @@ export function allTo(color: string): LedCmd[] {
 }
 
 /**
+  The stick as this bank should look: everything in the bank's colour, except
+  pad buttons with no sound - those stay dark, so the lit pads are exactly the
+  ones that will play something.
+*/
+export function bankLeds(cfg: VoiceConfig, bank: number): LedCmd[] {
+  const b = cfg.banks[bank];
+  const out = allTo(b?.color ?? "#ffffff");
+  for (const btn of PADS) {
+    if (!b?.pads?.[btn]) {
+      out[cfg.map[btn] ?? SOLR_LED_MAP[btn]] = [cfg.map[btn] ?? SOLR_LED_MAP[btn], 0, 0, 0];
+    }
+  }
+  return out;
+}
+
+/**
   App-wide: loads the settings, follows the knob and recolours the pads
   whenever the bank (or its colour) changes. `hold` pauses it while the
   mapping tool is driving the LEDs itself.
@@ -146,10 +162,10 @@ export function useVoiceBanks(stick: PadLike | null) {
   useEffect(() => {
     if (!loaded || hold || bank === null) return;
     const color = cfg.banks[bank]?.color ?? "#ffffff";
-    const key = JSON.stringify([bank, color, cfg.map]);
+    const key = JSON.stringify([bank, color, cfg.map, cfg.banks[bank]?.pads]);
     if (key === lastSent.current) return;
     lastSent.current = key;
-    ledSet(allTo(color)).then(() => setLedError(null)).catch((e) => setLedError(String(e)));
+    ledSet(bankLeds(cfg, bank)).then(() => setLedError(null)).catch((e) => setLedError(String(e)));
   }, [loaded, hold, bank, cfg]);
 
   // resend after the mapping tool hands the LEDs back
