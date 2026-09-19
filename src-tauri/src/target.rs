@@ -1,25 +1,27 @@
-//! Running the T.A.R.G.E.T. script from inside the app, no Script Editor.
+//! Running T.A.R.G.E.T. scripts from inside the app, no Script Editor.
 //!
 //! T.A.R.G.E.T. scripts don't run in the editor: they run in Thrustmaster's
 //! "FAST" Windows service (TmWinService, always on). The editor is a client
-//! that drives it through TmServiceControl.dll. This module is the same client.
+//! that drives it through TmServiceControl.dll (bound in tmsc.rs). This module
+//! is the same client, and the one connection every other part of the app
+//! (devices.rs) shares.
 //!
-//! The call sequence and signatures are the Script Editor's own, read from its
-//! .NET metadata (P/Invoke declarations) and the IL of its Run/Stop handlers:
+//! The call sequence is the Script Editor's own, read from the IL of its
+//! Run/Stop handlers:
 //!
 //!   start-up  TmSCInitializeControl, TmSCSetMessageCallback,
 //!             TmSCScriptSendFolderPath(i, dir)... then (n, "") to end the list,
 //!             TmSCScriptSendLoadPluginDirectory(<TARGET>\Plugins\)
-//!   Run       TmSCScriptLoad(path), TmSCScriptSendParams("main"),
-//!             TmSCScriptCompile(), TmSCScriptRunAsync(timeout)
+//!   Compile   TmSCScriptLoad(path), TmSCScriptSendParams("main"), TmSCScriptCompile()
+//!   Run       ...then TmSCScriptRunAsync(timeout)
 //!   Stop      TmSCScriptStop()
 //!   close     TmSCSetMessageCallback(null), TmSCServiceSetStopOnClientClose,
 //!             TmSCUnInitialize
 //!
-//! Strings to the service are UTF-16. The message callback's text is ANSI (the
-//! .NET delegate declares a plain String with no marshalling attribute).
+//! The message callback's text is ANSI (the .NET delegate declares a plain
+//! String with no marshalling attribute).
 
-use libloading::os::windows::{Library, LOAD_WITH_ALTERED_SEARCH_PATH};
+use crate::tmsc::{self, wide, Tmsc, TARGET_DIR};
 use serde::Serialize;
 use std::collections::VecDeque;
 use std::ffi::{c_char, c_void, CStr};
@@ -27,13 +29,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Emitter};
 
-type Hr = u32;
-type MsgCb = unsafe extern "system" fn(*mut c_void, *const c_char, i32) -> i32;
-
-pub const TARGET_DIR: &str = r"C:\Program Files (x86)\Thrustmaster\TARGET";
 const RUN_TIMEOUT_MS: u32 = 60_000; // the editor's default RunTimeout
 
-/// The script this app drives, compiled into the app so the two can't drift.
+/// The curve script this app drives, compiled into the app so the two can't drift.
 pub const SCRIPT: &str = include_str!("../../target/hotas_wardogs_solr.tmc");
 pub const SCRIPT_NAME: &str = "hotas_wardogs_solr.tmc";
 
@@ -44,28 +42,10 @@ const MSG_ERROR_COMPILE: i32 = 2;
 const MSG_WARNING: i32 = 3;
 const MSG_STATUS: i32 = 256; // msgNotifScriptStatusUpdate
 
-struct Api {
-    _lib: Library,
-    initialize: unsafe extern "system" fn() -> Hr,
-    uninitialize: unsafe extern "system" fn() -> Hr,
-    set_message_callback: unsafe extern "system" fn(Option<MsgCb>, *mut c_void) -> Hr,
-    stop_on_client_close: unsafe extern "system" fn(u8) -> Hr,
-    send_folder_path: unsafe extern "system" fn(i32, *const u16) -> Hr,
-    plugin_directory: unsafe extern "system" fn(*const u16) -> Hr,
-    load: unsafe extern "system" fn(*const u16) -> Hr,
-    send_params: unsafe extern "system" fn(*const u16) -> Hr,
-    compile: unsafe extern "system" fn() -> Hr,
-    run_async: unsafe extern "system" fn(u32) -> Hr,
-    stop: unsafe extern "system" fn() -> Hr,
-    is_running: unsafe extern "system" fn(*mut u8) -> Hr,
-    is_pending: unsafe extern "system" fn(*mut u8) -> Hr,
-}
-
-// function pointers into a loaded DLL; every call goes through the mutex below
-unsafe impl Send for Api {}
-
-static API: Mutex<Option<Api>> = Mutex::new(None);
+static CLIENT: Mutex<Option<Tmsc>> = Mutex::new(None);
 static APP: OnceLock<AppHandle> = OnceLock::new();
+/// The script file the service currently has loaded (for the status badge).
+static CURRENT: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Clone, Serialize)]
 pub struct LogLine {
@@ -76,20 +56,16 @@ pub struct LogLine {
 struct Log {
     lines: VecDeque<LogLine>,
     partial: String, // the script prints with putchar: text arrives in pieces
-    compile_errors: usize,
+    compile_errors: Vec<String>,
 }
-static LOG: Mutex<Log> = Mutex::new(Log { lines: VecDeque::new(), partial: String::new(), compile_errors: 0 });
+static LOG: Mutex<Log> = Mutex::new(Log { lines: VecDeque::new(), partial: String::new(), compile_errors: Vec::new() });
 
-fn wide(s: &str) -> Vec<u16> {
-    s.encode_utf16().chain(std::iter::once(0)).collect()
-}
-
-fn push_line(kind: &'static str, text: String) {
+pub fn push_line(kind: &'static str, text: String) {
     let line = LogLine { kind, text };
     {
         let mut log = LOG.lock().unwrap();
         log.lines.push_back(line.clone());
-        while log.lines.len() > 400 {
+        while log.lines.len() > 600 {
             log.lines.pop_front();
         }
     }
@@ -116,9 +92,6 @@ unsafe extern "system" fn on_message(_param: *mut c_void, msg: *const c_char, ki
         MSG_WARNING => "warning",
         _ => "info",
     };
-    if kind == MSG_ERROR_COMPILE {
-        LOG.lock().unwrap().compile_errors += 1;
-    }
     // join fragments into lines (the service sends "\n" as its own piece, and
     // putchar output one character at a time)
     let done: Vec<String> = {
@@ -129,6 +102,9 @@ unsafe extern "system" fn on_message(_param: *mut c_void, msg: *const c_char, ki
             let l: String = log.partial.drain(..=i).collect();
             out.push(l.trim_end().to_string());
         }
+        if kind == MSG_ERROR_COMPILE {
+            log.compile_errors.extend(out.iter().filter(|l| !l.trim().is_empty()).cloned());
+        }
         out
     };
     for l in done.into_iter().filter(|l| !l.trim().is_empty()) {
@@ -137,81 +113,44 @@ unsafe extern "system" fn on_message(_param: *mut c_void, msg: *const c_char, ki
     0
 }
 
-fn dll_path() -> PathBuf {
-    Path::new(TARGET_DIR).join(r"x64\TmServiceControl.dll")
-}
-
-/// Load the DLL and register as a client (once).
-fn ensure(app: &AppHandle) -> Result<(), String> {
+/// Load the DLL and register as a client (once), then run `f` with it.
+pub fn with_client<T>(app: &AppHandle, f: impl FnOnce(&Tmsc) -> T) -> Result<T, String> {
     let _ = APP.set(app.clone());
-    let mut guard = API.lock().unwrap();
-    if guard.is_some() {
-        return Ok(());
-    }
-    let path = dll_path();
-    if !path.exists() {
-        return Err(format!("T.A.R.G.E.T. is not installed ({} not found)", path.display()));
-    }
-    unsafe {
-        // altered search path: its own dependencies sit next to it in x64\
-        let lib = Library::load_with_flags(&path, LOAD_WITH_ALTERED_SEARCH_PATH).map_err(|e| e.to_string())?;
-        macro_rules! f {
-            ($name:literal) => {
-                *lib.get(concat!($name, "\0").as_bytes()).map_err(|e| format!("{}: {e}", $name))?
-            };
-        }
-        let api = Api {
-            initialize: f!("TmSCInitializeControl"),
-            uninitialize: f!("TmSCUnInitialize"),
-            set_message_callback: f!("TmSCSetMessageCallback"),
-            stop_on_client_close: f!("TmSCServiceSetStopOnClientClose"),
-            send_folder_path: f!("TmSCScriptSendFolderPath"),
-            plugin_directory: f!("TmSCScriptSendLoadPluginDirectory"),
-            load: f!("TmSCScriptLoad"),
-            send_params: f!("TmSCScriptSendParams"),
-            compile: f!("TmSCScriptCompile"),
-            run_async: f!("TmSCScriptRunAsync"),
-            stop: f!("TmSCScriptStop"),
-            is_running: f!("TmSCScriptGetIsRunning"),
-            is_pending: f!("TmSCScriptGetIsPending"),
-            _lib: lib,
-        };
-        let hr = (api.initialize)();
+    let mut guard = CLIENT.lock().unwrap();
+    if guard.is_none() {
+        let c = Tmsc::load()?;
+        let hr = unsafe { (c.initialize_control)() };
         if hr != 0 {
-            return Err(format!("Can't reach the T.A.R.G.E.T. service (TmSCInitializeControl 0x{hr:08X}). Is \"Thrustmaster FAST service\" running?"));
+            return Err(format!(
+                "Can't reach the T.A.R.G.E.T. service ({}). Is \"Thrustmaster FAST service\" running?",
+                c.hr_text(hr)
+            ));
         }
-        (api.set_message_callback)(Some(on_message), std::ptr::null_mut());
-        // closing this app stops the script, like the editor's default
-        (api.stop_on_client_close)(1);
-        *guard = Some(api);
+        unsafe {
+            (c.set_message_callback)(Some(on_message), std::ptr::null_mut());
+            // closing this app stops the script, like the editor's default
+            (c.stop_on_client_close)(1);
+        }
+        *guard = Some(c);
     }
-    Ok(())
-}
-
-fn with_api<T>(f: impl FnOnce(&Api) -> T) -> Result<T, String> {
-    let guard = API.lock().unwrap();
-    guard.as_ref().map(f).ok_or_else(|| "T.A.R.G.E.T. not connected".to_string())
+    Ok(f(guard.as_ref().unwrap()))
 }
 
 /// Alive = running OR pending, as the Script Editor decides its Run/Stop
 /// buttons. "Running" is only while main() executes; afterwards the script
 /// lives on handling stick events, which the service calls "pending".
-fn alive(a: &Api) -> bool {
+fn alive(c: &Tmsc) -> bool {
     let (mut r, mut p) = (0u8, 0u8);
     unsafe {
-        (a.is_running)(&mut r);
-        (a.is_pending)(&mut p);
+        (c.script_get_is_running)(&mut r);
+        (c.script_get_is_pending)(&mut p);
     }
     r != 0 || p != 0
 }
 
-fn running() -> bool {
-    with_api(alive).unwrap_or(false)
-}
-
-/// Keep the script on disk identical to the one built into the app.
+/// Keep the curve script on disk identical to the one built into the app.
 /// A different file there is kept as .bak, never silently lost.
-fn install_script(dir: &Path) -> Result<PathBuf, String> {
+pub fn install_builtin(dir: &Path) -> Result<PathBuf, String> {
     let path = dir.join(SCRIPT_NAME);
     let want = SCRIPT.replace("\r\n", "\n").replace('\n', "\r\n");
     match std::fs::read_to_string(&path) {
@@ -236,62 +175,136 @@ pub struct Status {
 }
 
 pub fn status(app: &AppHandle, dir: &Path) -> Status {
-    let script = dir.join(SCRIPT_NAME).to_string_lossy().into_owned();
-    if !dll_path().exists() {
+    let script = CURRENT.lock().unwrap().clone().unwrap_or_else(|| dir.join(SCRIPT_NAME).to_string_lossy().into_owned());
+    if !tmsc::dll_path().exists() {
         return Status { available: false, connected: false, running: false, script, error: Some("T.A.R.G.E.T. is not installed".into()) };
     }
-    match ensure(app) {
-        Ok(()) => Status { available: true, connected: true, running: running(), script, error: None },
+    match with_client(app, alive) {
+        Ok(running) => Status { available: true, connected: true, running, script, error: None },
         Err(e) => Status { available: true, connected: false, running: false, script, error: Some(e) },
     }
 }
 
-/// Install, compile and run the script. Stops whatever script was running
-/// first (including one started from the Script Editor).
-pub fn start(app: &AppHandle, dir: &Path) -> Result<(), String> {
-    ensure(app)?;
-    let path = install_script(dir)?;
-    let script_dir = path.parent().unwrap().to_string_lossy().into_owned();
+#[derive(Serialize, Default)]
+pub struct CompileResult {
+    pub ok: bool,
+    /// "Compile error: ..., in <file>, at line N" lines, as the service prints them
+    pub errors: Vec<String>,
+    pub functions: Vec<String>,
+    pub variables: Vec<String>,
+    pub defines: Vec<String>,
+}
+
+/// Load + compile a script file. Stops a running script first (the service
+/// holds one script at a time). With `run`, starts it when it compiled.
+pub fn compile_file(app: &AppHandle, path: &Path, run: bool) -> Result<CompileResult, String> {
+    let script_dir = path.parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
     let scripts = Path::new(TARGET_DIR).join("Scripts").to_string_lossy().into_owned();
     let plugins = format!(r"{}\Plugins\", TARGET_DIR);
-    let path_w = wide(&path.to_string_lossy());
-    push_line("info", format!("Starting {}", path.display()));
-    with_api(|a| -> Result<(), String> {
+    push_line("info", format!("{} {}", if run { "Starting" } else { "Compiling" }, path.display()));
+    let result = with_client(app, |c| -> Result<CompileResult, String> {
         unsafe {
-            if alive(a) {
-                (a.stop)();
+            if alive(c) {
+                (c.script_stop)();
                 std::thread::sleep(std::time::Duration::from_millis(300));
             }
             // include folders, as the editor sends them: the script's own
             // folder ({current}), T.A.R.G.E.T.'s Scripts, then "" to end
-            (a.send_folder_path)(0, wide(&script_dir).as_ptr());
-            (a.send_folder_path)(1, wide(&scripts).as_ptr());
-            (a.send_folder_path)(2, wide("").as_ptr());
-            (a.plugin_directory)(wide(&plugins).as_ptr());
-            LOG.lock().unwrap().compile_errors = 0;
-            let hr = (a.load)(path_w.as_ptr());
+            (c.script_send_folder_path)(0, wide(&script_dir).as_ptr());
+            (c.script_send_folder_path)(1, wide(&scripts).as_ptr());
+            (c.script_send_folder_path)(2, wide("").as_ptr());
+            (c.script_send_load_plugin_directory)(wide(&plugins).as_ptr());
+            LOG.lock().unwrap().compile_errors.clear();
+            let hr = (c.script_load)(wide(&path.to_string_lossy()).as_ptr());
             if hr != 0 {
-                return Err(format!("TmSCScriptLoad failed (0x{hr:08X})"));
+                return Err(format!("Couldn't load the script: {}", c.hr_text(hr)));
             }
-            (a.send_params)(wide("main").as_ptr());
-            let hr = (a.compile)();
-            let errors = LOG.lock().unwrap().compile_errors;
-            if hr != 0 || errors > 0 {
-                return Err(format!("Compile failed (0x{hr:08X}, {errors} error line(s)) - see the log"));
-            }
-            let hr = (a.run_async)(RUN_TIMEOUT_MS);
+            (c.script_send_params)(wide("main").as_ptr());
+            let hr = (c.script_compile)();
+            // the error text ("; expected in <file> at line N") is delivered
+            // through the message callback just AFTER compile returns: give
+            // it a moment to land before reading it
             if hr != 0 {
-                return Err(format!("TmSCScriptRunAsync failed (0x{hr:08X})"));
+                for _ in 0..20 {
+                    if !LOG.lock().unwrap().compile_errors.is_empty() {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
             }
+            let errors = LOG.lock().unwrap().compile_errors.clone();
+            let mut res = CompileResult { ok: hr == 0 && errors.is_empty(), errors, ..Default::default() };
+            if !res.ok {
+                if res.errors.is_empty() {
+                    res.errors.push(format!("Compile failed: {}", c.hr_text(hr)));
+                }
+                return Ok(res);
+            }
+            res.functions = list(c, c.script_get_function_list);
+            res.variables = list(c, c.script_get_variable_list);
+            res.defines = list(c, c.script_get_defines_list);
+            if run {
+                let hr = (c.script_run_async)(RUN_TIMEOUT_MS);
+                if hr != 0 {
+                    return Err(format!("Couldn't run the script: {}", c.hr_text(hr)));
+                }
+            }
+            Ok(res)
         }
-        Ok(())
     })??;
+    if result.ok && run {
+        *CURRENT.lock().unwrap() = Some(path.to_string_lossy().into_owned());
+    }
+    Ok(result)
+}
+
+/// One of the DLL's name lists (functions / variables / defines): a single
+/// space-separated string. Its end isn't cleanly terminated, so reading stops
+/// at the first token that isn't a name.
+unsafe fn list(c: &Tmsc, f: unsafe extern "system" fn(*mut tmsc::Ptr) -> tmsc::Hr) -> Vec<String> {
+    let mut p: tmsc::Ptr = std::ptr::null_mut();
+    if f(&mut p) != 0 {
+        return vec![];
+    }
+    let Some(s) = c.take_string(p) else { return vec![] };
+    let is_name = |x: &str| {
+        let mut ch = x.chars();
+        matches!(ch.next(), Some(c0) if c0.is_ascii_alphabetic() || c0 == '_')
+            && ch.all(|c| c.is_ascii_alphanumeric() || c == '_')
+    };
+    let mut v: Vec<String> = s.split_whitespace().take_while(|x| is_name(x)).map(str::to_string).collect();
+    v.sort();
+    v.dedup();
+    v
+}
+
+/// Compile a script without running it. The service holds one script, so a
+/// check replaces whatever was running - which is then compiled and started
+/// again, so checking a script never leaves the stick unprocessed.
+pub fn check_file(app: &AppHandle, path: &Path) -> Result<CompileResult, String> {
+    let prev = if with_client(app, alive)? { CURRENT.lock().unwrap().clone() } else { None };
+    let res = compile_file(app, path, false);
+    if let Some(p) = prev {
+        match compile_file(app, Path::new(&p), true) {
+            Ok(r) if r.ok => push_line("info", format!("Back to {p}")),
+            _ => push_line("error", format!("Couldn't restart {p} after the check")),
+        }
+    }
+    res
+}
+
+/// The curve script: install the built-in copy, then compile and run it.
+pub fn start(app: &AppHandle, dir: &Path) -> Result<(), String> {
+    let path = install_builtin(dir)?;
+    let r = compile_file(app, &path, true)?;
+    if !r.ok {
+        return Err(format!("Compile failed - {}", r.errors.first().cloned().unwrap_or_default()));
+    }
     Ok(())
 }
 
 pub fn stop(app: &AppHandle) -> Result<(), String> {
-    ensure(app)?;
-    with_api(|a| unsafe { (a.stop)() })?;
+    with_client(app, |c| unsafe { (c.script_stop)() })?;
     push_line("info", "Script stopped".into());
     Ok(())
 }
@@ -302,13 +315,13 @@ pub fn log() -> Vec<LogLine> {
 
 /// App exit: stop the script and let go of the service, like the editor.
 pub fn shutdown() {
-    if let Ok(mut guard) = API.lock() {
-        if let Some(a) = guard.take() {
+    if let Ok(mut guard) = CLIENT.lock() {
+        if let Some(c) = guard.take() {
             unsafe {
-                (a.stop)();
-                (a.set_message_callback)(None, std::ptr::null_mut());
-                (a.stop_on_client_close)(1);
-                (a.uninitialize)();
+                (c.script_stop)();
+                (c.set_message_callback)(None, std::ptr::null_mut());
+                (c.stop_on_client_close)(1);
+                (c.uninitialize)();
             }
         }
     }

@@ -11,7 +11,9 @@
 //! running the UI in a plain browser (and for the browser tests). Both must
 //! write the table in exactly the same format.
 
+mod devices;
 mod target;
+mod tmsc;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -281,6 +283,114 @@ fn target_log() -> Vec<target::LogLine> {
     target::log()
 }
 
+// ---- writing any script: .tmc files next to the curve files
+
+#[derive(Serialize)]
+struct ScriptFile {
+    name: String,
+    path: String,
+    builtin: bool,
+}
+
+/// Only plain .tmc/.tmh names inside the curve folder: the editor can't be
+/// pointed at arbitrary files on the disk.
+fn script_path(name: &str) -> Result<PathBuf, String> {
+    let ok = !name.is_empty()
+        && !name.contains(['/', '\\', ':'])
+        && !name.contains("..")
+        && (name.to_lowercase().ends_with(".tmc") || name.to_lowercase().ends_with(".tmh"));
+    if !ok {
+        return Err(format!("\"{name}\" isn't a script name (letters, then .tmc)"));
+    }
+    Ok(dir().join(name))
+}
+
+#[tauri::command]
+fn scripts_list() -> Vec<ScriptFile> {
+    let mut v: Vec<ScriptFile> = fs::read_dir(dir())
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    let l = name.to_lowercase();
+                    (l.ends_with(".tmc") || l.ends_with(".tmh")).then(|| ScriptFile {
+                        builtin: name == target::SCRIPT_NAME,
+                        path: e.path().to_string_lossy().replace('\\', "/"),
+                        name,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    if !v.iter().any(|s| s.builtin) {
+        v.push(ScriptFile {
+            name: target::SCRIPT_NAME.into(),
+            path: dir().join(target::SCRIPT_NAME).to_string_lossy().replace('\\', "/"),
+            builtin: true,
+        });
+    }
+    v.sort_by(|a, b| b.builtin.cmp(&a.builtin).then(a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+    v
+}
+
+#[tauri::command]
+fn script_read(name: String) -> Result<String, String> {
+    if name == target::SCRIPT_NAME {
+        return Ok(target::SCRIPT.replace("\r\n", "\n"));
+    }
+    fs::read_to_string(script_path(&name)?).map(|s| s.replace("\r\n", "\n")).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn script_write(name: String, text: String) -> Result<(), String> {
+    if name == target::SCRIPT_NAME {
+        return Err("The curve script is built into the app - duplicate it to edit".into());
+    }
+    let p = script_path(&name)?;
+    let crlf = text.replace("\r\n", "\n").replace('\n', "\r\n");
+    atomic_write(p.file_name().unwrap().to_str().unwrap(), crlf.as_bytes())
+}
+
+#[tauri::command]
+async fn script_delete(name: String) -> Result<(), String> {
+    if name == target::SCRIPT_NAME {
+        return Err("The curve script is built into the app".into());
+    }
+    let p = script_path(&name)?;
+    // never lost: renamed, not deleted
+    fs::rename(&p, p.with_extension("tmc.deleted")).map_err(|e| e.to_string())
+}
+
+/// Compile (and optionally run) a script by name. Running one replaces the
+/// curve script in the service: it holds one script at a time.
+#[tauri::command]
+async fn script_compile(app: AppHandle, name: String, run: bool) -> Result<target::CompileResult, String> {
+    let p = if name == target::SCRIPT_NAME { target::install_builtin(&dir())? } else { script_path(&name)? };
+    if run { target::compile_file(&app, &p, true) } else { target::check_file(&app, &p) }
+}
+
+// ---- the physical devices (devices.rs)
+
+#[tauri::command]
+async fn devices_list(app: AppHandle) -> Result<Vec<devices::Device>, String> {
+    devices::list(&app)
+}
+
+#[tauri::command]
+async fn device_set_led(app: AppHandle, serial: u32, flags: u8, intensity: u8) -> Result<(), String> {
+    devices::set_led(&app, serial, flags, intensity)
+}
+
+#[tauri::command]
+async fn device_set_deadzone(app: AppHandle, serial: u32, on: bool) -> Result<(), String> {
+    devices::set_deadzone(&app, serial, on)
+}
+
+#[tauri::command]
+async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> Result<bool, String> {
+    devices::set_hid_enabled(&app, serial, enabled)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -295,7 +405,16 @@ pub fn run() {
             target_status,
             target_start,
             target_stop,
-            target_log
+            target_log,
+            scripts_list,
+            script_read,
+            script_write,
+            script_delete,
+            script_compile,
+            devices_list,
+            device_set_led,
+            device_set_deadzone,
+            device_set_hid_enabled
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
