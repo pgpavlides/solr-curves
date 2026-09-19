@@ -3,6 +3,8 @@ import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import { logLine, stamp } from "./describe";
 import TargetPanel, { type Sync } from "./TargetPanel";
+import ScriptView from "./ScriptView";
+import DevicesView from "./DevicesView";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
 import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
@@ -43,6 +45,12 @@ export default function App() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const pads = usePads();
+
+  // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
+  const [page, setPage] = useState<"curves" | "script" | "devices">(() => {
+    try { return (localStorage.getItem("solr:page") as "curves" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
+  });
+  useEffect(() => { try { localStorage.setItem("solr:page", page); } catch { /* not remembered */ } }, [page]);
 
   const c = st.axes[axis];
   // which side the controls edit. Linked: both, stored on pos and mirrored to neg
@@ -409,6 +417,15 @@ export default function App() {
             <p>WARDOGS · Sol-R [R] Flightstick · live into T.A.R.G.E.T.</p>
           </div>
         </div>
+        {inTauri && (
+          <nav className="pages">
+            {(["curves", "script", "devices"] as const).map((pg) => (
+              <button key={pg} className={page === pg ? "on" : ""} onClick={() => setPage(pg)}>
+                {pg === "curves" ? "Curves" : pg === "script" ? "Script" : "Devices"}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className="header-right">
           {inTauri && (
             <div className={`ov-ctl ${ov.on ? "on" : ""}`}>
@@ -440,7 +457,9 @@ export default function App() {
         </div>
       </header>
 
-      <main>
+      {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
+      {inTauri && page === "devices" && <DevicesView />}
+      <main style={inTauri && page !== "curves" ? { display: "none" } : undefined}>
         <section className="left">
           <nav className="tabs">
             {AXES.map((a) => (

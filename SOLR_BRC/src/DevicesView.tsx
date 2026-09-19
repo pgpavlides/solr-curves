@@ -1,0 +1,118 @@
+import { useEffect, useState } from "react";
+import { type Device, deviceSetDeadzone, deviceSetHidEnabled, deviceSetLed, devicesList } from "./bridge";
+
+/*
+  Every Thrustmaster USB device, as T.A.R.G.E.T.'s service sees it, and the
+  hardware switches it exposes. Reading is free; anything that changes the
+  device happens only on a click here, and "Hide from games" asks twice.
+
+  Functions a device doesn't support come back as errors from the DLL, and
+  show as "not supported" instead of a control. (The Sol-R has no LED or
+  hardware-deadzone functions here; its LEDs are driven from scripts.)
+*/
+
+export default function DevicesView() {
+  const [devs, setDevs] = useState<Device[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<number | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = () => devicesList().then((d) => { setDevs(d); setErr(null); }).catch((e) => setErr(String(e)));
+  useEffect(() => { load(); }, []);
+
+  // f may return its own message (e.g. "restart needed"), which wins over `done`
+  const act = async (f: () => Promise<string | void>, done: string) => {
+    try { setNote((await f()) || done); } catch (e) { setNote(String(e)); }
+    setConfirm(null);
+    load();
+  };
+
+  return (
+    <div className="devices-view">
+      <div className="dv-head">
+        <div>
+          <h2>Devices</h2>
+          <p className="hint">Thrustmaster USB devices, read through T.A.R.G.E.T.'s service. Changes happen only when you click.</p>
+        </div>
+        <button className="ghost-btn" onClick={load}>Refresh</button>
+      </div>
+      {err && <p className="hint warn">{err}</p>}
+      {note && <p className="dv-note">{note}</p>}
+      <div className="dv-grid">
+        {devs?.map((d) => {
+          const hidden = d.hid_enabled === false;
+          // only the flightstick goes through the curve script; hiding anything
+          // else takes it out of games completely (the throttle has no script)
+          const scripted = /PID_0422/i.test(d.hardware_id ?? "");
+          return (
+            <div key={d.serial} className="dv-card">
+              <div className="dv-title">
+                <b>{d.oem_name ?? d.name ?? `Device ${d.serial}`}</b>
+                <span className={`tag ${hidden ? "warn" : ""}`}>{hidden ? "hidden from games" : "visible to games"}</span>
+              </div>
+              <dl>
+                <dt>Hardware ID</dt><dd>{d.hardware_id ?? "—"}</dd>
+                <dt>Instance</dt><dd>{d.instance_id ?? "—"}</dd>
+                <dt>Service serial</dt><dd>{d.serial}</dd>
+                <dt>Firmware</dt><dd>{d.firmware_version ? `${d.firmware_version}${d.firmware_serial ? ` · ${d.firmware_serial}` : ""}` : <em>not reported</em>}</dd>
+                <dt>T.A.R.G.E.T. filter</dt><dd>{d.filtered === null ? "—" : d.filtered ? "installed (scriptable)" : "not installed"}</dd>
+                <dt>LEDs</dt>
+                <dd>
+                  {d.led_intensity === null ? <em>not supported by this device</em> : (
+                    <span className="dv-inline">
+                      <input type="range" min={0} max={5} step={1} defaultValue={d.led_intensity}
+                        onPointerUp={(e) => act(() => deviceSetLed(d.serial, d.led_flags ?? 0, Number((e.target as HTMLInputElement).value)), "LED brightness set")} />
+                      {d.led_intensity}
+                    </span>
+                  )}
+                </dd>
+                <dt>Hardware deadzone</dt>
+                <dd>
+                  {d.deadzone_on === null ? <em>not supported by this device</em> : (
+                    <label className="check">
+                      <input type="checkbox" checked={d.deadzone_on}
+                        onChange={(e) => act(() => deviceSetDeadzone(d.serial, e.target.checked), `Hardware deadzone ${e.target.checked ? "on" : "off"}`)} />
+                      {d.deadzone_on ? "on" : "off"}
+                    </label>
+                  )}
+                </dd>
+              </dl>
+
+              <div className="dv-hide">
+                <div>
+                  <b>{hidden ? "Hidden from games" : "Visible to games"}</b>
+                  {!scripted && !hidden && (
+                    <p className="hint warn">
+                      Not handled by the curve script: hiding this one removes it from games entirely (T.A.R.G.E.T. can't pass it through).
+                    </p>
+                  )}
+                  <p className="hint">
+                    {hidden
+                      ? "Games can't see this device directly; T.A.R.G.E.T. still reads it and games get Thrustmaster Combined."
+                      : "Games can bind this device directly, which bypasses your curves. Hiding it leaves only Thrustmaster Combined."}
+                    {" "}Reversible here. Windows may ask for a restart.
+                  </p>
+                </div>
+                {confirm === d.serial ? (
+                  <div className="dv-confirm">
+                    <button className="stop-btn" onClick={() => act(async () => {
+                      const reboot = await deviceSetHidEnabled(d.serial, hidden);
+                      if (reboot) return "Done - Windows needs a restart for this to take effect.";
+                    }, hidden ? "Visible to games again" : "Hidden from games")}>
+                      {hidden ? "Yes, show it" : "Yes, hide it"}
+                    </button>
+                    <button className="ghost-btn" onClick={() => setConfirm(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="ghost-btn" onClick={() => setConfirm(d.serial)} disabled={d.hid_enabled === null}>
+                    {hidden ? "Show to games" : "Hide from games"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

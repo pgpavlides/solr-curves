@@ -120,3 +120,39 @@ export async function targetStatus(): Promise<TargetStatus | null> {
 export const targetStart = () => invoke<void>("target_start");
 export const targetStop = () => invoke<void>("target_stop");
 export const targetLog = () => invoke<TargetLogLine[]>("target_log");
+
+/* ---- writing any T.A.R.G.E.T. script (Script view) */
+export interface ScriptFile { name: string; path: string; builtin: boolean }
+export interface CompileResult {
+  ok: boolean;
+  errors: string[];
+  functions: string[];
+  variables: string[];
+  defines: string[];
+}
+export const scriptsList = () => invoke<ScriptFile[]>("scripts_list");
+export const scriptRead = (name: string) => invoke<string>("script_read", { name });
+export const scriptWrite = (name: string, text: string) => invoke<void>("script_write", { name, text });
+export const scriptDelete = (name: string) => invoke<void>("script_delete", { name });
+export const scriptCompile = (name: string, run: boolean) => invoke<CompileResult>("script_compile", { name, run });
+
+/* ---- the physical devices (Devices view) */
+export interface Device {
+  serial: number;
+  name: string | null;
+  oem_name: string | null;
+  hardware_id: string | null;
+  instance_id: string | null;
+  firmware_serial: string | null;
+  firmware_version: string | null;
+  filtered: boolean | null;
+  hid_enabled: boolean | null;
+  led_flags: number | null;
+  led_intensity: number | null;
+  deadzone_on: boolean | null;
+}
+export const devicesList = () => invoke<Device[]>("devices_list");
+export const deviceSetLed = (serial: number, flags: number, intensity: number) => invoke<void>("device_set_led", { serial, flags, intensity });
+export const deviceSetDeadzone = (serial: number, on: boolean) => invoke<void>("device_set_deadzone", { serial, on });
+/** resolves to true when Windows needs a restart for it to take effect */
+export const deviceSetHidEnabled = (serial: number, enabled: boolean) => invoke<boolean>("device_set_hid_enabled", { serial, enabled });
