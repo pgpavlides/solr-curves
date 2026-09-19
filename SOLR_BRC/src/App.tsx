@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
-import { usePads } from "./gamepad";
+import { type PadLike, usePads } from "./gamepad";
 import { logLine, stamp } from "./describe";
 import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
@@ -643,7 +643,7 @@ export default function App() {
               </label>
             ))}
           </div>
-          <PadBars title="Sol-R [R] Flightstick" sub="your hand" pad={pads.stick} input={st.input} current={axis} />
+          <PadBars title="Sol-R [R] Flightstick" sub={pads.stickSource === "target" ? "your hand · via T.A.R.G.E.T." : "your hand"} pad={pads.stick} input={st.input} current={axis} />
           <PadBars title="Thrustmaster Combined" sub="what the game gets" pad={pads.combined} input={st.input} current={axis} />
         </section>
       </main>
@@ -661,7 +661,7 @@ function Readout({ label, v, warn }: { label: string; v: number | null; warn?: b
 }
 
 function PadBars({ title, sub, pad, input, current }: {
-  title: string; sub: string; pad: Gamepad | null; input: Record<AxisName, number>; current: AxisName;
+  title: string; sub: string; pad: PadLike | null; input: Record<AxisName, number>; current: AxisName;
 }) {
   const tag = (i: number) => AXES.filter((a) => input[a] === i);
   // Button numbers as Windows (and Thrustmaster's manuals) count them: the
