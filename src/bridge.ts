@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 /*
   Where the app's files go. Inside the Tauri window this is Rust
@@ -53,4 +54,29 @@ export async function savePresets(presets: unknown[]): Promise<void> {
 export async function readAck(): Promise<number | null> {
   if (inTauri) return invoke<number | null>("read_ack");
   return (await (await fetch("/api/ack")).json()).ack;
+}
+
+/*
+  The in-game overlay (Tauri only - a browser can't put a window over a game).
+  The editor tells Rust to open/close/resize it, and pushes what to draw as
+  events; the overlay asks for a push when it opens ("overlay-ready").
+*/
+export async function setOverlay(on: boolean, width: number, height: number): Promise<void> {
+  if (!inTauri) return;
+  await invoke("set_overlay", { on, width, height });
+}
+
+export function emitEvent(name: string, payload?: unknown) {
+  if (inTauri) emit(name, payload).catch(() => {});
+}
+
+export function onEvent<T>(name: string, cb: (payload: T) => void): () => void {
+  if (!inTauri) return () => {};
+  let off: UnlistenFn | null = null;
+  let dead = false;
+  listen<T>(name, (e) => cb(e.payload)).then((u) => (dead ? u() : (off = u)));
+  return () => {
+    dead = true;
+    off?.();
+  };
 }
