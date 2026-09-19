@@ -24,6 +24,17 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, Webvie
 const NTAB: usize = 3 * 257;
 const AMAX: i32 = 32767;
 
+/*
+  Blocking work - calls into Thrustmaster's DLLs, `sc` / `tasklist`, waits -
+  runs on its own thread, never on the async workers. With Thrustmaster's
+  service down, a DLL call can hang for good; on a worker, a few of those
+  (the app retries some every few seconds) blocked every other command,
+  including the button that would start the service again.
+*/
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())
+}
+
 fn dir() -> PathBuf {
     PathBuf::from(std::env::var("SOLR_DIR").unwrap_or_else(|_| "E:/".into()))
 }
@@ -195,18 +206,25 @@ struct GameBindings {
 }
 
 #[tauri::command]
-async fn game_bindings() -> GameBindings {
-    let Some(p) = game_ini() else {
-        return GameBindings { found: false, running: false, physical: vec![] };
-    };
-    let ini = fs::read_to_string(&p).unwrap_or_default();
-    GameBindings { found: true, running: game_running(), physical: physical_actions(&ini) }
+async fn game_bindings() -> Result<GameBindings, String> {
+    blocking(|| {
+        let Some(p) = game_ini() else {
+            return GameBindings { found: false, running: false, physical: vec![] };
+        };
+        let ini = fs::read_to_string(&p).unwrap_or_default();
+        GameBindings { found: true, running: game_running(), physical: physical_actions(&ini) }
+    })
+    .await
 }
 
 /// Move every physical-stick binding to Thrustmaster Combined. Axis and button
 /// numbers stay the same: the script passes both through 1:1.
 #[tauri::command]
 async fn fix_game_bindings() -> Result<usize, String> {
+    blocking(fix_game_bindings_now).await?
+}
+
+fn fix_game_bindings_now() -> Result<usize, String> {
     let p = game_ini().ok_or("WARDOGS settings file not found")?;
     if game_running() {
         return Err("Close WARDOGS first - it rewrites its settings when it exits".into());
@@ -285,24 +303,24 @@ async fn set_overlay(app: AppHandle, on: bool, width: f64, height: f64) -> Resul
 // ---- the T.A.R.G.E.T. script, run from here (see target.rs)
 
 #[tauri::command]
-async fn target_status(app: AppHandle) -> target::Status {
-    target::status(&app, &dir())
+async fn target_status(app: AppHandle) -> Result<target::Status, String> {
+    blocking(move || target::status(&app, &dir())).await
 }
 
 #[tauri::command]
 async fn target_start(app: AppHandle) -> Result<(), String> {
-    target::start(&app, &dir())
+    blocking(move || target::start(&app, &dir())).await?
 }
 
 #[tauri::command]
 async fn target_stop(app: AppHandle) -> Result<(), String> {
-    target::stop(&app)
+    blocking(move || target::stop(&app)).await?
 }
 
 /// Start Thrustmaster's service (Windows asks for admin approval).
 #[tauri::command]
 async fn target_start_service() -> Result<(), String> {
-    target::start_service()
+    blocking(target::start_service).await?
 }
 
 #[tauri::command]
@@ -393,15 +411,15 @@ async fn script_delete(name: String) -> Result<(), String> {
 #[tauri::command]
 async fn script_compile(app: AppHandle, name: String, run: bool) -> Result<target::CompileResult, String> {
     let p = if name == target::SCRIPT_NAME { target::install_builtin(&dir())? } else { script_path(&name)? };
-    if run { target::compile_file(&app, &p, true) } else { target::check_file(&app, &p) }
+    blocking(move || if run { target::compile_file(&app, &p, true) } else { target::check_file(&app, &p) }).await?
 }
 
 // ---- the stick's raw values through T.A.R.G.E.T.'s filter (hidraw.rs):
 // works while a script hides it from Windows
 
 #[tauri::command]
-async fn raw_stick_start(app: AppHandle) -> hidraw::RawStatus {
-    hidraw::start(&app)
+async fn raw_stick_start(app: AppHandle) -> Result<hidraw::RawStatus, String> {
+    blocking(move || hidraw::start(&app)).await
 }
 
 #[tauri::command]
@@ -413,22 +431,22 @@ fn raw_stick_snapshot() -> Option<hidraw::RawStick> {
 
 #[tauri::command]
 async fn devices_list(app: AppHandle) -> Result<Vec<devices::Device>, String> {
-    devices::list(&app)
+    blocking(move || devices::list(&app)).await?
 }
 
 #[tauri::command]
 async fn device_set_led(app: AppHandle, serial: u32, flags: u8, intensity: u8) -> Result<(), String> {
-    devices::set_led(&app, serial, flags, intensity)
+    blocking(move || devices::set_led(&app, serial, flags, intensity)).await?
 }
 
 #[tauri::command]
 async fn device_set_deadzone(app: AppHandle, serial: u32, on: bool) -> Result<(), String> {
-    devices::set_deadzone(&app, serial, on)
+    blocking(move || devices::set_deadzone(&app, serial, on)).await?
 }
 
 #[tauri::command]
 async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> Result<bool, String> {
-    devices::set_hid_enabled(&app, serial, enabled)
+    blocking(move || devices::set_hid_enabled(&app, serial, enabled)).await?
 }
 
 pub fn run() {

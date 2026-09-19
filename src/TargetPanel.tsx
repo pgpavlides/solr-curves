@@ -50,7 +50,8 @@ export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: numbe
     try {
       await targetStart();
     } catch (e) {
-      setProblem(String(e));
+      // "service-stopped" has its own explanation and button in the panel
+      if (String(e) !== "service-stopped") setProblem(String(e));
       setOpen(true);
     }
     setBusy(null);
