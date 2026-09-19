@@ -73,26 +73,71 @@ fn scan(name: &str) -> Option<(u16, bool)> {
     })
 }
 
-/// "F, WheelDown, WheelDown, F, Esc" (commas, arrows or spaces between steps).
-pub fn parse(text: &str) -> Result<Vec<Step>, String> {
+/// One step as run: `fast` steps follow each other after FAST_GAP instead of
+/// the macro's gap (and hold their key shorter) - "Enter x24 fast".
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Timed {
+    pub step: Step,
+    pub fast: bool,
+}
+
+const FAST_GAP: u64 = 45;
+const FAST_HOLD: u64 = 20;
+const HOLD: u64 = 40;
+
+fn one(word: &str) -> Result<Step, String> {
+    let key = word.replace([' ', '_'], "").to_ascii_lowercase();
+    Ok(match key.as_str() {
+        "wheeldown" | "scrolldown" => Step::Wheel(-1),
+        "wheelup" | "scrollup" => Step::Wheel(1),
+        k if k.starts_with("wait") => Step::Wait(k[4..].trim_end_matches("ms").parse().map_err(|_| format!("\"{word}\": Wait needs ms, e.g. Wait 200"))?),
+        _ => scan(&key).map(|(s, e)| Step::Key(s, e)).ok_or_else(|| format!("\"{word}\" isn't a key I know"))?,
+    })
+}
+
+/// "F, WheelDown, WheelDown, F, Esc" - steps separated by commas, arrows (->)
+/// or " - ". A step can repeat and go fast: "Enter x24 fast", "24 times Enter
+/// fast", "24x Enter". "Down arrow" is just Down.
+pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
     let mut out = vec![];
-    let cleaned = text.replace("-->", ",").replace("->", ",").replace('>', ",");
-    let mut words = cleaned.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()).peekable();
-    while let Some(w) = words.next() {
-        let key = w.replace([' ', '_'], "").to_ascii_lowercase();
-        let step = match key.as_str() {
-            "wheeldown" | "scrolldown" => Step::Wheel(-1),
-            "wheelup" | "scrollup" => Step::Wheel(1),
-            k if k.starts_with("wait") => Step::Wait(k[4..].trim_end_matches("ms").parse().map_err(|_| format!("\"{w}\": Wait needs ms, e.g. Wait 200"))?),
-            _ => scan(&key).map(|(s, e)| Step::Key(s, e)).ok_or_else(|| format!("\"{w}\" isn't a key I know"))?,
-        };
-        out.push(step);
+    let cleaned = text.replace("-->", ",").replace("->", ",").replace(" - ", ",").replace('>', ",");
+    for part in cleaned.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
+        let mut count = 1usize;
+        let mut fast = false;
+        let mut name: Vec<&str> = vec![];
+        for w in part.split_whitespace() {
+            let l = w.to_ascii_lowercase();
+            let num = l.trim_start_matches('x').trim_end_matches('x').trim_end_matches("times");
+            if l == "fast" {
+                fast = true;
+            } else if l == "times" || l == "time" || l == "arrow" || l == "key" {
+            } else if !l.starts_with("wait") && (l.starts_with('x') || l.ends_with('x') || name.is_empty() || l.ends_with("times")) && !num.is_empty() && num.chars().all(|c| c.is_ascii_digit()) && !(name.first().is_some_and(|n| n.eq_ignore_ascii_case("wait"))) {
+                count = num.parse().map_err(|_| format!("\"{part}\": bad count"))?;
+            } else {
+                name.push(w);
+            }
+        }
+        if name.is_empty() && !part.contains(char::is_whitespace) {
+            // a lone "5" is the 5 key, not a count
+            name.push(part);
+            count = 1;
+        }
+        if name.is_empty() {
+            return Err(format!("\"{part}\": which key?"));
+        }
+        if count == 0 || count > 200 {
+            return Err(format!("\"{part}\": 1 to 200 times"));
+        }
+        let step = one(&name.join(" "))?;
+        for _ in 0..count {
+            out.push(Timed { step, fast });
+        }
     }
     Ok(out)
 }
 
 #[cfg(windows)]
-fn send(step: Step) {
+fn send(step: Step, fast: bool) {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     let key = |scan: u16, ext: bool, up: bool| INPUT {
         r#type: INPUT_KEYBOARD,
@@ -111,7 +156,7 @@ fn send(step: Step) {
         Step::Key(s, e) => {
             one(key(s, e, false));
             // held briefly: games polling the keyboard miss a zero-length tap
-            std::thread::sleep(Duration::from_millis(40));
+            std::thread::sleep(Duration::from_millis(if fast { FAST_HOLD } else { HOLD }));
             one(key(s, e, true));
         }
         Step::Wheel(n) => {
@@ -152,10 +197,11 @@ pub fn press(button: u16) {
     std::thread::spawn(move || {
         for (i, s) in steps.iter().enumerate() {
             if i > 0 {
-                std::thread::sleep(Duration::from_millis(gap));
+                let fast = s.fast && steps[i - 1].fast;
+                std::thread::sleep(Duration::from_millis(if fast { FAST_GAP } else { gap }));
             }
             #[cfg(windows)]
-            send(*s);
+            send(s.step, s.fast);
         }
         if let Some(set) = RUNNING.lock().unwrap().as_mut() {
             set.remove(&button);
@@ -167,11 +213,32 @@ pub fn press(button: u16) {
 mod tests {
     use super::*;
 
+    fn steps(text: &str) -> Vec<Step> {
+        parse(text).unwrap().into_iter().map(|t| t.step).collect()
+    }
+
     #[test]
     fn reads_the_sequence_as_written() {
-        let s = parse("F-->SCROLL DOWN-->SCROLL DOWN-->F-->ESC").unwrap();
-        assert_eq!(s, vec![Step::Key(0x21, false), Step::Wheel(-1), Step::Wheel(-1), Step::Key(0x21, false), Step::Key(0x01, false)]);
-        assert_eq!(parse("f, wheelup, wait 250, F5, Up").unwrap(), vec![Step::Key(0x21, false), Step::Wheel(1), Step::Wait(250), Step::Key(0x3F, false), Step::Key(0x48, true)]);
+        let f = Step::Key(0x21, false);
+        assert_eq!(steps("F-->SCROLL DOWN-->SCROLL DOWN-->F-->ESC"), vec![f, Step::Wheel(-1), Step::Wheel(-1), f, Step::Key(0x01, false)]);
+        assert_eq!(steps("f, wheelup, wait 250, F5, Up"), vec![f, Step::Wheel(1), Step::Wait(250), Step::Key(0x3F, false), Step::Key(0x48, true)]);
         assert!(parse("F, Banana").is_err());
+    }
+
+    #[test]
+    fn repeats_and_fast() {
+        let enter = Step::Key(0x1C, false);
+        // button 12, as asked for
+        let t = parse("B - DOWN ARROW - DOWN, UP - ENTER - ENTER - F - F - RIGHT ARROW - 24 TIMES ENTER FAST").unwrap();
+        assert_eq!(t.len(), 9 + 24);
+        assert_eq!(t[1].step, Step::Key(0x50, true));
+        assert_eq!(t[8].step, Step::Key(0x4D, true));
+        assert!(t[9..].iter().all(|x| x.step == enter && x.fast));
+        assert!(!t[..9].iter().any(|x| x.fast));
+        assert_eq!(parse("Enter x24 fast").unwrap().len(), 24);
+        assert_eq!(parse("24x Enter").unwrap().len(), 24);
+        assert_eq!(steps("Wait 300"), vec![Step::Wait(300)]);
+        assert_eq!(steps("F5"), vec![Step::Key(0x3F, false)]);
+        assert_eq!(steps("5"), vec![Step::Key(0x06, false)], "a lone digit is the key");
     }
 }

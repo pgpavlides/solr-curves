@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { macroCheck } from "./bridge";
+import type { PadLike } from "./gamepad";
 import type { Macro, VoiceConfig } from "./voice";
 
 /*
@@ -9,9 +10,9 @@ import type { Macro, VoiceConfig } from "./voice";
 */
 
 interface Props {
+  stick: PadLike | null;
   cfg: VoiceConfig;
   update: (c: VoiceConfig) => void;
-  pressed: Set<number>;
 }
 
 function MacroRow({ button, m, onChange, onDelete, down }: { button: number; m: Macro; onChange: (m: Macro) => void; onDelete: () => void; down: boolean }) {
@@ -20,7 +21,7 @@ function MacroRow({ button, m, onChange, onDelete, down }: { button: number; m: 
   useEffect(() => {
     macroCheck(m.steps).then((n) => { setCount(n); setProblem(null); }).catch((e) => setProblem(String(e)));
   }, [m.steps]);
-  const chips = m.steps.replace(/-->|->|>/g, ",").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const chips = m.steps.replace(/-->|->|>| - /g, ",").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
   return (
     <div className={`mc-row ${down ? "down" : ""}`}>
       <div className="mc-top">
@@ -42,7 +43,9 @@ function MacroRow({ button, m, onChange, onDelete, down }: { button: number; m: 
   );
 }
 
-export default function MacrosPanel({ cfg, update, pressed }: Props) {
+/** The Macros page: every button macro, big enough to read and edit. */
+export default function MacrosPanel({ stick, cfg, update }: Props) {
+  const pressed = new Set((stick?.buttons ?? []).flatMap((b, i) => (b.pressed ? [i + 1] : [])));
   const macros = cfg.macros ?? {};
   const [adding, setAdding] = useState("");
   const set = (next: Record<number, Macro>) => update({ ...cfg, macros: next });
@@ -53,11 +56,13 @@ export default function MacrosPanel({ cfg, update, pressed }: Props) {
     setAdding("");
   };
   return (
+    <div className="mc-page">
     <section className="vv-panel mc-panel">
       <h2>Button macros</h2>
       <p className="hint">
         A stick button types a sequence into the game. Keys (F, Esc, Enter, Space, 1, F5, Up...), <code>WheelDown</code> /{" "}
-        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas or arrows. Works in any bank.
+        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Repeat a step with{" "}
+        <code>Enter x24</code>, and add <code>fast</code> to rush the repeats. Works in any bank.
       </p>
       {Object.entries(macros).map(([b, m]) => (
         <MacroRow key={b} button={Number(b)} m={m} down={pressed.has(Number(b))}
@@ -70,5 +75,6 @@ export default function MacrosPanel({ cfg, update, pressed }: Props) {
         <button className="ghost-btn" onClick={add}>Add macro</button>
       </div>
     </section>
+    </div>
   );
 }

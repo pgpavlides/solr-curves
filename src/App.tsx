@@ -5,6 +5,7 @@ import { logLine, stamp } from "./describe";
 import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
 import DevicesView from "./DevicesView";
+import MacrosPanel from "./MacrosPanel";
 import VoiceView from "./VoiceView";
 import { useVoiceBanks } from "./voice";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
@@ -54,8 +55,8 @@ export default function App() {
   const voice = useVoiceBanks(inTauri ? pads.stick : null);
 
   // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
-  const [page, setPage] = useState<"curves" | "voice" | "script" | "devices">(() => {
-    try { return (localStorage.getItem("solr:page") as "curves" | "voice" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
+  const [page, setPage] = useState<"curves" | "voice" | "macros" | "script" | "devices">(() => {
+    try { return (localStorage.getItem("solr:page") as "curves" | "voice" | "macros" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
   });
   useEffect(() => { try { localStorage.setItem("solr:page", page); } catch { /* not remembered */ } }, [page]);
 
@@ -469,9 +470,9 @@ export default function App() {
         </div>
         {inTauri && (
           <nav className="pages">
-            {(["curves", "voice", "script", "devices"] as const).map((pg) => (
+            {(["curves", "voice", "macros", "script", "devices"] as const).map((pg) => (
               <button key={pg} className={page === pg ? "on" : ""} onClick={() => setPage(pg)}>
-                {pg === "curves" ? "Curves" : pg === "voice" ? "Voice control" : pg === "script" ? "Script" : "Devices"}
+                {pg === "curves" ? "Curves" : pg === "voice" ? "Voice control" : pg === "macros" ? "Macros" : pg === "script" ? "Script" : "Devices"}
               </button>
             ))}
           </nav>
@@ -509,6 +510,7 @@ export default function App() {
 
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}
+      {inTauri && page === "macros" && <MacrosPanel stick={pads.stick} cfg={voice.cfg} update={voice.update} />}
       {inTauri && page === "voice" && (
         <VoiceView stick={pads.stick} bank={voice.bank} cfg={voice.cfg} update={voice.update} setHold={voice.setHold} ledError={voice.ledError} />
       )}
