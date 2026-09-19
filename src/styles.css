@@ -339,32 +339,45 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .dv-hide > button, .dv-confirm button { white-space: nowrap; flex: none; }
 .dv-hide .hint.warn { color: var(--game); }
 
-/* ---- curve styles (beside the S-curve / Custom points switch) */
+/* ---- curve styles: the button beside the S-curve / Custom points switch */
 .mode-row { display: flex; gap: 6px; align-items: stretch; }
 .mode-row .seg { flex: 1; }
-.styles { position: relative; display: flex; }
 .styles-btn { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; cursor: pointer; font-weight: 600; max-width: 150px; }
-.styles-btn span:not(.caret) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.styles-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .styles-btn.on, .styles-btn:hover { border-color: var(--accent); }
-.styles-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 560px; max-height: calc(100vh - 170px);
-  display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid var(--accent);
-  border-radius: 12px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
-.styles-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
 .accent { color: var(--accent); }
-.styles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; overflow-y: auto; min-height: 0; }
-.style-card { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
-.style-card.on { border-color: var(--accent); }
-.style-apply { display: grid; grid-template-columns: 56px 1fr; grid-template-rows: auto 1fr; column-gap: 8px; text-align: left; background: none; border: none; padding: 7px; cursor: pointer; }
-.style-apply:hover { background: #213a2b; border-radius: 10px; }
-.style-apply .style-thumb { grid-row: 1 / 3; }
-.style-name { font-weight: 600; font-size: 12.5px; }
-.style-note { font-size: 11px; color: var(--muted); line-height: 1.3; }
-.style-actions { display: flex; justify-content: flex-end; gap: 4px; padding: 0 6px 6px; }
-.style-actions .ghost-btn { padding: 1px 7px; font-size: 11.5px; }
-.style-thumb { background: #0f1c16; border-radius: 6px; flex: none; }
-.st-lin { stroke: #3a5646; stroke-dasharray: 2 3; stroke-width: 1; }
-.st-ax { stroke: #25402f; stroke-width: 1; }
-.st-curve { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+
+/* the full-window style picker */
+.styles-modal { position: fixed; inset: 0; z-index: 50; background: rgba(4, 9, 7, 0.72); backdrop-filter: blur(3px); display: flex; padding: 18px; }
+.styles-window { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px;
+  background: var(--bg); border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); }
+.styles-top { display: flex; align-items: center; gap: 18px; flex: none; }
+.styles-intro { flex: 1; min-width: 0; }
+.styles-intro h2 { font-size: 18px; margin: 0 0 2px; }
+.styles-intro p { margin: 0; font-size: 12.5px; }
+.styles-now { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.styles-now div { display: flex; flex-direction: column; font-size: 12.5px; }
+.styles-close { font-size: 26px; line-height: 1; padding: 0 6px; }
+.styles-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); grid-auto-rows: minmax(210px, 1fr); }
+.style-card { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.style-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.style-apply { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; background: none; border: none; padding: 10px; cursor: pointer; color: inherit; }
+.style-apply:hover { background: #1a3025; }
+.style-apply .style-thumb { flex: 1; min-height: 0; width: 100%; }
+.style-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.style-name .tag.mine { color: var(--live); border-color: var(--live); }
+.style-note { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.style-actions { display: flex; justify-content: flex-end; gap: 4px; padding: 0 8px 8px; }
+.style-actions .ghost-btn { padding: 2px 8px; font-size: 12px; }
+.styles-bottom { flex: none; }
+.style-thumb { background: #0f1c16; border-radius: 8px; flex: none; }
+.st-grid { stroke: #172a20; stroke-width: 0.6; }
+.st-lin { stroke: #3a5646; stroke-dasharray: 2 3; stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+.st-ax { stroke: #2a4535; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.st-ghost { fill: none; stroke: var(--live); stroke-opacity: 0.45; stroke-width: 1.4; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.st-curve { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
 /* narrow windows: the style button shrinks to its thumbnail so the mode
    switch never wraps (the name is in its tooltip) */
-@media (max-width: 1440px) { .styles-btn span:not(.caret) { display: none; } }
+@media (max-width: 1440px) { .styles-btn span { display: none; } }

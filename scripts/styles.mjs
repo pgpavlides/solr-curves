@@ -5,7 +5,7 @@
   Needs the test server on 5179 (SOLR_DIR=.testdata/). Run: node scripts/styles.mjs
 */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -42,7 +42,7 @@ await ev(`document.querySelector(".presets-btn").click()`); await sleep(150);
 await ev(`[...document.querySelectorAll(".preset")].find(p => p.textContent.startsWith("Default (tuned)")).querySelector("button").click()`);
 await sleep(900);
 
-const openStyles = () => ev(`document.querySelector(".styles-pop") ? 1 : document.querySelector(".styles-btn").click()`);
+const openStyles = () => ev(`document.querySelector(".styles-modal") ? 1 : document.querySelector(".styles-btn").click()`);
 const applyStyle = (name) => ev(`[...document.querySelectorAll(".style-apply")].find(b => b.querySelector(".style-name").textContent === ${JSON.stringify(name)}).click()`);
 const tab = (t) => ev(`[...document.querySelectorAll(".tabs button")].find(b => b.textContent.startsWith(${JSON.stringify(t)})).click()`);
 const field = (label) => ev(`[...document.querySelectorAll(".field")].find(f => f.textContent.startsWith(${JSON.stringify(label)}))?.querySelector(".num").value`);
@@ -71,22 +71,37 @@ ok(/Style "Hover precision" -> Roll \(both sides\)$/.test(note()), `log line (pl
 await tab("Pitch"); await sleep(150);
 await ev(`[...document.querySelectorAll(".sides button")].find(b => b.textContent.includes("Forward")).click()`); await sleep(200);
 await openStyles(); await sleep(200);
-ok(/Pitch · Forward/.test(await ev(`document.querySelector(".styles-head").textContent`)), "the panel says it applies to Pitch · Forward");
+ok(/Pitch · Forward/.test(await ev(`document.querySelector(".styles-intro").textContent`)), "the panel says it applies to Pitch · Forward");
 await applyStyle("Limited 75%"); await sleep(900);
 t = table();
 ok(Math.abs(at(t, 1, -1) + 0.75) < 0.01 && Math.abs(at(t, 1, 1) - 1) < 0.01, `pitch forward stops at ${(at(t, 1, -1) * 100).toFixed(0)}%, back still reaches ${(at(t, 1, 1) * 100).toFixed(0)}%`);
 
 // 3. save the current (forward) curve as a user style, then delete it
 await openStyles(); await sleep(200);
-await ev(`(() => { const i = document.querySelector(".styles-pop .presets-save input"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, "My forward"); i.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+await ev(`(() => { const i = document.querySelector(".styles-window .presets-save input"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, "My forward"); i.dispatchEvent(new Event("input", { bubbles: true })); })()`);
 await sleep(100);
-await ev(`document.querySelector(".styles-pop .presets-save .add-btn").click()`); await sleep(600);
+await ev(`document.querySelector(".styles-window .presets-save .add-btn").click()`); await sleep(600);
 const file = existsSync(D + "hotas_curve_styles.json") ? JSON.parse(readFileSync(D + "hotas_curve_styles.json", "utf8")) : [];
 ok(file.length === 1 && file[0].name === "My forward" && file[0].side.outMax === 75, "saved to hotas_curve_styles.json with max output 75");
 ok((await ev(`document.querySelectorAll(".style-card").length`)) === 11, "it appears as an 11th style");
 await ev(`[...document.querySelectorAll(".style-card")].find(c => c.textContent.includes("My forward")).querySelector(".x").click()`); await sleep(150);
 await ev(`[...document.querySelectorAll(".style-card")].find(c => c.textContent.includes("My forward")).querySelector(".x").click()`); await sleep(500);
 ok(JSON.parse(readFileSync(D + "hotas_curve_styles.json", "utf8")).length === 0, "deleted after the confirm click");
+
+// the window itself: fills the screen, every curve visible without scrolling
+mkdirSync("shots", { recursive: true });
+for (const [w, h] of [[1600, 900], [1280, 720]]) {
+  await S("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+  await ev(`document.querySelector(".styles-modal") && document.querySelector(".styles-close").click()`); await sleep(150);
+  await openStyles(); await sleep(400);
+  const m = await ev(`(() => { const g = document.querySelector(".styles-grid"); const win = document.querySelector(".styles-window").getBoundingClientRect();
+    const t = document.querySelector(".style-card .style-thumb").getBoundingClientRect();
+    return { win: Math.round(win.width) + "x" + Math.round(win.height), scroll: g.scrollHeight - g.clientHeight, thumb: Math.round(Math.min(t.width, t.height)) }; })()`);
+  ok(m.scroll <= 1 && m.thumb >= 120, `${w}x${h}: window ${m.win}, all curves fit (overflow ${m.scroll}px), previews ${m.thumb}px`);
+  writeFileSync(`shots/styles-${w}x${h}.png`, Buffer.from((await S("Page.captureScreenshot", { format: "png" })).result.data, "base64"));
+}
+await ev(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`); await sleep(200);
+ok(!(await ev(`!!document.querySelector(".styles-modal")`)), "Esc closes it");
 
 ok(errors.length === 0, `no console errors (${errors.length})${errors[0] ? ": " + errors[0] : ""}`);
 chrome.kill();
