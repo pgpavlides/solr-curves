@@ -76,7 +76,7 @@ function bridge(): Plugin {
             return send(200, { ack: a === null ? null : Number(a.trim()) });
           }
           if (req.method === "POST" && req.url === "/state") {
-            const { state, table, gen } = JSON.parse(await body(req));
+            const { state, table, gen, note } = JSON.parse(await body(req));
             if (
               !Array.isArray(table) || table.length !== NTAB ||
               !table.every((v) => Number.isInteger(v) && Math.abs(v) <= AMAX) ||
@@ -86,7 +86,9 @@ function bridge(): Plugin {
             }
             const rows: string[] = [];
             for (let i = 0; i < NTAB; i += 16) rows.push(table.slice(i, i + 16).join(" "));
-            await atomicWrite(TABLE, `${gen}\r\n${rows.join("\r\n")}\r\n${gen}\r\n`);
+            // the log line the script prints: printable ASCII, one line, after '#'
+            const log = typeof note === "string" ? note.replace(/[^\x20-\x7e]/g, "?").slice(0, 190) : "";
+            await atomicWrite(TABLE, `${gen}\r\n${rows.join("\r\n")}\r\n${gen}\r\n#${log}\r\n`);
             await atomicWrite(STATE, JSON.stringify(state, null, 2));
             return send(200, { ok: true, gen });
           }

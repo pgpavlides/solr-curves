@@ -88,6 +88,11 @@ await sleep(1200);
 const second = poll(readFileSync(TABLE, "latin1"));
 ok(second && second.gen !== first.gen, `slider change rewrote the table (gen ${first.gen} -> ${second?.gen})`);
 const half2 = shape(second.t, 0, 32767 / 2) / 32767;
+// the log line, read the way the script's ReadNote() reads it
+const txt = readFileSync(TABLE, "latin1");
+const note = txt.slice(txt.indexOf("#", txt.lastIndexOf(String(second.gen))) + 1).split(/[\r\n]/)[0];
+console.log(`      console line: ${note}  |  #${second.gen}`);
+ok(/^\d\d [A-Z][a-z]{2} \d{4}  \d\d:\d\d:\d\d  \|  Roll: curve 2 -> 6$/.test(note), "log line has date, time and what changed");
 ok(half2 < half, `curve 6 is softer at 50%: ${(half2 * 100).toFixed(1)}% < ${(half * 100).toFixed(1)}%`);
 ok(Math.abs(shape(second.t, 1, 32767 / 2) / 32767 - half) < 1e-6, "pitch untouched by a roll edit");
 
