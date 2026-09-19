@@ -20,6 +20,7 @@ const STATE = path.join(DIR, "hotas_curves.json");
 const TABLE = path.join(DIR, "hotas_curves.txt");
 const ACK = path.join(DIR, "hotas_curves.ack");
 const PRESETS = path.join(DIR, "hotas_presets.json");
+const STYLES = path.join(DIR, "hotas_curve_styles.json");
 
 const NTAB = 3 * 257;
 const AMAX = 32767;
@@ -75,6 +76,17 @@ function bridge(): Plugin {
           if (req.method === "GET" && req.url === "/ack") {
             const a = await readText(ACK);
             return send(200, { ack: a === null ? null : Number(a.trim()) });
+          }
+          if (req.method === "GET" && req.url === "/styles") {
+            const s = await readText(STYLES);
+            const list = s ? JSON.parse(s) : [];
+            return send(200, Array.isArray(list) ? list : []);
+          }
+          if (req.method === "POST" && req.url === "/styles") {
+            const list = JSON.parse(await body(req));
+            if (!Array.isArray(list)) return send(400, { error: "styles must be a list" });
+            await atomicWrite(STYLES, JSON.stringify(list, null, 2));
+            return send(200, { ok: true });
           }
           if (req.method === "GET" && req.url === "/presets") {
             const s = await readText(PRESETS);

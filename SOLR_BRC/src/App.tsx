@@ -6,7 +6,8 @@ import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
 import DevicesView from "./DevicesView";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
-import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
+import Styles, { type Style } from "./Styles";
+import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, loadStyles, saveStyles, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
@@ -362,6 +363,42 @@ export default function App() {
     if (activePreset === name) markActive(null);
     setFlash(`Deleted "${name}"`);
   };
+  // ---- curve styles: one curve shape, applied to this axis / side only
+  const [styles, setStyles] = useState<Style[]>([]);
+  useEffect(() => {
+    loadStyles()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((raw: any[]) => setStyles(raw.filter((x) => x && typeof x.name === "string" && x.side?.mode).map((x) => ({ name: x.name, side: x.side, savedAt: x.savedAt }))))
+      .catch(() => setStyles([]));
+  }, []);
+  const styleTarget = `${AXIS_LABEL[axis].replace(/ \(.*\)/, "")} · ${c.linked ? "both sides" : SIDE_LABEL[axis][sv]}`;
+  // for the T.A.R.G.E.T. console, which prints plain ASCII only
+  const styleTargetLog = `${AXIS_LABEL[axis].replace(/ \(.*\)/, "")} (${c.linked ? "both sides" : SIDE_LABEL[axis][sv].toLowerCase()})`;
+  const applyStyle = (st: Style) => {
+    // an S-curve style sets only the S-curve settings; a points style sets the points
+    const patch: Partial<Side> = st.side.mode === "scurve"
+      ? { mode: "scurve", deadzone: st.side.deadzone, curve: st.side.curve, saturation: st.side.saturation, outMax: st.side.outMax }
+      : { mode: "points", points: structuredClone(st.side.points), smooth: st.side.smooth };
+    setSide(patch);
+    setSelected(null);
+    pendingNote.current = `${stamp()}  |  Style "${st.name}" -> ${styleTargetLog}`;
+    setFlash(`"${st.name}" → ${styleTarget}`);
+  };
+  const storeStyles = (list: Style[]) => {
+    setStyles(list);
+    saveStyles(list).catch(() => setFlash("Couldn't write hotas_curve_styles.json"));
+  };
+  const saveStyle = (name: string) => {
+    const st: Style = { name, side: structuredClone(sd), savedAt: new Date().toISOString() };
+    const exists = styles.some((x) => x.name === name);
+    storeStyles(exists ? styles.map((x) => (x.name === name ? st : x)) : [...styles, st]);
+    setFlash(`${exists ? "Updated" : "Saved"} style "${name}"`);
+  };
+  const deleteStyle = (name: string) => {
+    storeStyles(styles.filter((x) => x.name !== name));
+    setFlash(`Deleted style "${name}"`);
+  };
+
   const activeP = [...BUILTINS, ...presets].find((p) => p.name === activePreset) ?? null;
   const presetModified = !!activeP && !sameCurves(activeP.axes, st.axes);
 
@@ -547,9 +584,12 @@ export default function App() {
             </div>
           </div>
 
-          <div className="seg">
-            <button className={sd.mode === "scurve" ? "on" : ""} onClick={() => setMode("scurve")}>S-curve</button>
-            <button className={sd.mode === "points" ? "on" : ""} onClick={() => setMode("points")}>Custom points</button>
+          <div className="mode-row">
+            <div className="seg">
+              <button className={sd.mode === "scurve" ? "on" : ""} onClick={() => setMode("scurve")}>S-curve</button>
+              <button className={sd.mode === "points" ? "on" : ""} onClick={() => setMode("points")}>Custom points</button>
+            </div>
+            <Styles styles={styles} current={sd} target={styleTarget} onApply={applyStyle} onSave={saveStyle} onDelete={deleteStyle} />
           </div>
 
           {sd.mode === "scurve" ? (
