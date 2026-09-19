@@ -103,5 +103,7 @@ function bridge(): Plugin {
 
 export default defineConfig({
   plugins: [react(), bridge()],
-  server: { port: 5178 },
+  // Tauri loads the UI from here in `npm run dev`, so the port must not drift
+  server: { port: 5178, strictPort: true },
+  clearScreen: false,
 });

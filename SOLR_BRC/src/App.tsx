@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import { logLine } from "./describe";
+import { loadState, readAck, saveState } from "./bridge";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
   defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
@@ -45,9 +46,9 @@ export default function App() {
 
   // ---- load saved state once
   useEffect(() => {
-    fetch("/api/state")
-      .then((r) => r.json())
-      .then((j) => {
+    loadState()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((j: any) => {
         // always set, so the first table is written even with no saved state
         const base = initial();
         if (j.state?.axes) {
@@ -72,12 +73,7 @@ export default function App() {
       const note = logLine(lastSent.current, st.axes);
       setSync("saving");
       try {
-        const r = await fetch("/api/state", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ state: st, table: tbl, gen: g, note }),
-        });
-        if (!r.ok) throw new Error(await r.text());
+        await saveState(st, tbl, g, note);
         lastSent.current = st.axes;
         setGen(g);
         setSync("waiting");
@@ -92,8 +88,7 @@ export default function App() {
   useEffect(() => {
     const t = setInterval(async () => {
       try {
-        const j = await (await fetch("/api/ack")).json();
-        setAck(j.ack);
+        setAck(await readAck());
       } catch {
         /* server restarting */
       }
@@ -486,7 +481,7 @@ function SyncBadge({ sync, gen, ack }: { sync: Sync; gen: number; ack: number | 
     waiting: "Waiting for the script…",
     live: "Live in T.A.R.G.E.T.",
     offline: ack === null ? "Script has never loaded a table — is it running?" : "Saved — script not picking it up. Is it running?",
-    error: "Can't reach the dev server",
+    error: "Can't write the curve files — is E:\\ there?",
   };
   return (
     <div className={`sync ${sync}`} title={`table #${gen} · script has #${ack ?? "none"}`}>
