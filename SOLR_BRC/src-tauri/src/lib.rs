@@ -14,6 +14,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use std::{fs, path::PathBuf, thread, time::Duration};
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 const NTAB: usize = 3 * 257;
 const AMAX: i32 = 32767;
@@ -114,9 +115,85 @@ async fn save_presets(presets: Value) -> Result<(), String> {
     atomic_write("hotas_presets.json", json.as_bytes())
 }
 
+/*
+  The in-game overlay: a second window showing the three curves and the live
+  stick, pinned to the top-left of the primary monitor.
+
+  - always on top, no frame, transparent, not in the taskbar
+  - click-through (ignores the mouse), and never takes focus, so the game
+    keeps every click and key
+  - it reads the stick itself (Gamepad API) and gets curve changes from the
+    editor as `solr:curves` events, so it keeps working with the editor
+    minimised
+
+  Visible over WARDOGS in windowed fullscreen (borderless), which is how it is
+  set; exclusive fullscreen would hide any window, overlays included.
+*/
+const OVERLAY: &str = "overlay";
+const MARGIN: f64 = 12.0;
+
+// async on purpose: creating a window from a synchronous command deadlocks on
+// Windows (the window comes up as a blank about:blank and the call never returns)
+#[tauri::command]
+async fn set_overlay(app: AppHandle, on: bool, width: f64, height: f64) -> Result<(), String> {
+    let existing = app.get_webview_window(OVERLAY);
+    if !on {
+        if let Some(w) = existing {
+            w.close().map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+    // top-left of the primary monitor, in logical pixels
+    let (x, y) = match app.primary_monitor().map_err(|e| e.to_string())? {
+        Some(m) => {
+            let s = m.scale_factor();
+            (m.position().x as f64 / s + MARGIN, m.position().y as f64 / s + MARGIN)
+        }
+        None => (MARGIN, MARGIN),
+    };
+    let w = match existing {
+        Some(w) => {
+            w.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+            w
+        }
+        None => WebviewWindowBuilder::new(&app, OVERLAY, WebviewUrl::App("index.html#overlay".into()))
+            .title("Sol-R Curves overlay")
+            .inner_size(width, height)
+            .position(x, y)
+            .decorations(false)
+            .transparent(true)
+            .shadow(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .focused(false)
+            .build()
+            .map_err(|e| e.to_string())?,
+    };
+    w.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    w.set_always_on_top(true).map_err(|e| e.to_string())?;
+    w.set_ignore_cursor_events(true).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![load_state, save_state, read_ack, load_presets, save_presets])
+        .invoke_handler(tauri::generate_handler![
+            load_state,
+            save_state,
+            read_ack,
+            load_presets,
+            save_presets,
+            set_overlay
+        ])
+        // the overlay has no close button: it goes when the editor goes
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let WindowEvent::Destroyed = event {
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running Sol-R Curves");
 }

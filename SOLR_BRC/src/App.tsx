@@ -3,7 +3,8 @@ import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import { logLine, stamp } from "./describe";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
-import { loadPresets, loadState, readAck, savePresets, saveState } from "./bridge";
+import { emitEvent, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
+import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
   defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
@@ -78,6 +79,30 @@ export default function App() {
       })
       .catch(() => setPresets([]));
   }, []);
+
+  // ---- in-game overlay: on/off, size and opacity survive restarts
+  const [ov, setOv] = useState<{ on: boolean; size: OverlaySize; opacity: number }>(() => {
+    try {
+      return { on: false, size: "M", opacity: 0.85, ...JSON.parse(localStorage.getItem("solr:overlay") ?? "{}") };
+    } catch {
+      return { on: false, size: "M", opacity: 0.85 };
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("solr:overlay", JSON.stringify(ov)); } catch { /* not remembered */ }
+  }, [ov]);
+  // open / close / resize the window
+  useEffect(() => {
+    const { width, height } = overlayWindowSize(ov.size);
+    setOverlay(ov.on, width, height).catch((e) => setFlash(`Overlay: ${e}`));
+  }, [ov.on, ov.size]);
+  // what it draws: pushed on every change, and whenever it (re)opens and asks
+  const ovData = useRef<OverlayData | null>(null);
+  ovData.current = { axes: st.axes, input: st.input, opacity: ov.opacity };
+  useEffect(() => {
+    if (ov.on) emitEvent("solr:overlay", ovData.current);
+  }, [st.axes, st.input, ov.opacity, ov.on]);
+  useEffect(() => onEvent("solr:overlay-ready", () => emitEvent("solr:overlay", ovData.current)), []);
 
   // ---- write tables: debounced, every change goes live
   useEffect(() => {
@@ -366,6 +391,23 @@ export default function App() {
           </div>
         </div>
         <div className="header-right">
+          {inTauri && (
+            <div className={`ov-ctl ${ov.on ? "on" : ""}`}>
+              <button className="ov-toggle" onClick={() => setOv((o) => ({ ...o, on: !o.on }))}
+                title="Curves and live stick, top-left of the screen, over the game">
+                <span className="ov-led" />In-game overlay
+              </button>
+              {ov.on && (
+                <>
+                  {(["S", "M", "L"] as OverlaySize[]).map((s) => (
+                    <button key={s} className={`ov-size ${ov.size === s ? "on" : ""}`} onClick={() => setOv((o) => ({ ...o, size: s }))}>{s}</button>
+                  ))}
+                  <input type="range" min={0.3} max={1} step={0.05} value={ov.opacity} title={`Opacity ${Math.round(ov.opacity * 100)}%`}
+                    onChange={(e) => setOv((o) => ({ ...o, opacity: Number(e.target.value) }))} />
+                </>
+              )}
+            </div>
+          )}
           <Presets
             presets={presets}
             axis={axis}

@@ -215,3 +215,29 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 7p
 .preset-actions { display: flex; align-items: center; gap: 4px; flex: none; }
 .preset-actions .ghost-btn { padding: 3px 8px; font-size: 12px; }
 .x.confirm { color: var(--bad); font-size: 12px; font-weight: 600; }
+
+/* ---- in-game overlay control (editor header) */
+.ov-ctl { display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+.ov-ctl.on { border-color: var(--accent); }
+.ov-toggle { display: flex; align-items: center; gap: 7px; background: none; border: none; padding: 3px 9px; cursor: pointer; font-size: 13px; }
+.ov-led { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.ov-ctl.on .ov-led { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.ov-size { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: 11.5px; cursor: pointer; }
+.ov-size.on { border-color: var(--accent); color: var(--accent); }
+.ov-ctl input[type="range"] { width: 70px; margin: 0 6px 0 4px; height: 14px; }
+
+/* ---- the overlay window itself: nothing but the cards, on a see-through page */
+html.overlay-root, html.overlay-root body, html.overlay-root #root { background: transparent !important; overflow: hidden; }
+.ov { display: flex; align-items: flex-start; pointer-events: none; user-select: none; }
+.ov-card { display: flex; flex-direction: column; gap: 2px; }
+.ov-label { display: flex; justify-content: space-between; align-items: baseline; height: 18px; padding: 0 6px;
+  font: 600 12px system-ui, "Segoe UI", sans-serif; color: #e6eee5; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+.ov-label i { font-style: normal; font-weight: 500; color: #8ea396; }
+.ov-label b { font: 700 12.5px ui-monospace, Consolas, monospace; color: #c5f26e; }
+.ov-graph { display: block; }
+.ov-bg { fill: rgba(10, 20, 15, 0.62); stroke: rgba(197, 242, 110, 0.35); stroke-width: 1; }
+.ov-axis { stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; }
+.ov-linear { stroke: rgba(255, 255, 255, 0.18); stroke-dasharray: 3 4; stroke-width: 1; }
+.ov-curve { fill: none; stroke: #c5f26e; stroke-width: 2.2; stroke-linejoin: round; }
+.ov-live-line { stroke: rgba(127, 211, 255, 0.45); stroke-width: 1; }
+.ov-dot { fill: #7fd3ff; stroke: #06121a; stroke-width: 1.5; }
