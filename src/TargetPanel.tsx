@@ -24,12 +24,14 @@ const SYNC_TEXT = (sync: Sync, ack: number | null): string => ({
   waiting: "Waiting for the script…",
   live: "Live in T.A.R.G.E.T.",
   offline: ack === null ? "Script has never loaded a table" : "Script not picking up changes",
-  error: "Can't write the curve files — is E:\\ there?",
+  error: "Can't write the curve files — click for details",
 })[sync];
 
 const AUTOSTART_KEY = "solr:autostart";
 
-export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: number; ack: number | null }) {
+export default function TargetPanel({ sync, gen, ack, saveError, dir }: {
+  sync: Sync; gen: number; ack: number | null; saveError?: string | null; dir?: string;
+}) {
   const [status, setStatus] = useState<TargetStatus | null>(null);
   const [log, setLog] = useState<TargetLogLine[]>([]);
   const [busy, setBusy] = useState<"starting" | "stopping" | "service" | null>(null);
@@ -173,6 +175,9 @@ export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: numbe
             </div>
           )}
           {(problem || (status?.error && !serviceDown)) && <p className="hint warn">{problem ?? status?.error}</p>}
+          {sync === "error" && saveError && (
+            <p className="hint warn">Saving the curves to {dir ?? "the curve folder"} failed: {saveError}. The next change tries again.</p>
+          )}
           <div className="target-log">
             {log.length === 0 && <div className="log-empty">No output yet.</div>}
             {log.map((l, i) => (

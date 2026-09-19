@@ -3,10 +3,10 @@
 //  T.A.R.G.E.T. script, driven live by the Sol-R Curves app (solr-curves).
 //
 //  Roll, pitch and yaw are shaped by lookup tables that the app writes to
-//  E:/hotas_curves.txt. The script re-reads that file every 250 ms while it
+//  C:/SolR/hotas_curves.txt. The script re-reads that file every 250 ms while it
 //  runs, so a change in the app reaches the game within a quarter second,
 //  without restarting the script or WARDOGS. After loading a table it writes
-//  its number to E:/hotas_curves.ack, which is how the app knows it landed.
+//  its number to C:/SolR/hotas_curves.ack, which is how the app knows it landed.
 //
 //  No table file yet: the built-in default is used (S-curve +2, 2% centre
 //  deadzone on roll and pitch, 3% on yaw - the tuned profile).
@@ -17,8 +17,8 @@
 // =============================================================================
 include "target.tmh"
 
-alias CFG   = "E:/hotas_curves.txt";
-alias ACK   = "E:/hotas_curves.ack";
+alias CFG   = "C:/SolR/hotas_curves.txt";
+alias ACK   = "C:/SolR/hotas_curves.ack";
 alias RMODE = "rb";
 alias WMODE = "wb";
 
@@ -76,7 +76,7 @@ int main()
 		i = i + 1;
 	}
 
-	printf("\xa*** Sol-R Curves: watching E:/hotas_curves.txt\xa");
+	printf("\xa*** Sol-R Curves: watching C:/SolR/hotas_curves.txt\xa");
 	Poll(0);
 	if(gen < 0) printf("*** no table file yet - using the built-in S-curve\xa");
 	Refresh();

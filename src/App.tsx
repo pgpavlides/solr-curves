@@ -38,7 +38,9 @@ export default function App() {
   const [sync, setSync] = useState<Sync>("loading");
   const [gen, setGen] = useState(0);
   const [ack, setAck] = useState<number | null>(null);
-  const [dir, setDir] = useState("E:/");
+  // the real reason a save failed (shown in the badge panel)
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dir, setDir] = useState("C:/SolR/");
   const undo = useRef<State[]>([]);
   const redo = useRef<State[]>([]);
   const loaded = useRef(false);
@@ -150,8 +152,10 @@ export default function App() {
         lastSent.current = st.axes;
         pendingNote.current = null;
         setGen(g);
+        setSaveError(null);
         setSync("waiting");
-      } catch {
+      } catch (e) {
+        setSaveError(String(e));
         setSync("error");
       }
     }, 120);
@@ -499,7 +503,7 @@ export default function App() {
             onSave={savePreset}
             onDelete={deletePreset}
           />
-          <TargetPanel sync={sync} gen={gen} ack={ack} />
+          <TargetPanel sync={sync} gen={gen} ack={ack} saveError={saveError} dir={dir} />
         </div>
       </header>
 
