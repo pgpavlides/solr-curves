@@ -44,9 +44,9 @@ await S("Page.navigate", { url: process.env.APP ?? "http://localhost:5179/" });
 await sleep(2500);
 for (const [w, h] of [[1920, 1080], [1600, 900], [1366, 768], [1280, 720]]) {
   await S("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false });
-  for (const mode of ["S-curve", "Custom points"]) {
+  for (const mode of ["S-curve", "Shape", "Points"]) {
     await clickText(".seg button", mode);
-    if (mode === "Custom points") {
+    if (mode === "Points") {
       // fill to the 10-point maximum by double-clicking along the graph
       for (let k = 0; k < 8; k++) {
         await ev(`(() => { const g = document.querySelector(".graph"); const r = g.getBoundingClientRect();
@@ -58,10 +58,10 @@ for (const [w, h] of [[1920, 1080], [1600, 900], [1366, 768], [1280, 720]]) {
     await sleep(400);
     const bad = await ev(PROBE);
     const n = await ev(`document.querySelectorAll(".pts tbody tr").length`);
-    console.log(`${w}x${h} ${mode.padEnd(13)} ${mode === "Custom points" ? n + " pts " : "       "}${bad.length ? "FAIL " + bad.join("; ") : "ok"}`);
+    console.log(`${w}x${h} ${mode.padEnd(13)} ${mode === "Points" ? n + " pts " : "       "}${bad.length ? "FAIL " + bad.join("; ") : "ok"}`);
     if (bad.length) fails++;
     const shot = await S("Page.captureScreenshot", { format: "png" });
-    writeFileSync(`shots/${w}x${h}-${mode === "S-curve" ? "s" : "pts"}.png`, Buffer.from(shot.result.data, "base64"));
+    writeFileSync(`shots/${w}x${h}-${mode.toLowerCase().replace(/[^a-z]/g, "")}.png`, Buffer.from(shot.result.data, "base64"));
   }
   await ev(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true }))`);
 }

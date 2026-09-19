@@ -11,7 +11,7 @@ import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, l
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
-  defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
+  SHAPES, defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
 } from "./curve";
 
 interface State {
@@ -257,8 +257,9 @@ export default function App() {
 
   const setMode = (mode: Side["mode"]) => {
     if (mode === sd.mode) return;
-    // start the custom curve where the S-curve was, so nothing jumps
+    // start the custom curve where the curve was, so nothing jumps
     if (mode === "points") setSide({ mode, points: scurveToPoints(sd) });
+    else if (mode === "shape") setSide({ mode, shape: sd.shape ?? "expo", strength: sd.strength ?? 40 });
     else setSide({ mode });
     setSelected(null);
   };
@@ -378,7 +379,9 @@ export default function App() {
     // an S-curve style sets only the S-curve settings; a points style sets the points
     const patch: Partial<Side> = st.side.mode === "scurve"
       ? { mode: "scurve", deadzone: st.side.deadzone, curve: st.side.curve, saturation: st.side.saturation, outMax: st.side.outMax }
-      : { mode: "points", points: structuredClone(st.side.points), smooth: st.side.smooth };
+      : st.side.mode === "shape"
+        ? { mode: "shape", shape: st.side.shape ?? "expo", strength: st.side.strength ?? 40, deadzone: st.side.deadzone, saturation: st.side.saturation, outMax: st.side.outMax }
+        : { mode: "points", points: structuredClone(st.side.points), smooth: st.side.smooth };
     setSide(patch);
     setSelected(null);
     pendingNote.current = `${stamp()}  |  Style "${st.name}" -> ${styleTargetLog}`;
@@ -440,7 +443,9 @@ export default function App() {
   const tabInfo = (a: AxisName) => {
     const x = st.axes[a];
     const s = x.pos;
-    const t = s.mode === "scurve" ? `S ${s.curve} · dz ${s.deadzone}` : `${s.points.length} pts`;
+    const t = s.mode === "scurve" ? `S ${s.curve} · dz ${s.deadzone}`
+      : s.mode === "shape" ? `${SHAPES.find((h) => h.kind === (s.shape ?? "expo"))?.label} ${s.strength ?? 40}`
+      : `${s.points.length} pts`;
     return x.linked ? t : `split · ${t}`;
   };
 
@@ -587,12 +592,31 @@ export default function App() {
           <div className="mode-row">
             <div className="seg">
               <button className={sd.mode === "scurve" ? "on" : ""} onClick={() => setMode("scurve")}>S-curve</button>
-              <button className={sd.mode === "points" ? "on" : ""} onClick={() => setMode("points")}>Custom points</button>
+              <button className={sd.mode === "shape" ? "on" : ""} onClick={() => setMode("shape")} title="Expo, power, sine, smooth S, fast start, dual rate">Shape</button>
+              <button className={sd.mode === "points" ? "on" : ""} onClick={() => setMode("points")} title="Custom points">Points</button>
             </div>
             <Styles styles={styles} current={sd} target={styleTarget} onApply={applyStyle} onSave={saveStyle} onDelete={deleteStyle} />
           </div>
 
-          {sd.mode === "scurve" ? (
+          {sd.mode === "shape" ? (
+            <div className="group">
+              <div className="shape-kinds">
+                {SHAPES.map((s) => (
+                  <button key={s.kind} className={(sd.shape ?? "expo") === s.kind ? "on" : ""} onClick={() => setSide({ shape: s.kind })}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <Field label="Strength" unit="%" hint={SHAPES.find((s) => s.kind === (sd.shape ?? "expo"))?.strength ?? ""}
+                v={sd.strength ?? 40} min={0} max={100} step={0.5} on={(v, k) => setSide({ strength: v }, k)} />
+              <Field label="Centre deadzone" unit="%" hint="No output until the stick is this far out"
+                v={sd.deadzone} min={0} max={25} step={0.1} on={(v, k) => setSide({ deadzone: v }, k)} />
+              <Field label="End saturation" unit="%" hint="Full output this far before the physical end"
+                v={sd.saturation} min={0} max={30} step={0.1} on={(v, k) => setSide({ saturation: v }, k)} />
+              <Field label="Max output" unit="%" hint="Output at full deflection"
+                v={sd.outMax} min={10} max={100} step={0.5} on={(v, k) => setSide({ outMax: v }, k)} />
+            </div>
+          ) : sd.mode === "scurve" ? (
             <div className="group">
               <Field label="Centre deadzone" unit="%" hint="No output until the stick is this far out"
                 v={sd.deadzone} min={0} max={25} step={0.1} on={(v, k) => setSide({ deadzone: v }, k)} />

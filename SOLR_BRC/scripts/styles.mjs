@@ -33,7 +33,13 @@ const ev = async (e) => (await S("Runtime.evaluate", { expression: e, returnByVa
 await S("Runtime.enable");
 await S("Emulation.setDeviceMetricsOverride", { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false });
 await S("Page.navigate", { url: "http://localhost:5179/" });
-await sleep(2500);
+// wait until the saved curves have loaded - acting earlier races with them
+for (let i = 0; i < 100; i++) {
+  const b = await ev(`document.querySelector(".sync")?.textContent ?? ""`);
+  if (b && !/Loading/.test(b)) break;
+  await sleep(100);
+}
+await sleep(500);
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
 
@@ -59,7 +65,13 @@ ok(/Soft centre/.test(await ev(`document.querySelector(".styles-btn").title`)), 
 // 1. apply "Hover precision" to roll
 await tab("Roll"); await sleep(150);
 await openStyles(); await sleep(200);
-ok((await ev(`document.querySelectorAll(".style-card").length`)) === 10, "10 built-in styles listed");
+const nBuiltin = await ev(`document.querySelectorAll(".style-card").length`);
+ok(nBuiltin >= 25, `${nBuiltin} built-in styles listed`);
+const chips = await ev(`[...document.querySelectorAll(".styles-chips button")].map(b => b.innerText.trim()).join(" | ")`);
+console.log("   chips:", chips);
+await ev(`[...document.querySelectorAll(".styles-chips button")].find(b => b.textContent.startsWith("Expo")).click()`); await sleep(150);
+ok((await ev(`document.querySelectorAll(".style-card").length`)) === 4, "the Expo chip shows the 4 expo styles");
+await ev(`[...document.querySelectorAll(".styles-chips button")].find(b => b.textContent.startsWith("All")).click()`); await sleep(150);
 await applyStyle("Hover precision"); await sleep(900);
 ok((await field("Curve")) === "4" && (await field("Centre deadzone")) === "2", `roll now S 4 · dz 2 (got S ${await field("Curve")} · dz ${await field("Centre deadzone")})`);
 let t = table();
@@ -83,10 +95,21 @@ await sleep(100);
 await ev(`document.querySelector(".styles-window .presets-save .add-btn").click()`); await sleep(600);
 const file = existsSync(D + "hotas_curve_styles.json") ? JSON.parse(readFileSync(D + "hotas_curve_styles.json", "utf8")) : [];
 ok(file.length === 1 && file[0].name === "My forward" && file[0].side.outMax === 75, "saved to hotas_curve_styles.json with max output 75");
-ok((await ev(`document.querySelectorAll(".style-card").length`)) === 11, "it appears as an 11th style");
+ok((await ev(`document.querySelectorAll(".style-card").length`)) === nBuiltin + 1, "it appears with the built-ins, tagged as yours");
 await ev(`[...document.querySelectorAll(".style-card")].find(c => c.textContent.includes("My forward")).querySelector(".x").click()`); await sleep(150);
 await ev(`[...document.querySelectorAll(".style-card")].find(c => c.textContent.includes("My forward")).querySelector(".x").click()`); await sleep(500);
 ok(JSON.parse(readFileSync(D + "hotas_curve_styles.json", "utf8")).length === 0, "deleted after the confirm click");
+
+// a shape style: Dual rate 20 on yaw -> 20% output at half stick (past its 2% deadzone)
+await ev(`document.querySelector(".styles-modal") && document.querySelector(".styles-close").click()`); await sleep(150);
+await tab("Yaw"); await sleep(150);
+await openStyles(); await sleep(200);
+await applyStyle("Dual rate 20"); await sleep(900);
+t = table();
+const yHalf = at(t, 2, 0.51), expectHalf = 0.2 * ((0.51 - 0.02) / 0.98) / 0.5;
+ok(Math.abs(yHalf - expectHalf) < 0.01 && (await ev(`document.querySelector(".seg button.on")?.textContent`)) === "Shape",
+  `yaw now in Shape mode, dual rate: ${(yHalf * 100).toFixed(1)}% at 51% stick (expected ${(expectHalf * 100).toFixed(1)}%)`);
+ok(/Dual rate 20/.test(await ev(`document.querySelector(".tabs button:nth-child(3) small").textContent`) + (await ev(`document.querySelector(".styles-btn").title`))), "tab and style button name it");
 
 // the window itself: fills the screen, every curve visible without scrolling
 mkdirSync("shots", { recursive: true });
@@ -97,7 +120,7 @@ for (const [w, h] of [[1600, 900], [1280, 720]]) {
   const m = await ev(`(() => { const g = document.querySelector(".styles-grid"); const win = document.querySelector(".styles-window").getBoundingClientRect();
     const t = document.querySelector(".style-card .style-thumb").getBoundingClientRect();
     return { win: Math.round(win.width) + "x" + Math.round(win.height), scroll: g.scrollHeight - g.clientHeight, thumb: Math.round(Math.min(t.width, t.height)) }; })()`);
-  ok(m.scroll <= 1 && m.thumb >= 120, `${w}x${h}: window ${m.win}, all curves fit (overflow ${m.scroll}px), previews ${m.thumb}px`);
+  ok(m.scroll <= 1 && m.thumb >= (h >= 900 ? 130 : 95), `${w}x${h}: window ${m.win}, all curves fit (overflow ${m.scroll}px), previews ${m.thumb}px`);
   writeFileSync(`shots/styles-${w}x${h}.png`, Buffer.from((await S("Page.captureScreenshot", { format: "png" })).result.data, "base64"));
 }
 await ev(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`); await sleep(200);

@@ -8,7 +8,54 @@
   CYC_CENTRE 2 of the old script.
 */
 
-export type Mode = "scurve" | "points";
+export type Mode = "scurve" | "shape" | "points";
+
+/*
+  Shape families (mode "shape"). Each maps t 0..1 (stick past the deadzone,
+  up to the saturation point) to 0..1, bent by one strength 0..100:
+
+    expo       RC-style expo: (1-k)t + k t^3              calmer centre
+    power      t^(1 + 4k)  (k=25 -> t^2, k=50 -> t^3)      very soft centre, steep end
+    sine       (1-k)t + k(1 - cos(t pi/2))                 soft centre, near-linear finish
+    smooth     (1-k)t + k(3t^2 - 2t^3)  (smoothstep)       soft at centre AND at the stop
+    faststart  ln(1 + a t) / ln(1 + a), a grows with k     quick off centre, calm at the stop
+    dualrate   straight to (50%, k%) then straight to 100% two rates with a knee
+*/
+export type ShapeKind = "expo" | "power" | "sine" | "smooth" | "faststart" | "dualrate";
+
+export const SHAPES: { kind: ShapeKind; label: string; strength: string }[] = [
+  { kind: "expo", label: "Expo", strength: "Expo %: 0 linear, 100 pure cubic" },
+  { kind: "power", label: "Power", strength: "Exponent: 0 = x¹, 25 = x², 50 = x³, 100 = x⁵" },
+  { kind: "sine", label: "Sine", strength: "How much sine ease is blended in" },
+  { kind: "smooth", label: "Smooth S", strength: "How much smoothstep is blended in" },
+  { kind: "faststart", label: "Fast start", strength: "How quick off centre (log curve)" },
+  { kind: "dualrate", label: "Dual rate", strength: "Output % at half stick (the knee)" },
+];
+
+export function shapeFn(kind: ShapeKind, strength: number): (t: number) => number {
+  const k = clamp(strength, 0, 100) / 100;
+  switch (kind) {
+    case "expo":
+      return (t) => (1 - k) * t + k * t * t * t;
+    case "power": {
+      const p = 1 + 4 * k;
+      return (t) => Math.pow(t, p);
+    }
+    case "sine":
+      return (t) => (1 - k) * t + k * (1 - Math.cos((t * Math.PI) / 2));
+    case "smooth":
+      return (t) => (1 - k) * t + k * (3 * t * t - 2 * t * t * t);
+    case "faststart": {
+      if (k < 0.005) return (t) => t;
+      const a = Math.pow(200, k) - 1; // 0 -> linear, 100 -> ln(1+199t)/ln(200)
+      return (t) => Math.log(1 + a * t) / Math.log(1 + a);
+    }
+    case "dualrate": {
+      const h = clamp(k, 0.02, 0.98);
+      return (t) => (t <= 0.5 ? (t / 0.5) * h : h + ((t - 0.5) / 0.5) * (1 - h));
+    }
+  }
+}
 
 /** A control point in percent: x = stick, y = output. */
 export type Pt = [number, number];
@@ -27,6 +74,9 @@ export interface Side {
   curve: number;      // -20..20: positive = softer centre, negative = twitchier
   saturation: number; // % of half travel at the end that is already full output
   outMax: number;     // % output at full stick
+  // shape families (mode "shape"); deadzone, saturation and outMax apply too
+  shape?: ShapeKind;
+  strength?: number;  // 0..100, meaning per family (see SHAPES)
   // custom points, x ascending from 0 to 100
   points: Pt[];
   smooth: boolean;    // monotone cubic through the points, else straight lines
@@ -74,6 +124,8 @@ export function defaultSide(name: AxisName): Side {
     outMax: 100,
     points: [[0, 0], [25, 15], [50, 38], [75, 67], [100, 100]],
     smooth: true,
+    shape: "expo",
+    strength: 40,
   };
 }
 
@@ -190,6 +242,17 @@ export function sideEvaluator(s: Side): (ax: number) => number {
     const k = s.outMax / 100;
     return (ax) => k * sHalf(ax, s);
   }
+  if (s.mode === "shape") {
+    const g = shapeFn(s.shape ?? "expo", s.strength ?? 40);
+    const dz = s.deadzone / 100;
+    const M = 1 - s.saturation / 100;
+    const k = s.outMax / 100;
+    return (ax) => {
+      if (ax <= dz) return 0;
+      if (ax >= M || M <= dz) return k;
+      return k * clamp(g((ax - dz) / (M - dz)), 0, 1);
+    };
+  }
   const pts = [...s.points].sort((a, b) => a[0] - b[0]);
   const xs = pts.map((p) => p[0] / 100);
   const ys = pts.map((p) => p[1] / 100);
@@ -218,9 +281,11 @@ export function table(c: AxisCurve): number[] {
 
 /** Sample a side's S-curve into editable points, so a custom curve can start from it. */
 export function scurveToPoints(s: Side): Pt[] {
-  const f = sideEvaluator({ ...s, mode: "scurve" });
+  // the side's own curve: its S-curve, or its shape (a points side is
+  // re-sampled from its S-curve settings, as before)
+  const f = sideEvaluator(s.mode === "shape" ? s : { ...s, mode: "scurve" });
   const dz = s.deadzone;
-  const xs = [0, dz, dz + (100 - dz) * 0.25, dz + (100 - dz) * 0.5, dz + (100 - dz) * 0.75, 100];
+  const xs = [0, dz, ...[0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((q) => dz + (100 - dz) * q), 100];
   const uniq = [...new Set(xs.map((x) => Math.round(x * 10) / 10))];
   return uniq.map((x) => [x, Math.round(f(x / 100) * 1000) / 10] as Pt);
 }
