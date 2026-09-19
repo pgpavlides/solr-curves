@@ -96,6 +96,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
   const [filesError, setFilesError] = useState<string | null>(null);
   const [status, setStatus] = useState<SoundStatus | null>(null);
   const [fired, setFired] = useState<(SoundFired & { at: number }) | null>(null);
+  const [talking, setTalking] = useState(false);
   const [repair, setRepair] = useState<{ busy: boolean; error?: string } | null>(null);
   const repairCable = async () => {
     setRepair({ busy: true });
@@ -110,7 +111,8 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
     soundStatus().then(setStatus).catch(() => {});
     const a = onEvent<SoundStatus>("solr:sound-status", setStatus);
     const b = onEvent<SoundFired>("solr:sound", (f) => setFired({ ...f, at: Date.now() }));
-    return () => { a(); b(); };
+    const c = onEvent<boolean>("solr:ptt", setTalking);
+    return () => { a(); b(); c(); };
   }, []);
   const setBank = (i: number, patch: Partial<VoiceConfig["banks"][number]>) =>
     update({ ...cfg, banks: cfg.banks.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
@@ -162,7 +164,12 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
               <input value={eb.folder ?? ""} placeholder="e.g. E:/WARDOGS_SOUNDBOARD" spellCheck={false}
                 onChange={(e) => setBank(edit, { folder: e.target.value })} />
             </label>
-            <button className="ghost-btn" onClick={() => soundStop()} title="Stop everything playing">Stop all</button>
+            <label className="vv-ptt" title="The game only hears you while its push-to-talk key is down: Caps Lock is held from just before a sound starts until it ends">
+              <input type="checkbox" checked={cfg.ptt !== false} onChange={(e) => update({ ...cfg, ptt: e.target.checked })} />
+              Hold <kbd>Caps Lock</kbd> while playing
+              <span className={`vv-talk ${talking ? "on" : ""}`}>{talking ? "TALKING" : "idle"}</span>
+            </label>
+            <button className="ghost-btn" onClick={() => soundStop()} title="Stop everything playing (and let go of Caps Lock)">Stop all</button>
           </div>
           {filesError && <p className="hint warn">{filesError}</p>}
           <div className="vv-pads">

@@ -44,6 +44,8 @@ export interface VoiceConfig {
   banks: Bank[];
   /** button number -> LED group (0-based) */
   map: Record<number, number>;
+  /** hold Caps Lock (the game's push-to-talk) while a sound plays; default on */
+  ptt?: boolean;
 }
 
 export const defaultVoice = (): VoiceConfig => ({

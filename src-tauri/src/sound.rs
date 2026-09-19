@@ -11,6 +11,12 @@
 //! (hidraw.rs) only sends "button N went down in bank B" and returns at once.
 //! Clips are decoded and resampled when the bank setup changes, so a press is
 //! just a queue push.
+//!
+//! Push-to-talk (ptt.rs): the game only transmits while its talk key - Caps
+//! Lock - is down. So a pad press holds Caps Lock, starts the clip a moment
+//! later (the voice chat needs the key down before the first word), and lets
+//! go when the last clip playing has ended, plus a short tail for the audio
+//! still in the cable's buffers. `"ptt": false` in hotas_voice.json turns it off.
 
 use crate::audio::{
     decode,
@@ -23,6 +29,12 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
+
+/// Talk key down this long before the clip starts ...
+const PTT_LEAD: Duration = Duration::from_millis(120);
+/// ... and held this long after it ends (cable + voice chat buffering).
+const PTT_TAIL: Duration = Duration::from_millis(350);
 use tauri::{AppHandle, Emitter};
 
 enum Job {
@@ -35,6 +47,8 @@ enum Job {
     Stop,
     /// Open the devices again (after installing VB-CABLE, replugging, ...).
     Reopen,
+    /// The app is closing: let go of the talk key, then say so.
+    Quit(mpsc::Sender<()>),
 }
 
 #[derive(Clone, Serialize, Default)]
@@ -99,6 +113,9 @@ struct Worker {
     clips: HashMap<PathBuf, Clip>,
     device_errors: Vec<String>,
     file_errors: Vec<String>,
+    ptt: crate::ptt::Ptt,
+    /// When the talk key goes up (the end of the last clip + tail).
+    ptt_until: Option<Instant>,
 }
 
 /// Which file a bank puts on a button: banks[bank].folder + banks[bank].pads["<button>"].
@@ -218,10 +235,31 @@ impl Worker {
         let error = match self.clips.get(&path) {
             None => Some("not loaded".to_string()),
             Some(c) => {
-                let mut err = match (&self.cable, &c.cable) {
+                let mut err = None;
+                // talk key down first, so the game is transmitting from the first word
+                if let (Some(e), Some(buf), true) = (&self.cable, &c.cable, self.ptt_enabled()) {
+                    let was_held = self.ptt.held();
+                    match self.ptt.press() {
+                        Ok(()) => {
+                            if !was_held {
+                                self.emit_ptt();
+                                std::thread::sleep(PTT_LEAD);
+                            }
+                            let secs = buf.frames() as f64 / e.rate.max(1) as f64;
+                            let until = Instant::now() + Duration::from_secs_f64(secs) + PTT_TAIL;
+                            self.ptt_until = Some(self.ptt_until.map_or(until, |u| u.max(until)));
+                        }
+                        Err(e) => err = Some(format!("Caps Lock: {e}")),
+                    }
+                }
+                let c = &self.clips[&path];
+                let played = match (&self.cable, &c.cable) {
                     (Some(e), Some(buf)) => e.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
                     _ => Some("no VB-CABLE - only you hear it".into()),
                 };
+                if played.is_some() {
+                    err = played;
+                }
                 // the monitor is for you only; a hiccup there doesn't stop the clip going out
                 if let (Some(m), Some(buf)) = (&self.monitor, &c.monitor) {
                     if let Err(e) = m.play(buf.clone(), 1.0) {
@@ -244,10 +282,27 @@ impl Worker {
         }
     }
 
-    fn stop(&self) {
+    fn stop(&mut self) {
         for e in [&self.cable, &self.monitor].into_iter().flatten() {
             let _ = e.stop_all();
         }
+        self.release_ptt();
+    }
+
+    fn ptt_enabled(&self) -> bool {
+        self.config.get("ptt").and_then(|v| v.as_bool()).unwrap_or(true)
+    }
+
+    fn release_ptt(&mut self) {
+        self.ptt_until = None;
+        if self.ptt.held() {
+            self.ptt.release();
+            self.emit_ptt();
+        }
+    }
+
+    fn emit_ptt(&self) {
+        let _ = self.app.emit("solr:ptt", self.ptt.held());
     }
 }
 
@@ -267,11 +322,28 @@ pub fn start(app: &AppHandle, config: Value) {
             clips: HashMap::new(),
             device_errors: vec![],
             file_errors: vec![],
+            ptt: Default::default(),
+            ptt_until: None,
         };
         w.open_devices();
         w.apply_config(config);
         w.publish();
-        while let Ok(job) = rx.recv() {
+        loop {
+            // while the talk key is down, wake up when it's time to let go
+            let job = match w.ptt_until {
+                None => match rx.recv() {
+                    Ok(j) => j,
+                    Err(_) => break,
+                },
+                Some(until) => match rx.recv_timeout(until.saturating_duration_since(Instant::now())) {
+                    Ok(j) => j,
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        w.release_ptt();
+                        continue;
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                },
+            };
             match job {
                 Job::Press { button, bank } => w.press(button, bank),
                 Job::Config(c) => {
@@ -280,6 +352,11 @@ pub fn start(app: &AppHandle, config: Value) {
                 }
                 Job::Preview(p) => w.preview(p),
                 Job::Stop => w.stop(),
+                Job::Quit(done) => {
+                    w.release_ptt();
+                    let _ = done.send(());
+                    break;
+                }
                 Job::Reopen => {
                     w.open_devices();
                     w.clips.clear(); // prepared for the old devices' rates
@@ -312,6 +389,12 @@ pub fn preview(path: PathBuf) {
 }
 pub fn stop() {
     send(Job::Stop);
+}
+/// On exit: never leave Caps Lock held down.
+pub fn shutdown() {
+    let (tx, rx) = mpsc::channel();
+    send(Job::Quit(tx));
+    let _ = rx.recv_timeout(Duration::from_millis(500));
 }
 pub fn reopen() {
     send(Job::Reopen);

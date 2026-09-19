@@ -482,3 +482,7 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .sp-text small { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp-none { padding: 14px; color: var(--muted); text-align: center; }
 .sp-foot { font: 10.5px var(--mono); color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--line); }
+.vv-ptt { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.vv-ptt kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--bg); }
+.vv-talk { font: 700 10.5px var(--mono); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.vv-talk.on { color: #111; background: #ff4d4d; border-color: #ff4d4d; box-shadow: 0 0 12px #ff4d4d88; }
