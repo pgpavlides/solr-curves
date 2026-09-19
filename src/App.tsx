@@ -662,9 +662,18 @@ function PadBars({ title, sub, pad, input, current }: {
   title: string; sub: string; pad: Gamepad | null; input: Record<AxisName, number>; current: AxisName;
 }) {
   const tag = (i: number) => AXES.filter((a) => input[a] === i);
+  // Button numbers as Windows (and Thrustmaster's manuals) count them: the
+  // Gamepad API's index 0 is button 1. The Sol-R's buttons carry no printed
+  // numbers, so this is how you find "button 18" on the real stick.
+  const pressed = pad ? pad.buttons.flatMap((b, i) => (b.pressed ? [i + 1] : [])) : [];
   return (
     <div className="pad">
       <div className="pad-title">{title} <em>· {sub}</em></div>
+      {pad && (
+        <div className="pad-buttons">
+          Buttons pressed: <b>{pressed.length ? pressed.join(" + ") : "—"}</b>
+        </div>
+      )}
       {!pad && <div className="pad-empty">Not seen yet — move it once.</div>}
       {pad && pad.axes.slice(0, 10).map((raw, i) => {
         const tags = tag(i);

@@ -249,3 +249,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .bind-warn span { flex: 1; min-width: 200px; }
 .bind-warn button { background: var(--bad); color: #1a0b0b; border: none; border-radius: 8px; padding: 5px 12px; font-weight: 700; cursor: pointer; }
 .bind-warn button:disabled { background: #6b3a3a; color: #ffd9d9; cursor: default; }
+.pad-buttons { font-size: 12px; color: var(--muted); margin: 1px 0 3px; }
+.pad-buttons b { font: 700 13px var(--mono); color: var(--accent); }
