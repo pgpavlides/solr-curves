@@ -170,9 +170,18 @@ pub struct RawStatus {
 /// Safe to call repeatedly; it (re)connects only when not reading.
 pub fn start(app: &AppHandle) -> RawStatus {
     let _ = APP.set(app.clone());
-    let mut st = STATE.lock().unwrap();
+    // never queue up behind a connect that is stuck (the frontend retries
+    // every few seconds; each waiting call would tie up a thread for good)
+    let Ok(mut st) = STATE.try_lock() else {
+        return RawStatus { connected: false, device: None, error: Some("busy".into()) };
+    };
     if st.device_id.is_some() {
         return RawStatus { connected: true, device: Some(st.stick.device.clone()), error: None };
+    }
+    // the filter's reader needs Thrustmaster's service; without it the DLL
+    // hangs instead of failing
+    if !crate::target::service_running() {
+        return RawStatus { connected: false, device: None, error: Some("service-stopped".into()) };
     }
     let result = unsafe { connect(&mut st) };
     match result {

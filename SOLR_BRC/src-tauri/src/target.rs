@@ -116,6 +116,11 @@ unsafe extern "system" fn on_message(_param: *mut c_void, msg: *const c_char, ki
 /// Load the DLL and register as a client (once), then run `f` with it.
 pub fn with_client<T>(app: &AppHandle, f: impl FnOnce(&Tmsc) -> T) -> Result<T, String> {
     let _ = APP.set(app.clone());
+    // with the service down, TmSCInitializeControl never returns: registering
+    // then would hang this thread and, through the lock, everyone after it
+    if CLIENT.lock().unwrap().is_none() && !service_running() {
+        return Err("service-stopped".into());
+    }
     let mut guard = CLIENT.lock().unwrap();
     if guard.is_none() {
         let c = Tmsc::load()?;
