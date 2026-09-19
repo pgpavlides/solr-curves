@@ -15,13 +15,19 @@ interface Props {
   update: (c: VoiceConfig) => void;
 }
 
+/** The steps as chips, quoted text kept whole and shown without its quotes. */
+function chipsOf(steps: string): string[] {
+  return (steps.match(/"[^"]*"?|[^"]+/g) ?? []).flatMap((part) =>
+    part.startsWith('"') ? [`type: ${part.replace(/"/g, "")}`] : part.replace(/-->|->|>| - /g, ",").split(/[,;]/).map((s) => s.trim()).filter(Boolean));
+}
+
 function MacroRow({ button, m, onChange, onDelete, down }: { button: number; m: Macro; onChange: (m: Macro) => void; onDelete: () => void; down: boolean }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   useEffect(() => {
     macroCheck(m.steps).then((n) => { setCount(n); setProblem(null); }).catch((e) => setProblem(String(e)));
   }, [m.steps]);
-  const chips = m.steps.replace(/-->|->|>| - /g, ",").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const chips = chipsOf(m.steps);
   return (
     <div className={`mc-row ${down ? "down" : ""}`}>
       <div className="mc-top">
@@ -61,7 +67,7 @@ export default function MacrosPanel({ stick, cfg, update }: Props) {
       <h2>Button macros</h2>
       <p className="hint">
         A stick button types a sequence into the game. Keys (F, Esc, Enter, Space, 1, F5, Up...), <code>WheelDown</code> /{" "}
-        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Repeat a step with{" "}
+        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Text to type goes in quotes - the quotes themselves aren't typed: <code>Enter, "Hello!", Enter</code>. Repeat a step with{" "}
         <code>Enter x24</code>, and add <code>fast</code> to rush the repeats. Works in any bank.
       </p>
       {Object.entries(macros).map(([b, m]) => (
