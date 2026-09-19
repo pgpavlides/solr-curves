@@ -502,3 +502,6 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mc-chip { font: 11.5px var(--mono); padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); border-bottom-width: 2px; background: var(--bg); }
 .mc-count { font-size: 11px; margin-left: 4px; }
 .mc-panel .row .num { width: 80px; }
+.mc-page { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; }
+.mc-page .mc-panel { width: 100%; max-width: 980px; overflow: visible; height: fit-content; }
+.mc-page .mc-steps { font-size: 14px; padding: 8px 10px; }

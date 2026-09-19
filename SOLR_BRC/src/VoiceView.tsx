@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
-import MacrosPanel from "./MacrosPanel";
 import SoundPicker from "./SoundPicker";
 import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb, soundLabel } from "./voice";
 
@@ -217,8 +216,6 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
         {ledError && <p className="hint warn">LEDs: {ledError}</p>}
       </section>
 
-      <div className="vv-side">
-      <MacrosPanel cfg={cfg} update={update} pressed={pressed} />
       <section className="vv-panel vv-map">
         <h2>LED mapping</h2>
         <p className="hint">
@@ -268,7 +265,6 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
         </table>
         {note && <p className="dv-note">{note}</p>}
       </section>
-      </div>
     </div>
   );
 }
