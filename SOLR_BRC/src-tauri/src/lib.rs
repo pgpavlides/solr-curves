@@ -116,6 +116,87 @@ async fn save_presets(presets: Value) -> Result<(), String> {
 }
 
 /*
+  WARDOGS's own bindings. The curves only reach the game through "Thrustmaster
+  Combined"; an action bound to the physical Sol-R bypasses them completely.
+  That happens silently whenever an axis is rebound inside the game: both
+  devices move at once and the game takes the physical one, which moves first
+  (and inside a deadzone, alone). So the editor watches the game's settings
+  and offers to move those bindings over.
+*/
+const PHYSICAL: &str = "044F:0422:Sol-R [R] Flightstick";
+const COMBINED: &str = "044F:FFFF:Thrustmaster Combined";
+const GAME_EXE: &str = "WardogsClient-Win64-Shipping.exe";
+
+fn game_ini() -> Option<PathBuf> {
+    let local = std::env::var("LOCALAPPDATA").ok()?;
+    let p = PathBuf::from(local).join(r"Wardogs\Saved\Config\WindowsClient\GameUserSettings.ini");
+    p.exists().then_some(p)
+}
+
+fn game_running() -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        std::process::Command::new("tasklist")
+            .args(["/FI", &format!("IMAGENAME eq {GAME_EXE}"), "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains(GAME_EXE))
+            .unwrap_or(false)
+    }
+    #[cfg(not(windows))]
+    false
+}
+
+/// Actions in a GameUserSettings.ini that read the physical stick.
+fn physical_actions(ini: &str) -> Vec<String> {
+    ini.lines()
+        .filter(|l| l.contains(PHYSICAL))
+        .map(|l| match l.find("Action=") {
+            // ActionBindings=(Action=Fire,Binding=(...))
+            Some(i) => l[i + 7..].split(|c| c == ',' || c == ')').next().unwrap_or("?").to_string(),
+            // Roll=(DeviceIdentifier="...",...)
+            None => l.split('=').next().unwrap_or("?").to_string(),
+        })
+        .collect()
+}
+
+#[derive(Serialize)]
+struct GameBindings {
+    found: bool,
+    running: bool,
+    physical: Vec<String>,
+}
+
+#[tauri::command]
+async fn game_bindings() -> GameBindings {
+    let Some(p) = game_ini() else {
+        return GameBindings { found: false, running: false, physical: vec![] };
+    };
+    let ini = fs::read_to_string(&p).unwrap_or_default();
+    GameBindings { found: true, running: game_running(), physical: physical_actions(&ini) }
+}
+
+/// Move every physical-stick binding to Thrustmaster Combined. Axis and button
+/// numbers stay the same: the script passes both through 1:1.
+#[tauri::command]
+async fn fix_game_bindings() -> Result<usize, String> {
+    let p = game_ini().ok_or("WARDOGS settings file not found")?;
+    if game_running() {
+        return Err("Close WARDOGS first - it rewrites its settings when it exits".into());
+    }
+    let ini = fs::read_to_string(&p).map_err(|e| e.to_string())?;
+    let n = ini.matches(PHYSICAL).count();
+    if n == 0 {
+        return Ok(0);
+    }
+    fs::copy(&p, p.with_file_name("GameUserSettings.before_solr_fix.ini")).map_err(|e| e.to_string())?;
+    fs::write(&p, ini.replace(PHYSICAL, COMBINED)).map_err(|e| e.to_string())?;
+    Ok(n)
+}
+
+/*
   The in-game overlay: a second window showing the three curves and the live
   stick, pinned to the top-left of the primary monitor.
 
@@ -184,7 +265,9 @@ pub fn run() {
             read_ack,
             load_presets,
             save_presets,
-            set_overlay
+            set_overlay,
+            game_bindings,
+            fix_game_bindings
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
@@ -246,6 +329,20 @@ mod tests {
         let note = txt.split('#').nth(1).unwrap().trim_end();
         assert_eq!(note, "19 Sep 2026  10:00:00  |  Roll: curve 2 -> 3 ?");
         assert!(bad_table_rejected());
+    }
+
+    /// The exact lines found in the user's GameUserSettings.ini.
+    #[test]
+    fn finds_physical_bindings() {
+        let ini = [
+            r#"Pitch=(DeviceIdentifier="044F:FFFF:Thrustmaster Combined",_x=1,bInvert=False)"#,
+            r#"Roll=(DeviceIdentifier="044F:0422:Sol-R [R] Flightstick",_x=0,bInvert=False)"#,
+            r#"Yaw=(DeviceIdentifier="044F:0422:Sol-R [R] Flightstick",_x=5,bInvert=False)"#,
+            r#"Throttle=(DeviceIdentifier="044F:0447:Sol-R 6 Throttle",_x=2,bInvert=True)"#,
+            r#"ActionBindings=(Action=Flares,Binding=(DeviceIdentifier="044F:0422:Sol-R [R] Flightstick",_y=25))"#,
+        ]
+        .join("\r\n");
+        assert_eq!(physical_actions(&ini), vec!["Roll", "Yaw", "Flares"]);
     }
 
     fn bad_table_rejected() -> bool {

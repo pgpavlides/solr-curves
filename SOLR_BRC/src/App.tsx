@@ -3,7 +3,7 @@ import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import { logLine, stamp } from "./describe";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
-import { emitEvent, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
+import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
@@ -103,6 +103,25 @@ export default function App() {
     if (ov.on) emitEvent("solr:overlay", ovData.current);
   }, [st.axes, st.input, ov.opacity, ov.on]);
   useEffect(() => onEvent("solr:overlay-ready", () => emitEvent("solr:overlay", ovData.current)), []);
+
+  // ---- is WARDOGS actually reading the curves? (see game_bindings in lib.rs)
+  const [game, setGame] = useState<GameBindings | null>(null);
+  useEffect(() => {
+    if (!inTauri) return;
+    const check = () => gameBindings().then(setGame).catch(() => {});
+    check();
+    const t = setInterval(check, 3000);
+    return () => clearInterval(t);
+  }, []);
+  const fixGame = async () => {
+    try {
+      const n = await fixGameBindings();
+      setFlash(n ? `Moved ${n} WARDOGS binding${n > 1 ? "s" : ""} to Thrustmaster Combined` : "Nothing to fix");
+      setGame(await gameBindings());
+    } catch (e) {
+      setFlash(String(e));
+    }
+  };
 
   // ---- write tables: debounced, every change goes live
   useEffect(() => {
@@ -440,6 +459,19 @@ export default function App() {
           </div>
 
           <div className="graph-wrap">
+            {game && game.physical.length > 0 && (
+              <div className="bind-warn">
+                <b>WARDOGS isn't using these curves for {game.physical.join(", ")}.</b>
+                <span>
+                  {game.physical.length > 1 ? "They are" : "It is"} bound to the physical Sol-R, which bypasses T.A.R.G.E.T.
+                  {game.running ? " Close WARDOGS, then fix." : ""}
+                </span>
+                <button onClick={fixGame} disabled={game.running}
+                  title={game.running ? "WARDOGS rewrites its settings when it exits - close it first" : "Rebind them to Thrustmaster Combined (backup kept)"}>
+                  {game.running ? "Close WARDOGS to fix" : "Fix bindings"}
+                </button>
+              </div>
+            )}
             {!pads.stick && (
               <p className="graph-note">Move the stick once — browsers only list a joystick after it is touched with the page open.</p>
             )}
