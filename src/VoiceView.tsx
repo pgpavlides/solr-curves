@@ -21,11 +21,12 @@ interface Props {
   ledError: string | null;
 }
 
-const MAX_GROUP = 40;
+const MAX_GROUP = 64;
+const SCAN_MS = 1500; // how long each LED stays lit in an automatic scan
 
 export default function VoiceView({ stick, bank, cfg, update, setHold, ledError }: Props) {
   // ---- mapping tool state
-  const [mapping, setMapping] = useState<{ group: number; found: Record<number, number> } | null>(null);
+  const [mapping, setMapping] = useState<{ group: number; found: Record<number, number>; auto: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const pressedBefore = useRef<Set<number>>(new Set());
 
@@ -40,17 +41,25 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
     if (group !== null) await ledSet([[group, 255, 255, 255]]);
   };
 
-  const startMapping = async () => {
+  const startMapping = async (auto: boolean) => {
     setHold(true);
     setNote(null);
-    setMapping({ group: 0, found: {} });
+    setMapping({ group: 0, found: {}, auto });
     await lightOnly(0);
   };
   const next = async (found: Record<number, number>, group: number) => {
     if (group >= MAX_GROUP) return finish(found);
-    setMapping({ group, found });
+    setMapping((m) => ({ group, found, auto: m?.auto ?? false }));
     await lightOnly(group);
   };
+  // automatic scan: each LED stays lit SCAN_MS, then the next one - you only
+  // press a button when it glows (a press is credited to the LED lit then)
+  useEffect(() => {
+    if (!mapping?.auto) return;
+    const t = setTimeout(() => next(mapping.found, mapping.group + 1), SCAN_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapping?.group, mapping?.auto]);
   const finish = async (found: Record<number, number>) => {
     const pads = PADS.filter((b) => found[b] !== undefined);
     if (pads.length) update({ ...cfg, map: { ...cfg.map, ...found } });
@@ -141,17 +150,21 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
               <b>{mapping.group}</b>
               <span className="muted">of {MAX_GROUP - 1} is lit white</span>
             </div>
-            <p>Press the button that glows.</p>
+            <p>{mapping.auto ? "Watch the pads - press the one that glows white. It moves on by itself." : "Press the button that glows."}</p>
+            <div className="vv-scanbar"><div style={{ width: `${(mapping.group / (MAX_GROUP - 1)) * 100}%` }} /></div>
             <div className="row">
-              <button className="ghost-btn" onClick={() => next(mapping.found, mapping.group + 1)}>Nothing lit / not a pad</button>
-              <button className="add-btn" onClick={() => finish(mapping.found)}>Done</button>
+              {!mapping.auto && <button className="ghost-btn" onClick={() => next(mapping.found, mapping.group + 1)}>Nothing lit / not a pad</button>}
+              <button className="add-btn" onClick={() => finish(mapping.found)}>{PADS.every((b) => mapping.found[b] !== undefined) ? "Done - all 8 found" : "Stop and save"}</button>
             </div>
             <div className="vv-found">
               {Object.entries(mapping.found).map(([b, g]) => <span key={b} className="tag">{b} → {g}</span>)}
             </div>
           </div>
         ) : (
-          <button className="add-btn" onClick={startMapping}>Map the LEDs</button>
+          <div className="row">
+            <button className="add-btn" onClick={() => startMapping(true)} title={`Lights each LED for ${SCAN_MS / 1000} s in turn`}>Scan automatically</button>
+            <button className="ghost-btn" onClick={() => startMapping(false)}>Step by step</button>
+          </div>
         )}
         <table className="vv-maptable">
           <thead><tr><th>Button</th><th>LED group</th><th /></tr></thead>
