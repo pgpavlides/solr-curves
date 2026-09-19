@@ -13,6 +13,7 @@
 
 mod devices;
 mod hidraw;
+mod led;
 mod target;
 mod tmsc;
 
@@ -427,6 +428,32 @@ fn raw_stick_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot()
 }
 
+/// Voice control settings (`hotas_voice.json`): banks, LED colours, the LED map.
+#[tauri::command]
+fn voice_load() -> Value {
+    fs::read_to_string(dir().join("hotas_voice.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .filter(|v| v.is_object())
+        .unwrap_or(Value::Null)
+}
+
+#[tauri::command]
+async fn voice_save(voice: Value) -> Result<(), String> {
+    if !voice.is_object() {
+        return Err("voice settings must be an object".into());
+    }
+    let json = serde_json::to_string_pretty(&voice).map_err(|e| e.to_string())?;
+    atomic_write("hotas_voice.json", json.as_bytes())
+}
+
+// ---- the Sol-R's RGB button LEDs (led.rs): [group, r, g, b] each
+
+#[tauri::command]
+async fn led_set(leds: Vec<(u32, u8, u8, u8)>) -> Result<(), String> {
+    blocking(move || led::set(&leds)).await?
+}
+
 // ---- the physical devices (devices.rs)
 
 #[tauri::command]
@@ -477,6 +504,9 @@ pub fn run() {
             device_set_deadzone,
             device_set_hid_enabled,
             raw_stick_start,
+            led_set,
+            voice_load,
+            voice_save,
             raw_stick_snapshot
         ])
         // the overlay has no close button: it goes when the editor goes

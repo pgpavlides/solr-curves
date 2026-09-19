@@ -407,3 +407,36 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .styles-chips button.on { border-color: var(--accent); color: var(--accent); background: #213a2b; }
 .service-down { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--bad); background: #2a1616; border-radius: 10px; }
 .service-down .add-btn { white-space: nowrap; padding: 6px 12px; }
+
+/* ---- Voice control */
+.voice-view { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; }
+.vv-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.vv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+.vv-bank-now { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 12px; border: 1px solid var(--accent); border-radius: 10px; }
+.vv-bank-now b { font-size: 16px; color: var(--accent); }
+.vv-bank-now.none { border-color: var(--line); }
+.vv-bank-now.none b { color: var(--muted); }
+.vv-banks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.vv-bank { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); border-top: 4px solid var(--bank); }
+.vv-bank.on { border-color: var(--bank); box-shadow: 0 0 0 1px var(--bank), 0 0 22px color-mix(in srgb, var(--bank) 30%, transparent); }
+.vv-bank-top { display: flex; justify-content: space-between; align-items: center; }
+.vv-knob { font: 11px var(--mono); color: var(--muted); }
+.vv-name { background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; font-weight: 700; }
+.vv-color { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.vv-color input[type="color"] { width: 44px; height: 30px; border: none; background: none; padding: 0; cursor: pointer; }
+.vv-pads-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+.vv-pads { display: grid; grid-template-columns: repeat(4, 92px); gap: 14px; }
+.vv-pad { height: 92px; border-radius: 14px; border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.08s; }
+.vv-pad b { font: 700 24px var(--mono); }
+.vv-pad span { font: 11px var(--mono); color: var(--muted); }
+.vv-pad.down { transform: scale(0.93); filter: brightness(1.5); }
+.vv-map { gap: 10px; }
+.vv-mapping { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--accent); border-radius: 10px; background: #152a20; }
+.vv-map-now { display: flex; align-items: baseline; gap: 8px; }
+.vv-map-now b { font: 700 28px var(--mono); color: #fff; }
+.vv-mapping p { margin: 0; }
+.vv-found { display: flex; flex-wrap: wrap; gap: 4px; }
+.vv-maptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vv-maptable th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 3px 4px; }
+.vv-maptable td { padding: 2px 4px; }
+.vv-maptable .ghost-btn { padding: 2px 8px; font-size: 12px; }

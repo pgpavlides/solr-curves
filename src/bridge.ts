@@ -169,3 +169,19 @@ export async function saveStyles(styles: unknown[]): Promise<void> {
   const r = await fetch("/api/styles", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(styles) });
   if (!r.ok) throw new Error(await r.text());
 }
+
+/* ---- Voice control: the Sol-R's RGB LEDs and the bank settings (Tauri only) */
+/** [LED group (0-based), r, g, b] */
+export type LedCmd = [number, number, number, number];
+export async function ledSet(leds: LedCmd[]): Promise<void> {
+  if (!inTauri) return;
+  await invoke("led_set", { leds });
+}
+export async function voiceLoad(): Promise<unknown> {
+  if (!inTauri) return null;
+  return invoke("voice_load");
+}
+export async function voiceSave(voice: unknown): Promise<void> {
+  if (!inTauri) return;
+  await invoke("voice_save", { voice });
+}
