@@ -129,6 +129,8 @@ fn split_quoted(text: &str) -> Result<Vec<Piece>, String> {
 pub struct Timed {
     pub step: Step,
     pub fast: bool,
+    /// No pause before this step at all ("Esc instant").
+    pub instant: bool,
 }
 
 const FAST_GAP: u64 = 45;
@@ -166,7 +168,7 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
     for piece in split_quoted(text)? {
         let part = match piece {
             Piece::Text(s) => {
-                out.push(Timed { step: Step::Text(s), fast: false });
+                out.push(Timed { step: Step::Text(s), fast: false, instant: false });
                 continue;
             }
             Piece::Steps(p) => p,
@@ -174,6 +176,7 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
         let part = part.as_str();
         let mut count = 1usize;
         let mut fast = false;
+        let mut instant = false;
         let mut name: Vec<&str> = vec![];
         // "F hold 2s" / "F hold 1500ms" / "hold F 2 seconds": everything after
         // "hold" that isn't the key is the duration
@@ -193,6 +196,8 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
             let num = l.trim_start_matches('x').trim_end_matches('x').trim_end_matches("times");
             if l == "fast" {
                 fast = true;
+            } else if l == "instant" || l == "instantly" || l == "now" {
+                instant = true;
             } else if l == "times" || l == "time" || l == "arrow" || l == "key" {
             } else if !l.starts_with("wait") && (l.starts_with('x') || l.ends_with('x') || name.is_empty() || l.ends_with("times")) && !num.is_empty() && num.chars().all(|c| c.is_ascii_digit()) && !(name.first().is_some_and(|n| n.eq_ignore_ascii_case("wait"))) {
                 count = num.parse().map_err(|_| format!("\"{part}\": bad count"))?;
@@ -217,7 +222,7 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
             step = Step::Hold(s, e, hold_ms(&h).ok_or_else(|| format!("\"{part}\": hold for how long? e.g. F hold 2s"))?);
         }
         for _ in 0..count {
-            out.push(Timed { step: step.clone(), fast });
+            out.push(Timed { step: step.clone(), fast, instant });
         }
     }
     Ok(out)
@@ -304,7 +309,7 @@ pub fn press(button: u16) {
     }
     std::thread::spawn(move || {
         for (i, s) in steps.iter().enumerate() {
-            if i > 0 {
+            if i > 0 && !s.instant {
                 let fast = s.fast && steps[i - 1].fast;
                 std::thread::sleep(Duration::from_millis(if fast { FAST_GAP } else { gap }));
             }
@@ -358,6 +363,9 @@ mod tests {
         assert_eq!(steps("hold F 1500ms"), vec![Step::Hold(0x21, false, 1500)]);
         assert_eq!(steps("F hold 0.5s"), vec![Step::Hold(0x21, false, 500)]);
         assert!(parse("F hold").is_err());
+        let t = parse("F, WheelDown, F hold 1.5s, INSTANT ESC").unwrap();
+        assert_eq!(t[2].step, Step::Hold(0x21, false, 1500));
+        assert_eq!((t[3].step.clone(), t[3].instant, t[2].instant), (Step::Key(0x01, false), true, false));
         assert!(parse("WheelDown hold 2s").is_err());
     }
 
