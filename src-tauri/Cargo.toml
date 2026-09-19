@@ -1,0 +1,24 @@
+[package]
+name = "solr-curves"
+version = "1.0.0"
+description = "Sol-R Curves - live curve editor for the Sol-R flightstick in T.A.R.G.E.T."
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "solr_curves_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+tauri = { version = "2.11", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
