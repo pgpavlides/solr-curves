@@ -23,6 +23,8 @@ pub enum Step {
     Wheel(i32),
     /// An extra pause, ms ("Wait 300").
     Wait(u32),
+    /// A key held down for ms, then released ("F hold 2s").
+    Hold(u16, bool, u32),
     /// Text typed as-is ("Ask for supplies!"), as Unicode characters, so it
     /// comes out right whatever the keyboard layout (Greek or English).
     Text(String),
@@ -135,6 +137,17 @@ const HOLD: u64 = 40;
 /// Between typed characters.
 const TEXT_GAP: u64 = 8;
 
+/// "2s", "2seconds", "1.5sec", "1500ms" -> ms (a bare number is seconds).
+fn hold_ms(s: &str) -> Option<u32> {
+    let (num, ms) = match s.strip_suffix("ms") {
+        Some(n) => (n, true),
+        None => (s.trim_end_matches(|c: char| c.is_ascii_alphabetic()), false),
+    };
+    let v: f64 = num.parse().ok()?;
+    let v = if ms { v } else { v * 1000.0 };
+    (v > 0.0 && v <= 60_000.0).then_some(v as u32)
+}
+
 fn one(word: &str) -> Result<Step, String> {
     let key = word.replace([' ', '_'], "").to_ascii_lowercase();
     Ok(match key.as_str() {
@@ -162,8 +175,21 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
         let mut count = 1usize;
         let mut fast = false;
         let mut name: Vec<&str> = vec![];
+        // "F hold 2s" / "F hold 1500ms" / "hold F 2 seconds": everything after
+        // "hold" that isn't the key is the duration
+        let mut hold: Option<String> = None;
         for w in part.split_whitespace() {
             let l = w.to_ascii_lowercase();
+            if l == "hold" || l == "keep" || l == "pressed" || l == "pressing" || l == "for" {
+                hold.get_or_insert_with(String::new);
+                continue;
+            }
+            if let Some(h) = hold.as_mut() {
+                if l.starts_with(|c: char| c.is_ascii_digit() || c == '.') || ["s", "sec", "secs", "second", "seconds", "ms"].contains(&l.as_str()) {
+                    h.push_str(&l);
+                    continue;
+                }
+            }
             let num = l.trim_start_matches('x').trim_end_matches('x').trim_end_matches("times");
             if l == "fast" {
                 fast = true;
@@ -185,7 +211,11 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
         if count == 0 || count > 200 {
             return Err(format!("\"{part}\": 1 to 200 times"));
         }
-        let step = one(&name.join(" "))?;
+        let mut step = one(&name.join(" "))?;
+        if let Some(h) = hold {
+            let Step::Key(s, e) = step else { return Err(format!("\"{part}\": only a key can be held")) };
+            step = Step::Hold(s, e, hold_ms(&h).ok_or_else(|| format!("\"{part}\": hold for how long? e.g. F hold 2s"))?);
+        }
         for _ in 0..count {
             out.push(Timed { step: step.clone(), fast });
         }
@@ -226,6 +256,11 @@ fn send(step: &Step, fast: bool) {
             });
         }
         Step::Wait(ms) => std::thread::sleep(Duration::from_millis(*ms as u64)),
+        Step::Hold(s, e, ms) => {
+            one(key(*s, *e, false));
+            std::thread::sleep(Duration::from_millis(*ms as u64));
+            one(key(*s, *e, true));
+        }
         Step::Text(s) => {
             // each character as a Unicode key press (VK_PACKET) - independent
             // of the keyboard layout and of Shift
@@ -313,6 +348,17 @@ mod tests {
         assert_eq!(steps("Wait 300"), vec![Step::Wait(300)]);
         assert_eq!(steps("F5"), vec![Step::Key(0x3F, false)]);
         assert_eq!(steps("5"), vec![Step::Key(0x06, false)], "a lone digit is the key");
+    }
+
+    #[test]
+    fn a_key_can_be_held() {
+        let f = Step::Key(0x21, false);
+        assert_eq!(steps("F - SCROLL DOWN - F hold 2s - ESC"), vec![f.clone(), Step::Wheel(-1), Step::Hold(0x21, false, 2000), Step::Key(0x01, false)]);
+        assert_eq!(steps("F (keep pressing for 2 seconds)".replace(['(', ')'], "").as_str()), vec![Step::Hold(0x21, false, 2000)]);
+        assert_eq!(steps("hold F 1500ms"), vec![Step::Hold(0x21, false, 1500)]);
+        assert_eq!(steps("F hold 0.5s"), vec![Step::Hold(0x21, false, 500)]);
+        assert!(parse("F hold").is_err());
+        assert!(parse("WheelDown hold 2s").is_err());
     }
 
     #[test]
