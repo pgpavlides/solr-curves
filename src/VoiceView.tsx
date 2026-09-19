@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ledSet } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { KNOB, PADS, type VoiceConfig, hexRgb, padsTo } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb } from "./voice";
 
 /*
   Voice control page. Part 1: the knob is the bank, the pads light up in the
@@ -83,7 +83,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
   }, [stick]);
 
   const setColor = (i: number, color: string) => update({ ...cfg, banks: cfg.banks.map((b, j) => (j === i ? { ...b, color } : b)) });
-  const test = (color: string) => ledSet(padsTo(cfg, color)).catch((e) => setNote(String(e)));
+  const test = (color: string) => ledSet(allTo(color)).catch((e) => setNote(String(e)));
 
   const shown = bank !== null ? cfg.banks[bank] : null;
 
@@ -93,7 +93,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
         <div className="vv-head">
           <div>
             <h2>Voice control</h2>
-            <p className="hint">The knob on the base (buttons 20–23) picks the bank. The pads light up in its colour. Sounds per bank come next.</p>
+            <p className="hint">The knob on the base (buttons 20–23) picks the bank. The whole stick lights up in its colour. Sounds per bank come next.</p>
           </div>
           <div className={`vv-bank-now ${bank === null ? "none" : ""}`}>
             <span className="muted">Knob</span>
@@ -127,12 +127,12 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
                 <div key={btn} className={`vv-pad ${pressed.has(btn) ? "down" : ""}`}
                   style={{ background: shown ? `rgba(${r},${g},${b},0.22)` : undefined, borderColor: shown?.color, boxShadow: shown ? `0 0 18px rgba(${r},${g},${b},0.45)` : undefined }}>
                   <b>{btn}</b>
-                  <span>LED {cfg.map[btn] ?? btn - 1}</span>
+                  <span>LED {cfg.map[btn] ?? SOLR_LED_MAP[btn]}</span>
                 </div>
               );
             })}
           </div>
-          <p className="hint">The eight pad buttons on the stick, as they should light now. Pressing one highlights it here.</p>
+          <p className="hint">The eight pad buttons (all the other LEDs take the same colour). Pressing one highlights it here.</p>
         </div>
         {ledError && <p className="hint warn">LEDs: {ledError}</p>}
       </section>
@@ -173,11 +173,11 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
               <tr key={btn}>
                 <td>{btn}</td>
                 <td>
-                  <input className="num" type="number" min={0} max={MAX_GROUP} value={cfg.map[btn] ?? btn - 1}
+                  <input className="num" type="number" min={0} max={MAX_GROUP} value={cfg.map[btn] ?? SOLR_LED_MAP[btn]}
                     onChange={(e) => update({ ...cfg, map: { ...cfg.map, [btn]: Number(e.target.value) } })} />
                 </td>
                 <td><button className="ghost-btn" onClick={async () => {
-                  await ledSet([[cfg.map[btn] ?? btn - 1, 255, 255, 255]]).catch((e) => setNote(String(e)));
+                  await ledSet([[cfg.map[btn] ?? SOLR_LED_MAP[btn], 255, 255, 255]]).catch((e) => setNote(String(e)));
                   setTimeout(() => { if (shown) test(shown.color); }, 900);
                 }}>Flash white</button></td>
               </tr>

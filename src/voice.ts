@@ -11,9 +11,17 @@ import type { PadLike } from "./gamepad";
   (5 6 7 8 / 16 17 18 19) light up in it.
 
   LEDs are addressed by "group" (led.rs); which group is which button isn't
-  documented, so `map` records it (button -> group), found on the real stick
-  with the mapping tool. The first guess is group = button - 1.
+  documented. SOLR_LED_MAP is this Sol-R's, found on the real stick with the
+  mapping tool (19 Sep 2026): the eight pads are groups 0-7, in their own
+  order. `map` in the settings can still override it per button.
+
+  Every other LED on the stick takes the bank colour too.
 */
+
+/** Pad button -> LED group, measured on the stick. */
+export const SOLR_LED_MAP: Record<number, number> = { 5: 0, 6: 1, 7: 2, 8: 3, 16: 5, 17: 4, 18: 7, 19: 6 };
+/** Groups the whole stick is painted with (the pads are 0-7; the rest are others). */
+export const ALL_GROUPS = 64;
 
 export const KNOB = [20, 21, 22, 23];
 export const PADS = [5, 6, 7, 8, 16, 17, 18, 19];
@@ -32,7 +40,7 @@ export const defaultVoice = (): VoiceConfig => ({
     { name: "Bank 3", color: "#ffb020" },
     { name: "Bank 4", color: "#ff3fb4" },
   ],
-  map: Object.fromEntries(PADS.map((b) => [b, b - 1])),
+  map: { ...SOLR_LED_MAP },
 });
 
 export const hexRgb = (hex: string): [number, number, number] => {
@@ -49,7 +57,13 @@ export function knobBank(pad: PadLike | null): number | null {
 
 export function padsTo(cfg: VoiceConfig, color: string): LedCmd[] {
   const [r, g, b] = hexRgb(color);
-  return PADS.map((btn) => [cfg.map[btn] ?? btn - 1, r, g, b] as LedCmd);
+  return PADS.map((btn) => [cfg.map[btn] ?? SOLR_LED_MAP[btn], r, g, b] as LedCmd);
+}
+
+/** Every LED on the stick in one colour (a group that doesn't exist is ignored by the server). */
+export function allTo(color: string): LedCmd[] {
+  const [r, g, b] = hexRgb(color);
+  return Array.from({ length: ALL_GROUPS }, (_, i) => [i, r, g, b] as LedCmd);
 }
 
 /**
@@ -70,7 +84,7 @@ export function useVoiceBanks(stick: PadLike | null) {
       .then((v) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const x = v as any;
-        if (x && Array.isArray(x.banks) && x.map) setCfg({ ...defaultVoice(), ...x });
+        if (x && Array.isArray(x.banks) && x.map) setCfg({ ...defaultVoice(), ...x, map: { ...SOLR_LED_MAP, ...x.map } });
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -88,7 +102,7 @@ export function useVoiceBanks(stick: PadLike | null) {
     const key = JSON.stringify([bank, color, cfg.map]);
     if (key === lastSent.current) return;
     lastSent.current = key;
-    ledSet(padsTo(cfg, color)).then(() => setLedError(null)).catch((e) => setLedError(String(e)));
+    ledSet(allTo(color)).then(() => setLedError(null)).catch((e) => setLedError(String(e)));
   }, [loaded, hold, bank, cfg]);
 
   // resend after the mapping tool hands the LEDs back
