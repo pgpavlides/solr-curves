@@ -171,6 +171,11 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
               Hold <kbd>Caps Lock</kbd> while playing
               <span className={`vv-talk ${talking ? "on" : ""}`}>{talking ? "TALKING" : "idle"}</span>
             </label>
+            <label className="vv-stopbtn" title="Pressing this stick button stops every sound playing and lets go of Caps Lock (0 = none)">
+              Stop button
+              <input className="num" type="number" min={0} max={128} value={cfg.stopButton ?? 11}
+                onChange={(e) => update({ ...cfg, stopButton: Math.max(0, Math.min(128, Number(e.target.value) || 0)) })} />
+            </label>
             <button className="ghost-btn" onClick={() => soundStop()} title="Stop everything playing (and let go of Caps Lock)">Stop all</button>
           </div>
           {filesError && <p className="hint warn">{filesError}</p>}

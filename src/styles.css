@@ -505,3 +505,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mc-page { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; }
 .mc-page .mc-panel { width: 100%; max-width: 980px; overflow: visible; height: fit-content; }
 .mc-page .mc-steps { font-size: 14px; padding: 8px 10px; }
+.vv-stopbtn { display: flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.vv-stopbtn .num { width: 56px; }
