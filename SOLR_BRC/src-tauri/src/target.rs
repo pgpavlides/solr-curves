@@ -174,10 +174,87 @@ pub struct Status {
     pub error: Option<String>,
 }
 
+/*
+  Thrustmaster's service itself. It runs every script; if it isn't running,
+  nothing works - and the DLL doesn't say so (the client stays "connected" to
+  a service that is gone). It has crashed under low memory before (exit code
+  1067), so the app checks it directly and can start it again.
+*/
+pub const SERVICE: &str = "TmWinService";
+
+fn hidden(cmd: &str) -> std::process::Command {
+    let mut c = std::process::Command::new(cmd);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    c
+}
+
+/// `sc query` works without admin rights.
+pub fn service_running() -> bool {
+    hidden("sc")
+        .args(["query", SERVICE])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).contains("RUNNING"))
+        .unwrap_or(false)
+}
+
+/// Starting a service needs admin: ask Windows to elevate (UAC prompt).
+/// Returns once the prompt is answered.
+pub fn start_service() -> Result<(), String> {
+    let ok = hidden("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            &format!("Start-Process sc.exe -ArgumentList 'start','{SERVICE}' -Verb RunAs -WindowStyle Hidden -Wait"),
+        ])
+        .status()
+        .map_err(|e| e.to_string())?
+        .success();
+    if !ok {
+        return Err("Windows didn't start it (the admin prompt was declined?)".into());
+    }
+    for _ in 0..40 {
+        if service_running() {
+            push_line("info", "Thrustmaster FAST service started".into());
+            return Ok(());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    Err("The service didn't come up".into())
+}
+
+/// A client registered with a service that has since died is useless: drop
+/// it, so the next call registers afresh with the new service.
+fn drop_client() {
+    // try_lock: a call stuck waiting on the dead service may hold the lock;
+    // never wait behind it (the next status check tries again)
+    if let Ok(mut guard) = CLIENT.try_lock() {
+        if let Some(c) = guard.take() {
+            unsafe {
+                (c.set_message_callback)(None, std::ptr::null_mut());
+                (c.uninitialize)();
+            }
+        }
+    }
+}
+
 pub fn status(app: &AppHandle, dir: &Path) -> Status {
     let script = CURRENT.lock().unwrap().clone().unwrap_or_else(|| dir.join(SCRIPT_NAME).to_string_lossy().into_owned());
     if !tmsc::dll_path().exists() {
         return Status { available: false, connected: false, running: false, script, error: Some("T.A.R.G.E.T. is not installed".into()) };
+    }
+    if !service_running() {
+        drop_client();
+        return Status {
+            available: true,
+            connected: false,
+            running: false,
+            script,
+            error: Some("service-stopped".into()),
+        };
     }
     match with_client(app, alive) {
         Ok(running) => Status { available: true, connected: true, running, script, error: None },

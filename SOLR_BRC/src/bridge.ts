@@ -120,6 +120,8 @@ export async function targetStatus(): Promise<TargetStatus | null> {
 export const targetStart = () => invoke<void>("target_start");
 export const targetStop = () => invoke<void>("target_stop");
 export const targetLog = () => invoke<TargetLogLine[]>("target_log");
+/** Thrustmaster's service crashed/stopped: start it (Windows asks for admin). */
+export const targetStartService = () => invoke<void>("target_start_service");
 
 /* ---- writing any T.A.R.G.E.T. script (Script view) */
 export interface ScriptFile { name: string; path: string; builtin: boolean }

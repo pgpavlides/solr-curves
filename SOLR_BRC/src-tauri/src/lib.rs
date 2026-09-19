@@ -299,6 +299,12 @@ async fn target_stop(app: AppHandle) -> Result<(), String> {
     target::stop(&app)
 }
 
+/// Start Thrustmaster's service (Windows asks for admin approval).
+#[tauri::command]
+async fn target_start_service() -> Result<(), String> {
+    target::start_service()
+}
+
 #[tauri::command]
 fn target_log() -> Vec<target::LogLine> {
     target::log()
@@ -442,6 +448,7 @@ pub fn run() {
             target_start,
             target_stop,
             target_log,
+            target_start_service,
             scripts_list,
             script_read,
             script_write,
