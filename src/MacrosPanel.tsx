@@ -67,7 +67,7 @@ export default function MacrosPanel({ stick, cfg, update }: Props) {
       <h2>Button macros</h2>
       <p className="hint">
         A stick button types a sequence into the game. Keys (F, Esc, Enter, Space, 1, F5, Up...), <code>WheelDown</code> /{" "}
-        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Text to type goes in quotes - the quotes themselves aren't typed: <code>Enter, "Hello!", Enter</code>. Repeat a step with{" "}
+        <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Text to type goes in quotes - the quotes themselves aren't typed: <code>Enter, "Hello!", Enter</code>. Hold a key with <code>F hold 2s</code>. Repeat a step with{" "}
         <code>Enter x24</code>, and add <code>fast</code> to rush the repeats. Works in any bank.
       </p>
       {Object.entries(macros).map(([b, m]) => (
