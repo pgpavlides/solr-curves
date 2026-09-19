@@ -15,6 +15,7 @@ mod audio;
 mod devices;
 mod hidraw;
 mod led;
+mod ptt;
 mod sound;
 mod target;
 mod tmsc;
@@ -625,6 +626,7 @@ pub fn run() {
             // one app: when it goes, the script goes, and the stick is plain again
             if let tauri::RunEvent::Exit = event {
                 hidraw::shutdown();
+                sound::shutdown();
                 target::shutdown();
             }
         });
