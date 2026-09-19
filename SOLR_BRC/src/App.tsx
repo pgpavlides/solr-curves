@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import { logLine, stamp } from "./describe";
+import TargetPanel, { type Sync } from "./TargetPanel";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
 import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
@@ -23,7 +24,6 @@ const initial = (): State => ({
 
 const MAX_POINTS = 10;
 
-type Sync = "loading" | "saving" | "waiting" | "live" | "offline" | "error";
 
 export default function App() {
   const [st, setSt] = useState<State>(initial);
@@ -436,7 +436,7 @@ export default function App() {
             onSave={savePreset}
             onDelete={deletePreset}
           />
-          <SyncBadge sync={sync} gen={gen} ack={ack} />
+          <TargetPanel sync={sync} gen={gen} ack={ack} />
         </div>
       </header>
 
@@ -628,23 +628,6 @@ export default function App() {
           <PadBars title="Thrustmaster Combined" sub="what the game gets" pad={pads.combined} input={st.input} current={axis} />
         </section>
       </main>
-    </div>
-  );
-}
-
-function SyncBadge({ sync, gen, ack }: { sync: Sync; gen: number; ack: number | null }) {
-  const text: Record<Sync, string> = {
-    loading: "Loading…",
-    saving: "Saving…",
-    waiting: "Waiting for the script…",
-    live: "Live in T.A.R.G.E.T.",
-    offline: ack === null ? "Script has never loaded a table — is it running?" : "Saved — script not picking it up. Is it running?",
-    error: "Can't write the curve files — is E:\\ there?",
-  };
-  return (
-    <div className={`sync ${sync}`} title={`table #${gen} · script has #${ack ?? "none"}`}>
-      <span className="dot" />
-      {text[sync]}
     </div>
   );
 }
