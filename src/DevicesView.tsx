@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Device, deviceSetDeadzone, deviceSetHidEnabled, deviceSetLed, devicesList } from "./bridge";
+import { type Device, deviceSetDeadzone, deviceSetHidEnabled, deviceSetLed, devicesList, targetStatus } from "./bridge";
 
 /*
   Every Thrustmaster USB device, as T.A.R.G.E.T.'s service sees it, and the
@@ -16,6 +16,10 @@ export default function DevicesView() {
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<number | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // while a script runs, T.A.R.G.E.T. itself hides the device it scripts from
+  // Windows (disabled, code 22) - the DLL's "HID enabled" flag doesn't show that
+  const [scriptRunning, setScriptRunning] = useState(false);
+  useEffect(() => { targetStatus().then((s) => setScriptRunning(!!s?.running)).catch(() => {}); }, []);
 
   const load = () => devicesList().then((d) => { setDevs(d); setErr(null); }).catch((e) => setErr(String(e)));
   useEffect(() => { load(); }, []);
@@ -40,15 +44,16 @@ export default function DevicesView() {
       {note && <p className="dv-note">{note}</p>}
       <div className="dv-grid">
         {devs?.map((d) => {
-          const hidden = d.hid_enabled === false;
           // only the flightstick goes through the curve script; hiding anything
           // else takes it out of games completely (the throttle has no script)
           const scripted = /PID_0422/i.test(d.hardware_id ?? "");
+          const byScript = scripted && scriptRunning;
+          const hidden = d.hid_enabled === false || byScript;
           return (
             <div key={d.serial} className="dv-card">
               <div className="dv-title">
                 <b>{d.oem_name ?? d.name ?? `Device ${d.serial}`}</b>
-                <span className={`tag ${hidden ? "warn" : ""}`}>{hidden ? "hidden from games" : "visible to games"}</span>
+                <span className={`tag ${hidden ? "warn" : ""}`}>{byScript ? "hidden by the script" : hidden ? "hidden from games" : "visible to games"}</span>
               </div>
               <dl>
                 <dt>Hardware ID</dt><dd>{d.hardware_id ?? "—"}</dd>
@@ -78,6 +83,18 @@ export default function DevicesView() {
                 </dd>
               </dl>
 
+              {byScript ? (
+                <div className="dv-hide">
+                  <div>
+                    <b>Hidden from games by the running script</b>
+                    <p className="hint">
+                      T.A.R.G.E.T. takes the stick over while the curve script runs: games can only bind Thrustmaster Combined,
+                      so nothing can bypass your curves. Sol-R Curves still reads your hand through T.A.R.G.E.T. It comes back
+                      to Windows when the script stops.
+                    </p>
+                  </div>
+                </div>
+              ) : (
               <div className="dv-hide">
                 <div>
                   <b>{hidden ? "Hidden from games" : "Visible to games"}</b>
@@ -109,6 +126,7 @@ export default function DevicesView() {
                   </button>
                 )}
               </div>
+              )}
             </div>
           );
         })}

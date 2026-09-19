@@ -12,6 +12,7 @@
 //! write the table in exactly the same format.
 
 mod devices;
+mod hidraw;
 mod target;
 mod tmsc;
 
@@ -369,6 +370,19 @@ async fn script_compile(app: AppHandle, name: String, run: bool) -> Result<targe
     if run { target::compile_file(&app, &p, true) } else { target::check_file(&app, &p) }
 }
 
+// ---- the stick's raw values through T.A.R.G.E.T.'s filter (hidraw.rs):
+// works while a script hides it from Windows
+
+#[tauri::command]
+async fn raw_stick_start(app: AppHandle) -> hidraw::RawStatus {
+    hidraw::start(&app)
+}
+
+#[tauri::command]
+fn raw_stick_snapshot() -> Option<hidraw::RawStick> {
+    hidraw::snapshot()
+}
+
 // ---- the physical devices (devices.rs)
 
 #[tauri::command]
@@ -414,7 +428,9 @@ pub fn run() {
             devices_list,
             device_set_led,
             device_set_deadzone,
-            device_set_hid_enabled
+            device_set_hid_enabled,
+            raw_stick_start,
+            raw_stick_snapshot
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
@@ -429,6 +445,7 @@ pub fn run() {
         .run(|_app, event| {
             // one app: when it goes, the script goes, and the stick is plain again
             if let tauri::RunEvent::Exit = event {
+                hidraw::shutdown();
                 target::shutdown();
             }
         });
