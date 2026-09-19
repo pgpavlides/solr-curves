@@ -80,3 +80,19 @@ export function onEvent<T>(name: string, cb: (payload: T) => void): () => void {
     off?.();
   };
 }
+
+/* WARDOGS's own bindings: which actions read the physical stick (Tauri only). */
+export interface GameBindings {
+  found: boolean;
+  running: boolean;
+  physical: string[];
+}
+
+export async function gameBindings(): Promise<GameBindings | null> {
+  if (!inTauri) return null;
+  return invoke<GameBindings>("game_bindings");
+}
+
+export async function fixGameBindings(): Promise<number> {
+  return invoke<number>("fix_game_bindings");
+}

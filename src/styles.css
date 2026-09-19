@@ -241,3 +241,11 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .ov-curve { fill: none; stroke: #c5f26e; stroke-width: 2.2; stroke-linejoin: round; }
 .ov-live-line { stroke: rgba(127, 211, 255, 0.45); stroke-width: 1; }
 .ov-dot { fill: #7fd3ff; stroke: #06121a; stroke-width: 1.5; }
+
+/* WARDOGS bound to the physical stick: the curves are not reaching the game */
+.bind-warn { position: absolute; left: 8px; right: 8px; top: 4px; z-index: 3; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 10px; background: #3a1d1d; border: 1px solid var(--bad); color: #ffd9d9; font-size: 12.5px; }
+.bind-warn b { color: #fff; }
+.bind-warn span { flex: 1; min-width: 200px; }
+.bind-warn button { background: var(--bad); color: #1a0b0b; border: none; border-radius: 8px; padding: 5px 12px; font-weight: 700; cursor: pointer; }
+.bind-warn button:disabled { background: #6b3a3a; color: #ffd9d9; cursor: default; }
