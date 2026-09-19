@@ -96,3 +96,27 @@ export async function gameBindings(): Promise<GameBindings | null> {
 export async function fixGameBindings(): Promise<number> {
   return invoke<number>("fix_game_bindings");
 }
+
+/*
+  The T.A.R.G.E.T. script, run by the app itself through Thrustmaster's
+  service (src-tauri/src/target.rs) - no Script Editor needed.
+*/
+export interface TargetStatus {
+  available: boolean; // T.A.R.G.E.T. installed
+  connected: boolean; // talking to its service
+  running: boolean;
+  script: string;
+  error: string | null;
+}
+export interface TargetLogLine {
+  kind: "script" | "error" | "compile" | "warning" | "info";
+  text: string;
+}
+
+export async function targetStatus(): Promise<TargetStatus | null> {
+  if (!inTauri) return null;
+  return invoke<TargetStatus>("target_status");
+}
+export const targetStart = () => invoke<void>("target_start");
+export const targetStop = () => invoke<void>("target_stop");
+export const targetLog = () => invoke<TargetLogLine[]>("target_log");

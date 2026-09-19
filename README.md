@@ -7,8 +7,12 @@ Flightstick curves in WARDOGS through T.A.R.G.E.T.
 
 - Install: `src-tauri/target/release/bundle/nsis/Sol-R Curves_1.0.0_x64-setup.exe`,
   or run `start.cmd` (built exe if present, else the dev build).
-- Order when playing: T.A.R.G.E.T. script `E:\hotas_wardogs_solr.tmc` -> WARDOGS.
-  The app can be opened and closed at any time.
+- Order when playing: Sol-R Curves -> WARDOGS. That's all: the app compiles and runs the
+  T.A.R.G.E.T. script itself (no Script Editor, keep it closed) and stops it when it closes.
+  It talks to Thrustmaster's own service through `TmServiceControl.dll`, with the Script
+  Editor's call sequence (see `src-tauri/src/target.rs`). The script is built into the app
+  and written to `E:\hotas_wardogs_solr.tmc` if the copy there differs (old one kept as .bak).
+  Click the header badge for Start/Stop, auto-start and the script's console.
 
 The app writes `E:\hotas_curves.txt` (3 x 257-sample lookup tables: roll, pitch, yaw,
 plus a dated log line). The script re-reads it every 250 ms, prints the log line in

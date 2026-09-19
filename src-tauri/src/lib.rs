@@ -11,6 +11,8 @@
 //! running the UI in a plain browser (and for the browser tests). Both must
 //! write the table in exactly the same format.
 
+mod target;
+
 use serde::Serialize;
 use serde_json::Value;
 use std::{fs, path::PathBuf, thread, time::Duration};
@@ -257,6 +259,28 @@ async fn set_overlay(app: AppHandle, on: bool, width: f64, height: f64) -> Resul
     Ok(())
 }
 
+// ---- the T.A.R.G.E.T. script, run from here (see target.rs)
+
+#[tauri::command]
+async fn target_status(app: AppHandle) -> target::Status {
+    target::status(&app, &dir())
+}
+
+#[tauri::command]
+async fn target_start(app: AppHandle) -> Result<(), String> {
+    target::start(&app, &dir())
+}
+
+#[tauri::command]
+async fn target_stop(app: AppHandle) -> Result<(), String> {
+    target::stop(&app)
+}
+
+#[tauri::command]
+fn target_log() -> Vec<target::LogLine> {
+    target::log()
+}
+
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -267,7 +291,11 @@ pub fn run() {
             save_presets,
             set_overlay,
             game_bindings,
-            fix_game_bindings
+            fix_game_bindings,
+            target_status,
+            target_start,
+            target_stop,
+            target_log
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
@@ -277,8 +305,14 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Sol-R Curves");
+        .build(tauri::generate_context!())
+        .expect("error while building Sol-R Curves")
+        .run(|_app, event| {
+            // one app: when it goes, the script goes, and the stick is plain again
+            if let tauri::RunEvent::Exit = event {
+                target::shutdown();
+            }
+        });
 }
 
 #[cfg(test)]
