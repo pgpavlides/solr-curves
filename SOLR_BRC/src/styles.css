@@ -440,3 +440,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .vv-maptable th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 3px 4px; }
 .vv-maptable td { padding: 2px 4px; }
 .vv-maptable .ghost-btn { padding: 2px 8px; font-size: 12px; }
+.vv-scanbar { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.vv-scanbar div { height: 100%; background: var(--accent); transition: width 0.3s; }
