@@ -34,6 +34,11 @@ const ev = async (expression) => (await S("Runtime.evaluate", { expression, retu
 await S("Emulation.setDeviceMetricsOverride", { width: 1400, height: 1000, deviceScaleFactor: 1, mobile: false });
 await S("Page.navigate", { url: APP });
 await sleep(2500);
+// whatever earlier tests left behind, start from the built-in default preset
+await ev(`document.querySelector(".presets-btn").click()`);
+await sleep(150);
+await ev(`[...document.querySelectorAll(".preset")].find(p => p.textContent.startsWith("Default (tuned)")).querySelector("button").click()`);
+await sleep(1000);
 
 // ---- the .tmc parser, ported literally
 function poll(text) {

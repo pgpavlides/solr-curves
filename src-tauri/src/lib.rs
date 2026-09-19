@@ -95,9 +95,28 @@ fn read_ack() -> Option<i64> {
         .and_then(|s| s.trim().parse().ok())
 }
 
+/// Saved presets (`hotas_presets.json`): a JSON array, empty if none yet.
+#[tauri::command]
+fn load_presets() -> Value {
+    fs::read_to_string(dir().join("hotas_presets.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .filter(|v| v.is_array())
+        .unwrap_or_else(|| Value::Array(vec![]))
+}
+
+#[tauri::command]
+async fn save_presets(presets: Value) -> Result<(), String> {
+    if !presets.is_array() {
+        return Err("presets must be a list".into());
+    }
+    let json = serde_json::to_string_pretty(&presets).map_err(|e| e.to_string())?;
+    atomic_write("hotas_presets.json", json.as_bytes())
+}
+
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![load_state, save_state, read_ack])
+        .invoke_handler(tauri::generate_handler![load_state, save_state, read_ack, load_presets, save_presets])
         .run(tauri::generate_context!())
         .expect("error while running Sol-R Curves");
 }

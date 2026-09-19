@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
-import { logLine } from "./describe";
-import { loadState, readAck, saveState } from "./bridge";
+import { logLine, stamp } from "./describe";
+import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
+import { loadPresets, loadState, readAck, savePresets, saveState } from "./bridge";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
   defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
@@ -36,6 +37,10 @@ export default function App() {
   const redo = useRef<State[]>([]);
   const loaded = useRef(false);
   const lastSent = useRef<State["axes"] | null>(null);
+  // a log line to use instead of the computed diff, for the next write only
+  const pendingNote = useRef<string | null>(null);
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
   const pads = usePads();
 
   const c = st.axes[axis];
@@ -63,6 +68,17 @@ export default function App() {
       .catch(() => setSync("error"));
   }, []);
 
+  useEffect(() => {
+    loadPresets()
+      .then((raw) => {
+        const list = cleanPresets(raw as never[]);
+        setPresets(list);
+        const saved = localStorage.getItem("solr:activePreset");
+        if (saved) setActivePreset(saved);
+      })
+      .catch(() => setPresets([]));
+  }, []);
+
   // ---- write tables: debounced, every change goes live
   useEffect(() => {
     if (!loaded.current) return;
@@ -70,11 +86,12 @@ export default function App() {
       const g = Math.floor(Date.now() / 100) % 1_000_000_000;
       const tbl = [...table(st.axes.roll), ...table(st.axes.pitch), ...table(st.axes.yaw)];
       // what changed since the table T.A.R.G.E.T. last got, for its console log
-      const note = logLine(lastSent.current, st.axes);
+      const note = pendingNote.current ?? logLine(lastSent.current, st.axes);
       setSync("saving");
       try {
         await saveState(st, tbl, g, note);
         lastSent.current = st.axes;
+        pendingNote.current = null;
         setGen(g);
         setSync("waiting");
       } catch {
@@ -100,11 +117,24 @@ export default function App() {
   useEffect(() => {
     if (sync === "waiting") sinceSave.current = Date.now();
   }, [sync, gen]);
+  /*
+    Only ever set a state that differs. This used to run every animation
+    frame (it keyed on the gamepad frame counter) and call setSync("live")
+    even when already live; with the script running that is a state update
+    from an effect on every frame, which React reports as "Maximum update
+    depth exceeded". The timeout check now runs on its own slow timer.
+  */
   useEffect(() => {
     if (!gen) return;
-    if (ack === gen) setSync("live");
-    else if (sync === "waiting" && Date.now() - sinceSave.current > 1500) setSync("offline");
-  }, [ack, gen, sync, pads.frame]);
+    if (ack === gen) {
+      if (sync !== "live") setSync("live");
+      return;
+    }
+    if (sync !== "waiting") return;
+    const left = 1500 - (Date.now() - sinceSave.current);
+    const t = setTimeout(() => setSync((s) => (s === "waiting" ? "offline" : s)), Math.max(0, left));
+    return () => clearTimeout(t);
+  }, [ack, gen, sync]);
 
   // ---- editing with undo
   // Streaming edits (slider drags, point drags) remember the state they
@@ -150,6 +180,8 @@ export default function App() {
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement && el.type === "text") return;
       if (e.key.toLowerCase() === "z" && !e.shiftKey && undo.current.length) {
         e.preventDefault();
         setSt((s) => { redo.current.push(s); return undo.current.pop()!; });
@@ -240,6 +272,47 @@ export default function App() {
     setFlash(`Pasted ${AXIS_LABEL[clip.from]} → ${AXIS_LABEL[axis]}`);
   };
 
+  // ---- presets
+  const storePresets = (list: Preset[]) => {
+    setPresets(list);
+    savePresets(list).catch(() => setFlash("Couldn't write hotas_presets.json"));
+  };
+  const markActive = (name: string | null) => {
+    setActivePreset(name);
+    try {
+      if (name) localStorage.setItem("solr:activePreset", name);
+      else localStorage.removeItem("solr:activePreset");
+    } catch {
+      /* storage blocked: the header just forgets the name on restart */
+    }
+  };
+  const savePreset = (name: string) => {
+    const p: Preset = { name, savedAt: new Date().toISOString(), axes: structuredClone(st.axes) };
+    const exists = presets.some((x) => x.name === name);
+    storePresets(exists ? presets.map((x) => (x.name === name ? p : x)) : [...presets, p]);
+    markActive(name);
+    setFlash(`${exists ? "Updated" : "Saved"} preset "${name}"`);
+  };
+  const loadPreset = (p: Preset, only: AxisName | null) => {
+    const label = (a: AxisName) => AXIS_LABEL[a].replace(/ \(.*\)/, "");
+    edit((s) => {
+      const axes = { ...s.axes };
+      for (const a of only ? [only] : AXES) axes[a] = { ...structuredClone(p.axes[a]), invert: s.axes[a].invert };
+      return { ...s, axes };
+    });
+    setSelected(null);
+    pendingNote.current = `${stamp()}  |  Preset "${p.name}" loaded${only ? ` (${label(only)} only)` : ""}`;
+    if (!only) markActive(p.name);
+    setFlash(only ? `${label(only)} from "${p.name}"` : `Loaded "${p.name}"`);
+  };
+  const deletePreset = (name: string) => {
+    storePresets(presets.filter((x) => x.name !== name));
+    if (activePreset === name) markActive(null);
+    setFlash(`Deleted "${name}"`);
+  };
+  const activeP = [...BUILTINS, ...presets].find((p) => p.name === activePreset) ?? null;
+  const presetModified = !!activeP && !sameCurves(activeP.axes, st.axes);
+
   // Ctrl+C / Ctrl+V copy the whole curve, unless you are typing in a field
   const clipKeys = useRef({ copyClip, pasteClip });
   clipKeys.current = { copyClip, pasteClip };
@@ -292,7 +365,18 @@ export default function App() {
             <p>WARDOGS · Sol-R [R] Flightstick · live into T.A.R.G.E.T.</p>
           </div>
         </div>
-        <SyncBadge sync={sync} gen={gen} ack={ack} />
+        <div className="header-right">
+          <Presets
+            presets={presets}
+            axis={axis}
+            active={activeP ? activeP.name : null}
+            modified={presetModified}
+            onLoad={loadPreset}
+            onSave={savePreset}
+            onDelete={deletePreset}
+          />
+          <SyncBadge sync={sync} gen={gen} ack={ack} />
+        </div>
       </header>
 
       <main>

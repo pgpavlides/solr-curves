@@ -32,6 +32,24 @@ export async function saveState(state: unknown, table: number[], gen: number, no
   if (!r.ok) throw new Error(await r.text());
 }
 
+export async function loadPresets(): Promise<unknown[]> {
+  if (inTauri) return invoke<unknown[]>("load_presets");
+  return (await fetch("/api/presets")).json();
+}
+
+export async function savePresets(presets: unknown[]): Promise<void> {
+  if (inTauri) {
+    await invoke("save_presets", { presets });
+    return;
+  }
+  const r = await fetch("/api/presets", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(presets),
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+
 export async function readAck(): Promise<number | null> {
   if (inTauri) return invoke<number | null>("read_ack");
   return (await (await fetch("/api/ack")).json()).ack;
