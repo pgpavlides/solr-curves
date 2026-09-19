@@ -458,3 +458,27 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .vv-maptable .ghost-btn { padding: 2px 8px; font-size: 12px; }
 .vv-scanbar { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
 .vv-scanbar div { height: 100%; background: var(--accent); transition: width 0.3s; }
+
+/* ---- the pad's sound picker (SoundPicker.tsx) */
+.sp { min-width: 0; }
+.sp-current { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 1px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; cursor: pointer; min-width: 0; }
+.sp-current:hover { border-color: var(--bank, var(--accent)); }
+.sp-label { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-file { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-current.silent .sp-label { color: var(--muted); font-weight: 500; }
+.sp-current.warn .sp-label, .sp-current.warn .sp-file { color: var(--bad); }
+.sp-pop { position: fixed; z-index: 50; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--bank); border-radius: 12px; box-shadow: 0 14px 40px #000a, 0 0 0 1px #0006; overflow: hidden; }
+.sp-search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.sp-glass { font-size: 18px; color: var(--muted); }
+.sp-search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; font-size: 15px; color: inherit; }
+.sp-clear { border: none; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.sp-list { overflow: auto; padding: 4px; min-height: 0; flex: 1; }
+.sp-group { font: 600 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 8px 8px 3px; }
+.sp-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.sp-row.hi { background: color-mix(in srgb, var(--bank) 18%, transparent); }
+.sp-row.on b { color: var(--bank); }
+.sp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sp-text b { font-size: 13.5px; }
+.sp-text small { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-none { padding: 14px; color: var(--muted); text-align: center; }
+.sp-foot { font: 10.5px var(--mono); color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--line); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
+import SoundPicker from "./SoundPicker";
 import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb, soundLabel } from "./voice";
 
 /*
@@ -168,7 +169,6 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
             {PADS.map((btn) => {
               const [r, g, b] = hexRgb(eb.color);
               const file = eb.pads?.[btn] ?? "";
-              const missing = !!file && files.length > 0 && !files.includes(file);
               return (
                 <div key={btn} className={`vv-pad ${pressed.has(btn) && edit === bank ? "down" : ""} ${justFired(btn) ? "fired" : ""}`}
                   style={{ background: `rgba(${r},${g},${b},0.16)`, borderColor: eb.color, boxShadow: `0 0 16px rgba(${r},${g},${b},0.35)` }}>
@@ -178,12 +178,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
                     <button className="vv-play" disabled={!file || !eb.folder} title="Hear it (your monitor only - not sent to the game)"
                       onClick={() => eb.folder && soundPreview(eb.folder, file)}>▶</button>
                   </div>
-                  <div className={`vv-sound ${missing ? "warn" : ""}`}>{file ? soundLabel(file) : "silent"}</div>
-                  <select value={file} onChange={(e) => setPad(btn, e.target.value)}>
-                    <option value="">- silent -</option>
-                    {missing && <option value={file}>{file} (missing)</option>}
-                    {files.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </select>
+                  <SoundPicker folder={eb.folder ?? ""} files={files} value={file} color={eb.color} onPick={(f) => setPad(btn, f)} />
                 </div>
               );
             })}
