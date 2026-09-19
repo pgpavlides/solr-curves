@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { macroCheck } from "./bridge";
 import type { PadLike } from "./gamepad";
-import type { Macro, VoiceConfig } from "./voice";
+import type { Macro, MacroSet, VoiceConfig } from "./voice";
 
 /*
   Button macros: a stick button types a sequence into the game - keys and
@@ -52,9 +52,29 @@ function MacroRow({ button, m, onChange, onDelete, down }: { button: number; m: 
 /** The Macros page: every button macro, big enough to read and edit. */
 export default function MacrosPanel({ stick, cfg, update }: Props) {
   const pressed = new Set((stick?.buttons ?? []).flatMap((b, i) => (b.pressed ? [i + 1] : [])));
-  const macros = cfg.macros ?? {};
+  const sets: Record<string, MacroSet> = cfg.macroSets ?? { Helicopter: cfg.macros ?? {} };
+  const names = Object.keys(sets);
+  const active = cfg.macroSet && sets[cfg.macroSet] ? cfg.macroSet : names[0];
+  const macros = sets[active] ?? {};
+  const putSets = (next: Record<string, MacroSet>, pick = active) => update({ ...cfg, macroSets: next, macroSet: pick });
+  const addSet = () => {
+    let n = 1;
+    while (sets[`Set ${n}`]) n++;
+    putSets({ ...sets, [`Set ${n}`]: {} }, `Set ${n}`);
+  };
+  const renameSet = (from: string, to: string) => {
+    const clean = to.trim();
+    if (!clean || (sets[clean] && clean !== from)) return;
+    putSets(Object.fromEntries(names.map((n) => [n === from ? clean : n, sets[n]])), clean);
+  };
+  const removeSet = (name: string) => {
+    if (names.length < 2) return;
+    const next = { ...sets };
+    delete next[name];
+    putSets(next, Object.keys(next)[0]);
+  };
   const [adding, setAdding] = useState("");
-  const set = (next: Record<number, Macro>) => update({ ...cfg, macros: next });
+  const set = (next: MacroSet) => putSets({ ...sets, [active]: next });
   const add = () => {
     const b = Number(adding);
     if (!b || b < 1 || b > 128 || macros[b]) return;
@@ -65,6 +85,23 @@ export default function MacrosPanel({ stick, cfg, update }: Props) {
     <div className="mc-page">
     <section className="vv-panel mc-panel">
       <h2>Button macros</h2>
+      <div className="mc-sets">
+        {names.map((n) => (
+          <button key={n} className={n === active ? "on" : ""} onClick={() => update({ ...cfg, macroSet: n })}>
+            {n}
+            <small>{Object.keys(sets[n]).length}</small>
+          </button>
+        ))}
+        <button className="mc-addset" onClick={addSet} title="A new, empty set of macros">+ set</button>
+      </div>
+      <div className="mc-setbar">
+        <label>
+          <span className="muted">Set name</span>
+          <input className="mc-setname" value={active} onChange={(e) => renameSet(active, e.target.value)} maxLength={24} />
+        </label>
+        <span className="muted">The buttons run <b>{active}</b> right now.</span>
+        {names.length > 1 && <button className="ghost-btn" onClick={() => removeSet(active)}>Delete set</button>}
+      </div>
       <p className="hint">
         A stick button types a sequence into the game. Keys (F, Esc, Enter, Space, 1, F5, Up...), <code>WheelDown</code> /{" "}
         <code>WheelUp</code> and <code>Wait 200</code>, separated by commas, dashes or arrows. Text to type goes in quotes - the quotes themselves aren't typed: <code>Enter, "Hello!", Enter</code>. Hold a key with <code>F hold 2s</code>; <code>Esc instant</code> skips the pause before a step. Repeat a step with{" "}

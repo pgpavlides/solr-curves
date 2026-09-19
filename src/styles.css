@@ -509,3 +509,11 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .vv-stopbtn .num { width: 56px; }
 .vv-pad.dark { opacity: 0.62; }
 .vv-pad.dark b, .vv-pad.dark .vv-sound { color: var(--muted); }
+.mc-sets { display: flex; flex-wrap: wrap; gap: 8px; }
+.mc-sets button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+.mc-sets button small { color: var(--muted); font: 11px var(--mono); }
+.mc-sets button.on { border-color: var(--accent); color: var(--accent); background: #172a1f; }
+.mc-addset { color: var(--muted); }
+.mc-setbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mc-setbar label { display: flex; align-items: center; gap: 6px; }
+.mc-setname { background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; font-weight: 700; width: 180px; }

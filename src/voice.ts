@@ -48,9 +48,16 @@ export interface VoiceConfig {
   ptt?: boolean;
   /** this stick button stops every sound playing (and lets go of Caps Lock); 0 = none, default 11 */
   stopButton?: number;
-  /** stick button -> a key/wheel sequence the app types (macros.rs) */
+  /** older setup: one unnamed set of macros. Loading turns it into a set. */
   macros?: Record<number, Macro>;
+  /** named sets of button macros, e.g. Helicopter / Combat */
+  macroSets?: Record<string, MacroSet>;
+  /** which set the buttons run right now */
+  macroSet?: string;
 }
+
+/** stick button -> what it types */
+export type MacroSet = Record<number, Macro>;
 
 export interface Macro {
   /** "F, WheelDown, WheelDown, F, Esc" */
@@ -74,7 +81,11 @@ export const defaultVoice = (): VoiceConfig => ({
   ],
   map: { ...SOLR_LED_MAP },
   stopButton: 11,
-  macros: { 1: { steps: "F, WheelDown, WheelDown, F, Esc", gap: 120 } },
+  macroSet: "Helicopter",
+  macroSets: {
+    Helicopter: { 1: { steps: "F, WheelDown, WheelDown, F, Esc", gap: 120 } },
+    Combat: { 1: { steps: "F, E, E, Right, Enter x5, E, Right, Enter x2, Q, Q, Q, F, F, Enter x5, Esc, Esc, Enter", gap: 120 } },
+  },
 });
 
 export const hexRgb = (hex: string): [number, number, number] => {
@@ -145,6 +156,12 @@ export function useVoiceBanks(stick: PadLike | null) {
         // saved banks over the defaults, so a bank saved before it had sounds gets the default ones
         const d = defaultVoice();
         const next: VoiceConfig = { ...d, ...x, banks: d.banks.map((b, i) => ({ ...b, ...x.banks[i] })), map: { ...SOLR_LED_MAP, ...x.map } };
+        // an older setup with one unnamed set of macros becomes the Helicopter set
+        if (x.macros && !x.macroSets) {
+          next.macroSets = { Helicopter: x.macros, Combat: d.macroSets!.Combat };
+          next.macroSet = "Helicopter";
+        }
+        delete next.macros;
         setCfg(next);
         // the sound thread plays what the file says: bring it up to date
         if (JSON.stringify(next) !== JSON.stringify(x)) voiceSave(next).catch(() => {});

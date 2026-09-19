@@ -7,7 +7,10 @@
 //! runs does nothing, so a bouncy press can't start it twice.
 //!
 //! Setup lives in hotas_voice.json:
-//!   "macros": { "1": { "steps": "F, WheelDown, WheelDown, F, Esc", "gap": 120 } }
+//!   "macroSets": { "Helicopter": { "1": { "steps": "F, WheelDown, ...", "gap": 120 } } },
+//!   "macroSet": "Helicopter"        <- the set the buttons run right now
+//!
+//! (an older "macros" object, with no sets, still works as the only set.)
 
 use serde::Serialize;
 use serde_json::Value;
@@ -285,7 +288,15 @@ fn send(step: &Step, fast: bool) {
 }
 
 pub fn set_config(voice: &Value) {
-    *CONFIG.lock().unwrap() = voice.get("macros").cloned().unwrap_or(Value::Null);
+    // the chosen set, or the old single "macros" object
+    let sets = voice.get("macroSets");
+    let chosen = voice.get("macroSet").and_then(|s| s.as_str());
+    let active = match (sets, chosen) {
+        (Some(s), Some(name)) => s.get(name).cloned(),
+        (Some(s), None) => s.as_object().and_then(|o| o.values().next().cloned()),
+        (None, _) => None,
+    };
+    *CONFIG.lock().unwrap() = active.or_else(|| voice.get("macros").cloned()).unwrap_or(Value::Null);
 }
 
 /// From the stick's callback: start the button's macro, if it has one.
