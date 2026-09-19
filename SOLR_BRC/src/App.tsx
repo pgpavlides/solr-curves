@@ -5,6 +5,8 @@ import { logLine, stamp } from "./describe";
 import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
 import DevicesView from "./DevicesView";
+import VoiceView from "./VoiceView";
+import { useVoiceBanks } from "./voice";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
 import Styles, { type Style } from "./Styles";
 import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, loadStyles, saveStyles, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
@@ -46,10 +48,12 @@ export default function App() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const pads = usePads();
+  // the knob picks the bank, the pads light up in its colour - on every page
+  const voice = useVoiceBanks(inTauri ? pads.stick : null);
 
   // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
-  const [page, setPage] = useState<"curves" | "script" | "devices">(() => {
-    try { return (localStorage.getItem("solr:page") as "curves" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
+  const [page, setPage] = useState<"curves" | "voice" | "script" | "devices">(() => {
+    try { return (localStorage.getItem("solr:page") as "curves" | "voice" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
   });
   useEffect(() => { try { localStorage.setItem("solr:page", page); } catch { /* not remembered */ } }, [page]);
 
@@ -461,9 +465,9 @@ export default function App() {
         </div>
         {inTauri && (
           <nav className="pages">
-            {(["curves", "script", "devices"] as const).map((pg) => (
+            {(["curves", "voice", "script", "devices"] as const).map((pg) => (
               <button key={pg} className={page === pg ? "on" : ""} onClick={() => setPage(pg)}>
-                {pg === "curves" ? "Curves" : pg === "script" ? "Script" : "Devices"}
+                {pg === "curves" ? "Curves" : pg === "voice" ? "Voice control" : pg === "script" ? "Script" : "Devices"}
               </button>
             ))}
           </nav>
@@ -501,6 +505,9 @@ export default function App() {
 
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}
+      {inTauri && page === "voice" && (
+        <VoiceView stick={pads.stick} bank={voice.bank} cfg={voice.cfg} update={voice.update} setHold={voice.setHold} ledError={voice.ledError} />
+      )}
       <main style={inTauri && page !== "curves" ? { display: "none" } : undefined}>
         <section className="left">
           <nav className="tabs">
