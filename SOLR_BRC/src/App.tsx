@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Graph from "./Graph";
+import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import {
   AXES, AXIS_LABEL, type AxisCurve, type AxisName, type Pt,
@@ -215,6 +215,22 @@ export default function App() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
+  // "+ Add": a new point in the middle of the widest gap, ON the current curve,
+  // so adding it changes nothing until you move it
+  const addPoint = () => {
+    if (c.points.length >= MAX_POINTS) return setFlash(`Maximum ${MAX_POINTS} points — remove one first`);
+    const pts = [...c.points].sort((a, b) => a[0] - b[0]);
+    let gi = 0;
+    for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1][0] - pts[i][0] > pts[gi + 1][0] - pts[gi][0]) gi = i;
+    if (pts[gi + 1][0] - pts[gi][0] < MIN_GAP * 2) return setFlash("No room left between points");
+    const x = Math.round((pts[gi][0] + pts[gi + 1][0]) * 5) / 10;
+    const y = Math.round(evaluator({ ...c, invert: false })(x / 100) * 1000) / 10;
+    const next = [...pts, [x, y] as Pt].sort((a, b) => a[0] - b[0]);
+    onPoints(next, true);
+    setSelected(next.findIndex((p) => p[0] === x));
+    setFlash(`Added point #${gi + 2} at ${x}%`);
+  };
+
   const sel = selected !== null && c.mode === "points" ? c.points[selected] : null;
 
   return (
@@ -255,6 +271,7 @@ export default function App() {
               combinedY={combinedY}
               selected={selected}
               maxPoints={MAX_POINTS}
+              onNotice={setFlash}
               onSelect={setSelected}
               onPoints={onPoints}
             />
@@ -321,7 +338,8 @@ export default function App() {
                 </button>
               </div>
               <table className="pts">
-                <thead><tr><th>#</th><th>Stick %</th><th>Output %</th><th /></tr></thead>
+                <thead><tr><th>#</th><th>Stick %</th><th>Output %</th>
+                  <th><button className="add-btn" onClick={addPoint} disabled={c.points.length >= MAX_POINTS} title="Add a point in the widest gap">+ Add</button></th></tr></thead>
                 <tbody>
                   {c.points.map(([x, y], i) => {
                     const fixedX = i === 0 || i === c.points.length - 1;
@@ -352,7 +370,7 @@ export default function App() {
                 </tbody>
               </table>
               <p className="hint">
-                Double-click graph: add (max {MAX_POINTS}) · drag, <kbd>Shift</kbd> fine · arrows 0.1 · <kbd>Del</kbd> remove
+                <b>+ Add</b> or double-click empty graph (max {MAX_POINTS}, {MIN_GAP}% apart) · drag, <kbd>Shift</kbd> fine · arrows 0.1 · <kbd>Del</kbd> remove
                 {sel && <> · #{selected! + 1}: {sel[0]}% → {sel[1]}%</>}
               </p>
             </div>

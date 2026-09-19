@@ -13,6 +13,7 @@ import { type AxisCurve, type Pt, evaluator } from "./curve";
 const S = 560;      // svg size
 const PAD = 34;     // room for the axis labels
 const PLOT = S - PAD * 2;
+export const MIN_GAP = 2; // % of stick between two points
 
 interface Props {
   c: AxisCurve;
@@ -23,9 +24,10 @@ interface Props {
   maxPoints: number;
   onSelect: (i: number | null) => void;
   onPoints: (pts: Pt[], commit: boolean) => void;
+  onNotice: (msg: string) => void;
 }
 
-export default function Graph({ c, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints }: Props) {
+export default function Graph({ c, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints, onNotice }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ i: number; start: Pt; px: number; py: number } | null>(null);
   const [hover, setHover] = useState<Pt | null>(null);
@@ -104,16 +106,25 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
     drag.current = null;
   };
 
-  // double-click on empty graph adds a point there
+  /*
+    Double-click adds a point where you click. It used to also fire when the
+    double-click landed ON a handle (the dblclick still bubbles up), dropping
+    a new point a fraction of a percent from the old one, hidden under it.
+    Now: never on a handle, never closer than MIN_GAP to another point, and
+    every refusal says why.
+  */
   const dbl = (e: React.MouseEvent) => {
-    if (!editable || pts.length >= maxPoints) return;
+    if (!editable) return;
+    if ((e.target as Element).classList.contains("handle")) return;
+    if (pts.length >= maxPoints) return onNotice(`Maximum ${maxPoints} points — remove one first`);
     let [x, y] = toPct(e);
     if (c.symmetric && x < 0) [x, y] = [-x, -y];
     const lo = c.symmetric ? 0 : -100;
     if (x <= lo || x >= 100) return;
     x = Math.round(x * 10) / 10;
     y = Math.round(y * 10) / 10;
-    if (pts.some((p) => Math.abs(p[0] - x) < 0.2)) return;
+    const near = pts.findIndex((p) => Math.abs(p[0] - x) < MIN_GAP);
+    if (near >= 0) return onNotice(`Too close to point #${near + 1} — drag that one instead`);
     const next = [...pts, [x, y] as Pt].sort((a, b) => a[0] - b[0]);
     onPoints(next, true);
     onSelect(next.findIndex((p) => p[0] === x));
