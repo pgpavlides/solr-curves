@@ -46,6 +46,15 @@ export interface VoiceConfig {
   map: Record<number, number>;
   /** hold Caps Lock (the game's push-to-talk) while a sound plays; default on */
   ptt?: boolean;
+  /** stick button -> a key/wheel sequence the app types (macros.rs) */
+  macros?: Record<number, Macro>;
+}
+
+export interface Macro {
+  /** "F, WheelDown, WheelDown, F, Esc" */
+  steps: string;
+  /** ms between steps */
+  gap: number;
 }
 
 export const defaultVoice = (): VoiceConfig => ({
@@ -62,6 +71,7 @@ export const defaultVoice = (): VoiceConfig => ({
     { name: "Bank 4", color: "#ff3fb4" },
   ],
   map: { ...SOLR_LED_MAP },
+  macros: { 1: { steps: "F, WheelDown, WheelDown, F, Esc", gap: 120 } },
 });
 
 export const hexRgb = (hex: string): [number, number, number] => {
