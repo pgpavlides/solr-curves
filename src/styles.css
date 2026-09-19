@@ -175,3 +175,6 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 7p
 .ghost-btn:disabled { opacity: 0.45; cursor: default; }
 .copy-flash { margin-left: auto; font-size: 11.5px; color: var(--muted); transition: color 0.2s; }
 .copy-flash.on { color: var(--accent); }
+
+.add-btn { background: var(--panel-2); border: 1px solid var(--accent); color: var(--accent); border-radius: 7px; padding: 1px 8px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.add-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--line); color: var(--muted); }
