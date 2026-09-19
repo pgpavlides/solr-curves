@@ -230,6 +230,13 @@ impl Worker {
     }
 
     fn press(&mut self, button: u16, bank: Option<usize>) {
+        // the stop button ("stopButton", default 11): silence everything, let go of Caps Lock
+        let stop_button = self.config.get("stopButton").and_then(|v| v.as_u64()).unwrap_or(11);
+        if stop_button > 0 && button as u64 == stop_button {
+            self.stop();
+            let _ = self.app.emit("solr:sound-stopped", button);
+            return;
+        }
         let Some(path) = bank.and_then(|b| assigned(&self.config, b, button)) else { return };
         let file = path.file_name().map(|n| n.to_string_lossy().into_owned());
         let error = match self.clips.get(&path) {

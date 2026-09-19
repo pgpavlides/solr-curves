@@ -46,6 +46,8 @@ export interface VoiceConfig {
   map: Record<number, number>;
   /** hold Caps Lock (the game's push-to-talk) while a sound plays; default on */
   ptt?: boolean;
+  /** this stick button stops every sound playing (and lets go of Caps Lock); 0 = none, default 11 */
+  stopButton?: number;
   /** stick button -> a key/wheel sequence the app types (macros.rs) */
   macros?: Record<number, Macro>;
 }
@@ -71,6 +73,7 @@ export const defaultVoice = (): VoiceConfig => ({
     { name: "Bank 4", color: "#ff3fb4", folder: WARDOGS_SOUNDS },
   ],
   map: { ...SOLR_LED_MAP },
+  stopButton: 11,
   macros: { 1: { steps: "F, WheelDown, WheelDown, F, Esc", gap: 120 } },
 });
 
