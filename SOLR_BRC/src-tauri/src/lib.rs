@@ -1,6 +1,6 @@
 //! The bridge between the curve editor and T.A.R.G.E.T.
 //!
-//! Three files, all next to the .tmc script (E:\ unless SOLR_DIR says otherwise):
+//! Three files, all next to the .tmc script (C:\SolR unless SOLR_DIR says otherwise):
 //!
 //! - `hotas_curves.json`  the app's own state (what the sliders were)
 //! - `hotas_curves.txt`   the lookup tables the script reads, plus a log line
@@ -36,8 +36,43 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> 
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())
 }
 
+/// Where everything lives: curves, presets, styles, voice settings, scripts.
+/// C:\SolR - short and without spaces, because the T.A.R.G.E.T. script has the
+/// path written into it. (It used to be E:\; see migrate_from_e.)
+pub const DATA_DIR: &str = "C:/SolR/";
+
 fn dir() -> PathBuf {
-    PathBuf::from(std::env::var("SOLR_DIR").unwrap_or_else(|_| "E:/".into()))
+    PathBuf::from(std::env::var("SOLR_DIR").unwrap_or_else(|_| DATA_DIR.into()))
+}
+
+/*
+  One-time move from E:\ (where it all lived before): copy every file that
+  isn't in C:\SolR yet. Copies, never moves - E:\ keeps its files as they were.
+*/
+fn migrate_from_e() {
+    let to = dir();
+    let _ = fs::create_dir_all(&to);
+    if std::env::var("SOLR_DIR").is_ok() {
+        return; // tests and custom folders: leave alone
+    }
+    let from = PathBuf::from("E:/");
+    let names = ["hotas_curves.json", "hotas_presets.json", "hotas_curve_styles.json", "hotas_voice.json"];
+    let mut files: Vec<String> = names.iter().map(|s| s.to_string()).collect();
+    // the user's own scripts too (not the built-in one: the app writes that fresh)
+    if let Ok(rd) = fs::read_dir(&from) {
+        for e in rd.flatten() {
+            let n = e.file_name().to_string_lossy().into_owned();
+            if n.to_lowercase().ends_with(".tmc") && n != target::SCRIPT_NAME {
+                files.push(n);
+            }
+        }
+    }
+    for n in files {
+        let (src, dst) = (from.join(&n), to.join(&n));
+        if src.exists() && !dst.exists() {
+            let _ = fs::copy(&src, &dst);
+        }
+    }
 }
 
 /*
@@ -47,20 +82,28 @@ fn dir() -> PathBuf {
   both ends of the file is the script's second line of defence.
 */
 fn atomic_write(name: &str, data: &[u8]) -> Result<(), String> {
-    let file = dir().join(name);
-    let tmp = dir().join(format!("{name}.tmp"));
+    atomic_write_in(&dir(), name, data)
+}
+
+fn atomic_write_in(dir: &std::path::Path, name: &str, data: &[u8]) -> Result<(), String> {
+    let _ = fs::create_dir_all(dir);
+    let file = dir.join(name);
+    let tmp = dir.join(format!("{name}.tmp"));
     fs::write(&tmp, data).map_err(|e| format!("write {}: {e}", tmp.display()))?;
-    let mut tries = 0;
-    loop {
-        match fs::rename(&tmp, &file) {
-            Ok(()) => return Ok(()),
-            Err(e) if tries >= 20 => return Err(format!("replace {}: {e}", file.display())),
-            Err(_) => {
-                tries += 1;
-                thread::sleep(Duration::from_millis(25));
-            }
+    // the script reads the table 4x a second and a file can't be replaced
+    // while it's open: keep trying for ~1.5 s ...
+    for _ in 0..60 {
+        if fs::rename(&tmp, &file).is_ok() {
+            return Ok(());
         }
+        thread::sleep(Duration::from_millis(25));
     }
+    // ... then write it in place. The script opens it shared, so this works
+    // even mid-read; a half-written table fails its table-number-at-both-ends
+    // check and is simply read again on the next poll.
+    let r = fs::write(&file, data).map_err(|e| format!("write {}: {e}", file.display()));
+    let _ = fs::remove_file(&tmp);
+    r
 }
 
 #[derive(Serialize)]
@@ -477,6 +520,7 @@ async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> R
 }
 
 pub fn run() {
+    migrate_from_e();
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             load_state,
@@ -576,6 +620,28 @@ mod tests {
         let note = txt.split('#').nth(1).unwrap().trim_end();
         assert_eq!(note, "19 Sep 2026  10:00:00  |  Roll: curve 2 -> 3 ?");
         assert!(bad_table_rejected());
+    }
+
+    /// The script holds the table open (shared for read/write, not for
+    /// delete - like the C runtime's fopen), so replacing it fails. The write
+    /// must still land, in place.
+    #[test]
+    #[cfg(windows)]
+    fn write_lands_while_the_script_holds_the_file() {
+        use std::os::windows::fs::OpenOptionsExt;
+        // its own folder, passed in: other tests set SOLR_DIR in parallel
+        let d = std::env::temp_dir().join("solr-curves-lock-test");
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join("locked.txt"), b"old").unwrap();
+        let held = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1 | 2) // FILE_SHARE_READ | FILE_SHARE_WRITE, no FILE_SHARE_DELETE
+            .open(d.join("locked.txt"))
+            .unwrap();
+        atomic_write_in(&d, "locked.txt", b"new table").unwrap();
+        drop(held);
+        assert_eq!(fs::read(d.join("locked.txt")).unwrap(), b"new table");
+        assert!(!d.join("locked.txt.tmp").exists(), "no stray .tmp left behind");
     }
 
     /// The exact lines found in the user's GameUserSettings.ini.

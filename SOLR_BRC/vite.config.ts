@@ -6,7 +6,7 @@ import path from "node:path";
 /*
   The bridge between the browser and T.A.R.G.E.T.
 
-  The browser cannot write to E:\, so the dev server does it. Three files, all
+  The browser cannot write to C:\SolR, so the dev server does it. Three files, all
   next to the .tmc script:
 
     hotas_curves.json  the app's own state (what the sliders were), reloaded
@@ -15,7 +15,7 @@ import path from "node:path";
     hotas_curves.ack   written BY THE SCRIPT: the table number it has loaded.
                        Only thing that proves the change reached T.A.R.G.E.T.
 */
-const DIR = process.env.SOLR_DIR ?? "E:/";
+const DIR = process.env.SOLR_DIR ?? "C:/SolR/";
 const STATE = path.join(DIR, "hotas_curves.json");
 const TABLE = path.join(DIR, "hotas_curves.txt");
 const ACK = path.join(DIR, "hotas_curves.ack");
