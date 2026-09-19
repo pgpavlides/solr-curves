@@ -68,6 +68,8 @@ const PAGE_GENERIC: u16 = 1;
 const PAGE_BUTTON: u16 = 9;
 const USAGE_X: u16 = 48; // X Y Z RX RY RZ SLIDER DIAL = 48..55
 const USAGE_HAT: u16 = 57;
+/// The 4-position knob on the base: buttons 20-23, one held at a time.
+const KNOB: [usize; 4] = [20, 21, 22, 23];
 
 /// What the frontend gets: axes in Gamepad API order (X, Y, Z, RX, RY, RZ,
 /// Slider, Dial), -1..1, and the pressed buttons as Windows numbers them.
@@ -128,6 +130,7 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
     // never wait here: the DLL may call back while connect() holds the lock
     // (it does during set_polling); dropping one sample is harmless
     let Ok(mut st) = STATE.try_lock() else { return 0 };
+    let mut downs: Vec<u16> = vec![];
     for v in vals {
         match v.usage_page {
             PAGE_GENERIC if (USAGE_X..USAGE_X + 8).contains(&v.usage) => {
@@ -142,9 +145,20 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
                 if st.pressed.len() <= i {
                     st.pressed.resize(i + 1, false);
                 }
-                st.pressed[i] = v.value != 0;
+                let down = v.value != 0;
+                if down && !st.pressed[i] {
+                    downs.push(v.usage);
+                }
+                st.pressed[i] = down;
             }
             _ => {}
+        }
+    }
+    // voice control: a press plays its bank's sound (the knob, 20-23, is the bank)
+    if !downs.is_empty() {
+        let bank = KNOB.iter().position(|&b| st.pressed.get(b).copied().unwrap_or(false));
+        for b in downs {
+            crate::sound::press(b, bank);
         }
     }
     st.stick.buttons = st.pressed.iter().enumerate().filter(|(_, p)| **p).map(|(i, _)| i as u16).collect();
