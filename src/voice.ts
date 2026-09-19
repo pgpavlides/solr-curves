@@ -10,6 +10,10 @@ import type { PadLike } from "./gamepad";
   buttons play. For now each bank has a colour, and the eight pad buttons
   (5 6 7 8 / 16 17 18 19) light up in it.
 
+  Sounds: a bank has a folder and a file per pad button. Pressing the pad
+  plays it - in Rust (sound.rs), straight from the stick's feed, to the
+  VB-CABLE mic and your monitor, the same way the WARDOGS soundboard does.
+
   LEDs are addressed by "group" (led.rs); which group is which button isn't
   documented. SOLR_LED_MAP is this Sol-R's, found on the real stick with the
   mapping tool (19 Sep 2026): the eight pads are groups 0-7, in their own
@@ -26,7 +30,16 @@ export const ALL_GROUPS = 64;
 export const KNOB = [20, 21, 22, 23];
 export const PADS = [5, 6, 7, 8, 16, 17, 18, 19];
 
-export interface Bank { name: string; color: string }
+export interface Bank {
+  name: string;
+  color: string;
+  /** where this bank's sounds are */
+  folder?: string;
+  /** pad button -> file in `folder` ("" or missing = silent) */
+  pads?: Record<number, string>;
+}
+
+export const WARDOGS_SOUNDS = "E:/WARDOGS_SOUNDBOARD";
 export interface VoiceConfig {
   banks: Bank[];
   /** button number -> LED group (0-based) */
@@ -35,7 +48,13 @@ export interface VoiceConfig {
 
 export const defaultVoice = (): VoiceConfig => ({
   banks: [
-    { name: "Bank 1", color: "#39ff6a" },
+    {
+      name: "Bank 1", color: "#39ff6a", folder: WARDOGS_SOUNDS,
+      pads: {
+        5: "heli_hello.mp3", 6: "heli_can_you_hear_me.mp3", 7: "heli_seatbelt.mp3", 8: "heli_land_on_h.mp3",
+        16: "heli_left.mp3", 17: "heli_do_not_follow.mp3", 18: "heli_countdown_ten.mp3", 19: "classic_copy_that.mp3",
+      },
+    },
     { name: "Bank 2", color: "#2f9bff" },
     { name: "Bank 3", color: "#ffb020" },
     { name: "Bank 4", color: "#ff3fb4" },
@@ -47,6 +66,13 @@ export const hexRgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.replace("#", ""), 16) || 0;
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
+
+/** heli_can_you_hear_me.mp3 -> "Can You Hear Me" (the part before the first _ is its group) */
+export function soundLabel(file: string): string {
+  const stem = file.replace(/\.[^.]+$/, "");
+  const words = stem.split("_");
+  return (words.length > 1 ? words.slice(1) : words).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 /** Knob position 0..3 from the pressed buttons, or null when it can't be read. */
 export function knobBank(pad: PadLike | null): number | null {
@@ -84,7 +110,13 @@ export function useVoiceBanks(stick: PadLike | null) {
       .then((v) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const x = v as any;
-        if (x && Array.isArray(x.banks) && x.map) setCfg({ ...defaultVoice(), ...x, map: { ...SOLR_LED_MAP, ...x.map } });
+        if (!(x && Array.isArray(x.banks) && x.map)) return;
+        // saved banks over the defaults, so a bank saved before it had sounds gets the default ones
+        const d = defaultVoice();
+        const next: VoiceConfig = { ...d, ...x, banks: d.banks.map((b, i) => ({ ...b, ...x.banks[i] })), map: { ...SOLR_LED_MAP, ...x.map } };
+        setCfg(next);
+        // the sound thread plays what the file says: bring it up to date
+        if (JSON.stringify(next) !== JSON.stringify(x)) voiceSave(next).catch(() => {});
       })
       .catch(() => {})
       .finally(() => setLoaded(true));

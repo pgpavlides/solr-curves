@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ledSet } from "./bridge";
+import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb, soundLabel } from "./voice";
 
 /*
   Voice control page. Part 1: the knob is the bank, the pads light up in the
@@ -87,13 +87,38 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
 
   const shown = bank !== null ? cfg.banks[bank] : null;
 
+  // ---- sounds: which bank is being edited (follows the knob until you click a bank)
+  const [picked, setPicked] = useState<number | null>(null);
+  const edit = picked ?? bank ?? 0;
+  const eb = cfg.banks[edit];
+  const [files, setFiles] = useState<string[]>([]);
+  const [filesError, setFilesError] = useState<string | null>(null);
+  const [status, setStatus] = useState<SoundStatus | null>(null);
+  const [fired, setFired] = useState<(SoundFired & { at: number }) | null>(null);
+  useEffect(() => {
+    if (!eb.folder) { setFiles([]); setFilesError(null); return; }
+    soundFiles(eb.folder).then((f) => { setFiles(f); setFilesError(null); }).catch((e) => { setFiles([]); setFilesError(String(e)); });
+  }, [eb.folder]);
+  useEffect(() => {
+    soundStatus().then(setStatus).catch(() => {});
+    const a = onEvent<SoundStatus>("solr:sound-status", setStatus);
+    const b = onEvent<SoundFired>("solr:sound", (f) => setFired({ ...f, at: Date.now() }));
+    return () => { a(); b(); };
+  }, []);
+  const setBank = (i: number, patch: Partial<VoiceConfig["banks"][number]>) =>
+    update({ ...cfg, banks: cfg.banks.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+  const setPad = (btn: number, file: string) => setBank(edit, { pads: { ...(eb.pads ?? {}), [btn]: file } });
+  const justFired = (btn: number) => fired && fired.button === btn && fired.bank === edit && Date.now() - fired.at < 1500;
+  const [, tick] = useState(0);
+  useEffect(() => { if (!fired) return; const t = setTimeout(() => tick((n) => n + 1), 1600); return () => clearTimeout(t); }, [fired]);
+
   return (
     <div className="voice-view">
       <section className="vv-panel">
         <div className="vv-head">
           <div>
             <h2>Voice control</h2>
-            <p className="hint">The knob on the base (buttons 20–23) picks the bank. The whole stick lights up in its colour. Sounds per bank come next.</p>
+            <p className="hint">The knob on the base (buttons 20–23) picks the bank. The whole stick lights up in its colour, and the pads play that bank's sounds. Click a bank to edit its sounds.</p>
           </div>
           <div className={`vv-bank-now ${bank === null ? "none" : ""}`}>
             <span className="muted">Knob</span>
@@ -103,10 +128,12 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
 
         <div className="vv-banks">
           {cfg.banks.map((b, i) => (
-            <div key={i} className={`vv-bank ${bank === i ? "on" : ""}`} style={{ ["--bank" as string]: b.color }}>
+            <div key={i} className={`vv-bank ${bank === i ? "on" : ""} ${edit === i ? "editing" : ""}`} style={{ ["--bank" as string]: b.color }}
+              onClick={(e) => { if (!(e.target as HTMLElement).closest("input,button,label")) setPicked(i); }}>
               <div className="vv-bank-top">
                 <span className="vv-knob">button {KNOB[i]}</span>
                 {bank === i && <span className="tag">active</span>}
+                <span className="muted vv-count">{Object.values(b.pads ?? {}).filter(Boolean).length} sounds</span>
               </div>
               <input className="vv-name" value={b.name} maxLength={20}
                 onChange={(e) => update({ ...cfg, banks: cfg.banks.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} />
@@ -119,20 +146,57 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
           ))}
         </div>
 
-        <div className="vv-pads-wrap">
+        <div className="vv-sounds">
+          <div className="vv-sounds-head">
+            <h3 style={{ color: eb.color }}>{eb.name} sounds</h3>
+            {picked !== null && picked !== bank && <button className="ghost-btn" onClick={() => setPicked(null)}>Follow the knob</button>}
+            <label className="vv-folder">
+              <span className="muted">Folder</span>
+              <input value={eb.folder ?? ""} placeholder="e.g. E:/WARDOGS_SOUNDBOARD" spellCheck={false}
+                onChange={(e) => setBank(edit, { folder: e.target.value })} />
+            </label>
+            <button className="ghost-btn" onClick={() => soundStop()} title="Stop everything playing">Stop all</button>
+          </div>
+          {filesError && <p className="hint warn">{filesError}</p>}
           <div className="vv-pads">
             {PADS.map((btn) => {
-              const [r, g, b] = hexRgb(shown?.color ?? "#223");
+              const [r, g, b] = hexRgb(eb.color);
+              const file = eb.pads?.[btn] ?? "";
+              const missing = !!file && files.length > 0 && !files.includes(file);
               return (
-                <div key={btn} className={`vv-pad ${pressed.has(btn) ? "down" : ""}`}
-                  style={{ background: shown ? `rgba(${r},${g},${b},0.22)` : undefined, borderColor: shown?.color, boxShadow: shown ? `0 0 18px rgba(${r},${g},${b},0.45)` : undefined }}>
-                  <b>{btn}</b>
-                  <span>LED {cfg.map[btn] ?? SOLR_LED_MAP[btn]}</span>
+                <div key={btn} className={`vv-pad ${pressed.has(btn) && edit === bank ? "down" : ""} ${justFired(btn) ? "fired" : ""}`}
+                  style={{ background: `rgba(${r},${g},${b},0.16)`, borderColor: eb.color, boxShadow: `0 0 16px rgba(${r},${g},${b},0.35)` }}>
+                  <div className="vv-pad-top">
+                    <b>{btn}</b>
+                    <span>LED {cfg.map[btn] ?? SOLR_LED_MAP[btn]}</span>
+                    <button className="vv-play" disabled={!file || !eb.folder} title="Hear it (your monitor only - not sent to the game)"
+                      onClick={() => eb.folder && soundPreview(eb.folder, file)}>▶</button>
+                  </div>
+                  <div className={`vv-sound ${missing ? "warn" : ""}`}>{file ? soundLabel(file) : "silent"}</div>
+                  <select value={file} onChange={(e) => setPad(btn, e.target.value)}>
+                    <option value="">- silent -</option>
+                    {missing && <option value={file}>{file} (missing)</option>}
+                    {files.map((f) => <option key={f} value={f}>{f}</option>)}
+                  </select>
                 </div>
               );
             })}
           </div>
-          <p className="hint">The eight pad buttons (all the other LEDs take the same colour). Pressing one highlights it here.</p>
+          <p className="hint">
+            Turn the knob to {eb.name} and press a pad: the sound goes to the game's mic and to you.
+            {fired && Date.now() - fired.at < 1500 && (fired.error
+              ? <b className="warn"> {fired.file}: {fired.error}</b>
+              : <b> Played {fired.file && soundLabel(fired.file)}.</b>)}
+          </p>
+          <p className={`hint ${status && (!status.cable || status.errors.length) ? "warn" : ""}`}>
+            {!status ? "Opening the sound devices..." : <>
+              Game hears: <b>{status.cable ?? "no cable open"}</b> · You hear: <b>{status.monitor ?? "nothing (no monitor)"}</b> · {status.loaded} sounds ready
+              {status.errors.map((e) => <span key={e} className="vv-err">{e}</span>)}
+            </>}
+          </p>
+          <div className="row">
+            <button className="ghost-btn" onClick={() => { setStatus(null); soundReconnect(); }} title="Open the sound devices again - after installing VB-CABLE or replugging the Focusrite">Reconnect sound devices</button>
+          </div>
         </div>
         {ledError && <p className="hint warn">LEDs: {ledError}</p>}
       </section>

@@ -11,9 +11,11 @@
 //! running the UI in a plain browser (and for the browser tests). Both must
 //! write the table in exactly the same format.
 
+mod audio;
 mod devices;
 mod hidraw;
 mod led;
+mod sound;
 mod target;
 mod tmsc;
 
@@ -487,7 +489,40 @@ async fn voice_save(voice: Value) -> Result<(), String> {
         return Err("voice settings must be an object".into());
     }
     let json = serde_json::to_string_pretty(&voice).map_err(|e| e.to_string())?;
-    atomic_write("hotas_voice.json", json.as_bytes())
+    atomic_write("hotas_voice.json", json.as_bytes())?;
+    sound::set_config(voice);
+    Ok(())
+}
+
+// ---- voice control sounds (sound.rs)
+
+/// Where the clips go and how many are ready; None while the devices open.
+#[tauri::command]
+fn sound_status() -> Option<sound::SoundStatus> {
+    sound::status()
+}
+
+/// The sound files in a folder, for picking what goes on each pad.
+#[tauri::command]
+async fn sound_files(folder: String) -> Result<Vec<String>, String> {
+    blocking(move || sound::files(std::path::Path::new(&folder))).await?
+}
+
+/// Hear a clip yourself (monitor only - nothing goes out to the game).
+#[tauri::command]
+fn sound_preview(folder: String, file: String) {
+    sound::preview(std::path::Path::new(&folder).join(file));
+}
+
+#[tauri::command]
+fn sound_stop() {
+    sound::stop();
+}
+
+/// Open the sound devices again (after installing VB-CABLE, replugging, ...).
+#[tauri::command]
+fn sound_reconnect() {
+    sound::reopen();
 }
 
 // ---- the Sol-R's RGB button LEDs (led.rs): [group, r, g, b] each
@@ -551,6 +586,11 @@ pub fn run() {
             led_set,
             voice_load,
             voice_save,
+            sound_status,
+            sound_files,
+            sound_preview,
+            sound_stop,
+            sound_reconnect,
             raw_stick_snapshot
         ])
         // the overlay has no close button: it goes when the editor goes
@@ -560,6 +600,10 @@ pub fn run() {
                     window.app_handle().exit(0);
                 }
             }
+        })
+        .setup(|app| {
+            sound::start(app.handle(), voice_load());
+            Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building Sol-R Curves")

@@ -185,3 +185,26 @@ export async function voiceSave(voice: unknown): Promise<void> {
   if (!inTauri) return;
   await invoke("voice_save", { voice });
 }
+
+/* ---- Voice control sounds (sound.rs): pads play to the VB-CABLE mic + your monitor */
+export interface SoundStatus { cable: string | null; monitor: string | null; loaded: number; errors: string[] }
+export interface SoundFired { button: number; bank: number | null; file: string | null; error: string | null }
+export async function soundStatus(): Promise<SoundStatus | null> {
+  if (!inTauri) return null;
+  return invoke("sound_status");
+}
+export async function soundFiles(folder: string): Promise<string[]> {
+  if (!inTauri) return [];
+  return invoke("sound_files", { folder });
+}
+/** monitor only - nothing goes out to the game */
+export async function soundPreview(folder: string, file: string): Promise<void> {
+  if (inTauri) await invoke("sound_preview", { folder, file });
+}
+export async function soundStop(): Promise<void> {
+  if (inTauri) await invoke("sound_stop");
+}
+/** open the sound devices again (after installing VB-CABLE, replugging, ...) */
+export async function soundReconnect(): Promise<void> {
+  if (inTauri) await invoke("sound_reconnect");
+}
