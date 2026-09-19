@@ -359,7 +359,17 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .styles-now div { display: flex; flex-direction: column; font-size: 12.5px; }
 .styles-close { font-size: 26px; line-height: 1; padding: 0 6px; }
 .styles-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); grid-auto-rows: minmax(210px, 1fr); }
+  grid-auto-rows: minmax(0, 1fr); } /* columns: chosen in Styles.tsx to make the previews as big as they can be */
+/* short screens: tighter frame so every curve still fits without scrolling */
+@media (max-height: 800px) {
+  .styles-modal { padding: 10px; }
+  .styles-window { padding: 10px 12px; gap: 8px; }
+  .styles-now .style-thumb { width: 56px !important; height: 56px !important; }
+  .styles-intro p { font-size: 11.5px; }
+  .style-apply { padding: 6px; gap: 2px; }
+  .style-name { font-size: 12.5px; }
+  .style-note { -webkit-line-clamp: 1; }
+}
 .style-card { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
 .style-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .style-apply { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; background: none; border: none; padding: 10px; cursor: pointer; color: inherit; }
@@ -367,7 +377,8 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .style-apply .style-thumb { flex: 1; min-height: 0; width: 100%; }
 .style-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
 .style-name .tag.mine { color: var(--live); border-color: var(--live); }
-.style-note { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.style-note { font-size: 11.5px; color: var(--muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.style-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .style-actions { display: flex; justify-content: flex-end; gap: 4px; padding: 0 8px 8px; }
 .style-actions .ghost-btn { padding: 2px 8px; font-size: 12px; }
 .styles-bottom { flex: none; }
@@ -381,3 +392,16 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 /* narrow windows: the style button shrinks to its thumbnail so the mode
    switch never wraps (the name is in its tooltip) */
 @media (max-width: 1440px) { .styles-btn span { display: none; } }
+
+/* three modes: S-curve | Shape | Points */
+.mode-row .seg { grid-template-columns: repeat(3, 1fr); }
+.mode-row .seg button { padding: 7px 4px; }
+.shape-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.shape-kinds button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 2px; font-size: 12.5px; cursor: pointer; }
+.shape-kinds button.on { border-color: var(--accent); color: var(--accent); background: #213a2b; }
+
+/* style picker: filter by family */
+.styles-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+.styles-chips button { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; }
+.styles-chips button small { color: var(--muted); margin-left: 3px; }
+.styles-chips button.on { border-color: var(--accent); color: var(--accent); background: #213a2b; }

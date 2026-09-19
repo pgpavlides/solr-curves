@@ -20,6 +20,8 @@ export function stamp(d = new Date()) {
 
 const FIELDS: [keyof Side, string, string][] = [
   ["mode", "mode", ""],
+  ["shape", "shape", ""],
+  ["strength", "strength", "%"],
   ["deadzone", "deadzone", "%"],
   ["curve", "curve", ""],
   ["saturation", "end saturation", "%"],
@@ -28,7 +30,7 @@ const FIELDS: [keyof Side, string, string][] = [
 ];
 
 const val = (k: keyof Side, v: unknown) =>
-  k === "mode" ? (v === "scurve" ? "S-curve" : "points") : k === "smooth" ? (v ? "on" : "off") : String(v);
+  k === "mode" ? (v === "scurve" ? "S-curve" : v === "shape" ? "shape" : "points") : k === "smooth" ? (v ? "on" : "off") : String(v);
 
 function sideChanges(a: Side, b: Side): string[] {
   const out: string[] = [];

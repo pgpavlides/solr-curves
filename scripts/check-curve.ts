@@ -3,7 +3,7 @@
   the default table must match fcurve() from target.tmh, which is also what
   the script uses for its built-in default. Run: npm run check
 */
-import { table, defaultAxis, evaluator, migrate } from "../src/curve.ts";
+import { table, defaultAxis, evaluator, migrate, shapeFn, SHAPES, sideEvaluator } from "../src/curve.ts";
 
 // fcurve() from target.tmh with lower = upper = trim = 0
 function fcurve(x: number, center: number, curve: number) {
@@ -42,4 +42,22 @@ const oldAsym = migrate({ mode: "points", symmetric: false, smooth: false, deadz
 const m = evaluator(oldAsym);
 const migOk = !oldAsym.linked && Math.abs(m(-0.5) + 0.2) < 1e-9 && Math.abs(m(0.5) - 0.3) < 1e-9 && Math.abs(m(-1) + 0.8) < 1e-9;
 console.log(`old asymmetric curve migrates exactly ${migOk}`);
-if (worst > 1 || !odd || !mono || !sideOk || !migOk) process.exit(1);
+// shape families: 0 at centre, 1 at the stop, never backwards, at every strength
+let shapesOk = true;
+for (const { kind } of SHAPES) {
+  for (const k of [0, 10, 25, 50, 75, 100]) {
+    const g = shapeFn(kind, k);
+    let prev = -1;
+    for (let i = 0; i <= 400; i++) {
+      const y = g(i / 400);
+      if (y < prev - 1e-12 || !Number.isFinite(y)) { shapesOk = false; console.log(`  ${kind} ${k}: goes backwards at ${i / 4}%`); break; }
+      prev = y;
+    }
+    if (Math.abs(g(0)) > 1e-9 || Math.abs(g(1) - 1) > 1e-9) { shapesOk = false; console.log(`  ${kind} ${k}: ends ${g(0)} .. ${g(1)}`); }
+  }
+}
+// deadzone / saturation / max output apply to shapes like to S-curves
+const ex = sideEvaluator({ ...defaultAxis("roll").pos, mode: "shape", shape: "expo", strength: 50, deadzone: 10, saturation: 10, outMax: 80 });
+const wrapOk = ex(0.05) === 0 && Math.abs(ex(0.95) - 0.8) < 1e-9 && ex(0.5) > 0 && ex(0.5) < 0.4;
+console.log(`shape families (${SHAPES.map((s) => s.kind).join(", ")}): 0..1, never backwards ${shapesOk}; deadzone/saturation/max apply ${wrapOk}`);
+if (worst > 1 || !odd || !mono || !sideOk || !migOk || !shapesOk || !wrapOk) process.exit(1);
