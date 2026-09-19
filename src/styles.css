@@ -178,3 +178,12 @@ select { background: var(--bg); border: 1px solid var(--line); border-radius: 7p
 
 .add-btn { background: var(--panel-2); border: 1px solid var(--accent); color: var(--accent); border-radius: 7px; padding: 1px 8px; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .add-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--line); color: var(--muted); }
+
+/* which side of the stick the controls edit */
+.sides { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex: none; }
+.sides span { color: var(--muted); font-size: 12px; margin-right: 2px; }
+.sides button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px 12px; cursor: pointer; font-size: 13px; }
+.sides button.on { border-color: var(--accent); color: var(--accent); background: #213a2b; }
+.shade { fill: #050a08; fill-opacity: 0.55; pointer-events: none; }
+.handle.other { fill: var(--bg); stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 2; cursor: pointer; }
+.handle.other:hover { stroke: var(--accent); }

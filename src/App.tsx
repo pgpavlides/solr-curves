@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
 import {
-  AXES, AXIS_LABEL, type AxisCurve, type AxisName, type Pt,
-  defaultAxis, evaluator, foldPoints, mirrorPoints, scurveToPoints, table,
+  AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
+  defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
 } from "./curve";
 
 interface State {
@@ -36,6 +36,10 @@ export default function App() {
   const pads = usePads();
 
   const c = st.axes[axis];
+  // which side the controls edit. Linked: both, stored on pos and mirrored to neg
+  const [view, setView] = useState<SideName>("pos");
+  const sv: SideName = c.linked ? "pos" : view;
+  const sd = c[sv];
 
   // ---- load saved state once
   useEffect(() => {
@@ -43,7 +47,12 @@ export default function App() {
       .then((r) => r.json())
       .then((j) => {
         // always set, so the first table is written even with no saved state
-        setSt(j.state?.axes ? { ...initial(), ...j.state } : initial());
+        const base = initial();
+        if (j.state?.axes) {
+          base.axes = Object.fromEntries(AXES.map((a) => [a, migrate(j.state.axes[a], a)])) as State["axes"];
+          if (j.state.input) base.input = { ...base.input, ...j.state.input };
+        }
+        setSt(base);
         if (j.dir) setDir(j.dir);
         loaded.current = true;
         setSync("saving");
@@ -118,10 +127,24 @@ export default function App() {
   const setAxisCurve = (patch: Partial<AxisCurve>, commit = true) =>
     edit((s) => ({ ...s, axes: { ...s.axes, [axis]: { ...s.axes[axis], ...patch } } }), commit);
 
-  // capped so the point table always fits on screen without scrolling
-  const onPoints = (pts: Pt[], commit: boolean) => {
+  /** Edit a side. Linked: the change goes to both sides. */
+  const setSide = (patch: Partial<Side>, commit = true, side: SideName = sv) =>
+    edit((s) => {
+      const a = s.axes[axis];
+      let next: AxisCurve;
+      if (a.linked) {
+        const p = { ...a.pos, ...patch };
+        next = { ...a, pos: p, neg: structuredClone(p) };
+      } else {
+        next = { ...a, [side]: { ...a[side], ...patch } };
+      }
+      return { ...s, axes: { ...s.axes, [axis]: next } };
+    }, commit);
+
+  // capped per side so the point table always fits on screen without scrolling
+  const onPoints = (pts: Pt[], commit: boolean, side?: SideName) => {
     if (pts.length > MAX_POINTS) return;
-    setAxisCurve({ points: pts }, commit);
+    setSide({ points: pts }, commit, side ?? sv);
   };
 
   useEffect(() => {
@@ -147,18 +170,11 @@ export default function App() {
   const expected = stickX === null ? null : f(stickX);
   const drift = expected !== null && combinedY !== null ? Math.abs(expected - combinedY) : null;
 
-  const setMode = (mode: AxisCurve["mode"]) => {
-    if (mode === c.mode) return;
-    if (mode === "points" && c.mode === "scurve") {
-      // start the custom curve where the S-curve was, so nothing jumps
-      const pts = scurveToPoints(c).map(([x, y]) => [x, y * c.outMax / 100] as Pt);
-      setAxisCurve({ mode, points: c.symmetric ? pts : mirrorPoints(pts) });
-    } else setAxisCurve({ mode });
-    setSelected(null);
-  };
-
-  const setSym = (symmetric: boolean) => {
-    setAxisCurve({ symmetric, points: symmetric ? foldPoints(c.points) : mirrorPoints(c.points) });
+  const setMode = (mode: Side["mode"]) => {
+    if (mode === sd.mode) return;
+    // start the custom curve where the S-curve was, so nothing jumps
+    if (mode === "points") setSide({ mode, points: scurveToPoints(sd) });
+    else setSide({ mode });
     setSelected(null);
   };
 
@@ -174,6 +190,32 @@ export default function App() {
     const t = setTimeout(() => setFlash(null), 1800);
     return () => clearTimeout(t);
   }, [flash]);
+
+  /*
+    Linked: one curve, mirrored. Picking a side splits them (each starts as
+    a copy, so nothing changes until you edit). Re-linking copies the side
+    you are looking at onto the other one - undoable, and it says so.
+  */
+  const other: SideName = sv === "pos" ? "neg" : "pos";
+  const chooseSide = (s: SideName | "linked") => {
+    setSelected(null);
+    if (s === "linked") {
+      if (c.linked) return;
+      edit((x) => ({ ...x, axes: { ...x.axes, [axis]: { ...c, linked: true, pos: structuredClone(c[sv]), neg: structuredClone(c[sv]) } } }));
+      setFlash(`Linked — ${SIDE_LABEL[axis][sv]} copied to ${SIDE_LABEL[axis][other]}`);
+      setView("pos");
+      return;
+    }
+    if (c.linked) {
+      edit((x) => ({ ...x, axes: { ...x.axes, [axis]: { ...c, linked: false } } }));
+      setFlash(`Sides split — editing ${SIDE_LABEL[axis][s]} only`);
+    }
+    setView(s);
+  };
+  const onGraphSide = (s: SideName, select: number | null) => {
+    setView(s);
+    setSelected(select);
+  };
 
   const shapeOnto = (src: AxisCurve, dst: AxisCurve): AxisCurve => ({
     ...structuredClone(src),
@@ -218,20 +260,27 @@ export default function App() {
   // "+ Add": a new point in the middle of the widest gap, ON the current curve,
   // so adding it changes nothing until you move it
   const addPoint = () => {
-    if (c.points.length >= MAX_POINTS) return setFlash(`Maximum ${MAX_POINTS} points — remove one first`);
-    const pts = [...c.points].sort((a, b) => a[0] - b[0]);
+    if (sd.points.length >= MAX_POINTS) return setFlash(`Maximum ${MAX_POINTS} points per side — remove one first`);
+    const pts = [...sd.points].sort((a, b) => a[0] - b[0]);
     let gi = 0;
     for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1][0] - pts[i][0] > pts[gi + 1][0] - pts[gi][0]) gi = i;
     if (pts[gi + 1][0] - pts[gi][0] < MIN_GAP * 2) return setFlash("No room left between points");
     const x = Math.round((pts[gi][0] + pts[gi + 1][0]) * 5) / 10;
-    const y = Math.round(evaluator({ ...c, invert: false })(x / 100) * 1000) / 10;
+    const y = Math.round(sideEvaluator(sd)(x / 100) * 1000) / 10;
     const next = [...pts, [x, y] as Pt].sort((a, b) => a[0] - b[0]);
     onPoints(next, true);
     setSelected(next.findIndex((p) => p[0] === x));
     setFlash(`Added point #${gi + 2} at ${x}%`);
   };
 
-  const sel = selected !== null && c.mode === "points" ? c.points[selected] : null;
+  const sel = selected !== null && sd.mode === "points" ? sd.points[selected] : null;
+
+  const tabInfo = (a: AxisName) => {
+    const x = st.axes[a];
+    const s = x.pos;
+    const t = s.mode === "scurve" ? `S ${s.curve} · dz ${s.deadzone}` : `${s.points.length} pts`;
+    return x.linked ? t : `split · ${t}`;
+  };
 
   return (
     <div className="app">
@@ -252,10 +301,17 @@ export default function App() {
             {AXES.map((a) => (
               <button key={a} className={a === axis ? "on" : ""} onClick={() => { setAxis(a); setSelected(null); }}>
                 {AXIS_LABEL[a]}
-                <small>{st.axes[a].mode === "scurve" ? `S ${st.axes[a].curve} · dz ${st.axes[a].deadzone}` : `${st.axes[a].points.length} pts`}</small>
+                <small>{tabInfo(a)}</small>
               </button>
             ))}
           </nav>
+
+          <div className="sides">
+            <span>Edit</span>
+            <button className={c.linked ? "on" : ""} onClick={() => chooseSide("linked")}>Both sides · linked</button>
+            <button className={!c.linked && view === "neg" ? "on" : ""} onClick={() => chooseSide("neg")}>− {SIDE_LABEL[axis].neg}</button>
+            <button className={!c.linked && view === "pos" ? "on" : ""} onClick={() => chooseSide("pos")}>+ {SIDE_LABEL[axis].pos}</button>
+          </div>
 
           <div className="graph-wrap">
             {!pads.stick && (
@@ -266,6 +322,8 @@ export default function App() {
             )}
             <Graph
               c={c}
+              side={sv}
+              onSide={onGraphSide}
               range={range}
               stickX={stickX}
               combinedY={combinedY}
@@ -313,55 +371,54 @@ export default function App() {
           </div>
 
           <div className="seg">
-            <button className={c.mode === "scurve" ? "on" : ""} onClick={() => setMode("scurve")}>S-curve</button>
-            <button className={c.mode === "points" ? "on" : ""} onClick={() => setMode("points")}>Custom points</button>
+            <button className={sd.mode === "scurve" ? "on" : ""} onClick={() => setMode("scurve")}>S-curve</button>
+            <button className={sd.mode === "points" ? "on" : ""} onClick={() => setMode("points")}>Custom points</button>
           </div>
 
-          {c.mode === "scurve" ? (
+          {sd.mode === "scurve" ? (
             <div className="group">
               <Field label="Centre deadzone" unit="%" hint="No output until the stick is this far out"
-                v={c.deadzone} min={0} max={25} step={0.1} on={(v, k) => setAxisCurve({ deadzone: v }, k)} />
+                v={sd.deadzone} min={0} max={25} step={0.1} on={(v, k) => setSide({ deadzone: v }, k)} />
               <Field label="Curve" unit="" hint="+ softer centre · − twitchier centre"
-                v={c.curve} min={-20} max={20} step={0.1} on={(v, k) => setAxisCurve({ curve: v }, k)} />
+                v={sd.curve} min={-20} max={20} step={0.1} on={(v, k) => setSide({ curve: v }, k)} />
               <Field label="End saturation" unit="%" hint="Full output this far before the physical end"
-                v={c.saturation} min={0} max={30} step={0.1} on={(v, k) => setAxisCurve({ saturation: v }, k)} />
+                v={sd.saturation} min={0} max={30} step={0.1} on={(v, k) => setSide({ saturation: v }, k)} />
               <Field label="Max output" unit="%" hint="Output at full deflection"
-                v={c.outMax} min={10} max={100} step={0.5} on={(v, k) => setAxisCurve({ outMax: v }, k)} />
+                v={sd.outMax} min={10} max={100} step={0.5} on={(v, k) => setSide({ outMax: v }, k)} />
             </div>
           ) : (
             <div className="group">
               <div className="toggles">
-                <label><input type="checkbox" checked={c.symmetric} onChange={(e) => setSym(e.target.checked)} /> Symmetric</label>
-                <label><input type="checkbox" checked={c.smooth} onChange={(e) => setAxisCurve({ smooth: e.target.checked })} /> Smooth</label>
-                <button className="ghost-btn" onClick={() => setAxisCurve({ points: c.symmetric ? scurveToPoints(c) : mirrorPoints(scurveToPoints(c)) })}>
+                <label><input type="checkbox" checked={sd.smooth} onChange={(e) => setSide({ smooth: e.target.checked })} /> Smooth</label>
+                <button className="ghost-btn" onClick={() => setSide({ points: scurveToPoints(sd) })}>
                   From S-curve
                 </button>
               </div>
               <table className="pts">
                 <thead><tr><th>#</th><th>Stick %</th><th>Output %</th>
-                  <th><button className="add-btn" onClick={addPoint} disabled={c.points.length >= MAX_POINTS} title="Add a point in the widest gap">+ Add</button></th></tr></thead>
+                  <th><button className="add-btn" onClick={addPoint} disabled={sd.points.length >= MAX_POINTS} title="Add a point in the widest gap">+ Add</button></th></tr></thead>
                 <tbody>
-                  {c.points.map(([x, y], i) => {
-                    const fixedX = i === 0 || i === c.points.length - 1;
+                  {sd.points.map(([x, y], i) => {
+                    const fixedX = i === 0 || i === sd.points.length - 1;
                     return (
                       <tr key={i} className={selected === i ? "sel" : ""} onClick={() => setSelected(i)}>
                         <td>{i + 1}</td>
                         <td>
                           <Num v={x} step={0.1} disabled={fixedX}
                             on={(v) => {
-                              const lo = i > 0 ? c.points[i - 1][0] + 0.1 : -100;
-                              const hi = i < c.points.length - 1 ? c.points[i + 1][0] - 0.1 : 100;
-                              onPoints(c.points.map((p, j) => (j === i ? [Math.min(hi, Math.max(lo, v)), p[1]] as Pt : p)), true);
+                              const lo = i > 0 ? sd.points[i - 1][0] + 0.1 : 0;
+                              const hi = i < sd.points.length - 1 ? sd.points[i + 1][0] - 0.1 : 100;
+                              onPoints(sd.points.map((p, j) => (j === i ? [Math.min(hi, Math.max(lo, v)), p[1]] as Pt : p)), true);
                             }} />
                         </td>
                         <td>
                           <Num v={y} step={0.1}
-                            on={(v) => onPoints(c.points.map((p, j) => (j === i ? [p[0], Math.min(100, Math.max(-100, v))] as Pt : p)), true)} />
+                            on={(v) => onPoints(sd.points.map((p, j) => (j === i ? [p[0], Math.min(100, Math.max(-100, v))] as Pt : p)), true)} />
                         </td>
                         <td>
                           {!fixedX && (
                             <button className="x" title="Remove point"
-                              onClick={(e) => { e.stopPropagation(); onPoints(c.points.filter((_, j) => j !== i), true); setSelected(null); }}>×</button>
+                              onClick={(e) => { e.stopPropagation(); onPoints(sd.points.filter((_, j) => j !== i), true); setSelected(null); }}>×</button>
                           )}
                         </td>
                       </tr>
