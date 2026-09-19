@@ -47,6 +47,8 @@ pub struct SoundStatus {
     pub loaded: usize,
     /// Anything that went wrong: devices, files that wouldn't load.
     pub errors: Vec<String>,
+    /// No cable, but its driver is still in Windows: the Repair button can fix it.
+    pub cable_repairable: bool,
 }
 
 /// What the frontend is told each time a pad fires.
@@ -136,9 +138,11 @@ impl Worker {
 
         let key = s.main.map(|c| c.id).filter(|id| present(id)).or_else(|| devices::suggested_virtual_sink().map(|d| d.id));
         match &key {
-            None => self.device_errors.push(
-                "No VB-CABLE: the game can't hear the sounds. Install it (C:\\Program Files\\VB\\CABLE\\VBCABLE_Setup_x64.exe, as administrator), then Reconnect.".into(),
-            ),
+            None => self.device_errors.push(if crate::vbcable::stored_inf().is_some() {
+                "No VB-CABLE device, so the game can't hear the sounds. Its driver is still in Windows: Repair VB-CABLE puts it back.".into()
+            } else {
+                "VB-CABLE isn't installed, so the game can't hear the sounds. Get it from vb-audio.com/Cable, run the setup as administrator from the unzipped folder, then Reconnect.".into()
+            }),
             Some(k) => match Engine::start(Some(k)) {
                 Ok(e) => {
                     let _ = e.set_master(s.master_gain.unwrap_or(1.0));
@@ -202,6 +206,7 @@ impl Worker {
             monitor: self.monitor.as_ref().map(|e| e.device_name.clone()),
             loaded: self.clips.len(),
             errors: self.device_errors.iter().chain(&self.file_errors).cloned().collect(),
+            cable_repairable: self.cable.is_none() && crate::vbcable::stored_inf().is_some(),
         };
         *STATUS.lock().unwrap() = Some(st.clone());
         let _ = self.app.emit("solr:sound-status", st);

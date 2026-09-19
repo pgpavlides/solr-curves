@@ -187,7 +187,7 @@ export async function voiceSave(voice: unknown): Promise<void> {
 }
 
 /* ---- Voice control sounds (sound.rs): pads play to the VB-CABLE mic + your monitor */
-export interface SoundStatus { cable: string | null; monitor: string | null; loaded: number; errors: string[] }
+export interface SoundStatus { cable: string | null; monitor: string | null; loaded: number; errors: string[]; cable_repairable: boolean }
 export interface SoundFired { button: number; bank: number | null; file: string | null; error: string | null }
 export async function soundStatus(): Promise<SoundStatus | null> {
   if (!inTauri) return null;
@@ -203,6 +203,10 @@ export async function soundPreview(folder: string, file: string): Promise<void> 
 }
 export async function soundStop(): Promise<void> {
   if (inTauri) await invoke("sound_stop");
+}
+/** put the VB-CABLE device back from the driver Windows keeps (one admin prompt) */
+export async function soundRepairCable(): Promise<void> {
+  if (inTauri) await invoke("sound_repair_cable");
 }
 /** open the sound devices again (after installing VB-CABLE, replugging, ...) */
 export async function soundReconnect(): Promise<void> {

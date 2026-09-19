@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundStatus, soundStop } from "./bridge";
+import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
 import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb, soundLabel } from "./voice";
 
@@ -95,6 +95,12 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
   const [filesError, setFilesError] = useState<string | null>(null);
   const [status, setStatus] = useState<SoundStatus | null>(null);
   const [fired, setFired] = useState<(SoundFired & { at: number }) | null>(null);
+  const [repair, setRepair] = useState<{ busy: boolean; error?: string } | null>(null);
+  const repairCable = async () => {
+    setRepair({ busy: true });
+    try { await soundRepairCable(); setRepair(null); setStatus(null); }
+    catch (e) { setRepair({ busy: false, error: String(e) }); }
+  };
   useEffect(() => {
     if (!eb.folder) { setFiles([]); setFilesError(null); return; }
     soundFiles(eb.folder).then((f) => { setFiles(f); setFilesError(null); }).catch((e) => { setFiles([]); setFilesError(String(e)); });
@@ -195,8 +201,15 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
             </>}
           </p>
           <div className="row">
+            {status?.cable_repairable && (
+              <button className="add-btn" disabled={repair?.busy} onClick={repairCable}
+                title="Puts the VB-CABLE device back from the driver Windows still has. Windows asks for admin rights once.">
+                {repair?.busy ? "Repairing - answer the Windows prompt..." : "Repair VB-CABLE"}
+              </button>
+            )}
             <button className="ghost-btn" onClick={() => { setStatus(null); soundReconnect(); }} title="Open the sound devices again - after installing VB-CABLE or replugging the Focusrite">Reconnect sound devices</button>
           </div>
+          {repair?.error && <p className="hint warn">Repair: {repair.error}</p>}
         </div>
         {ledError && <p className="hint warn">LEDs: {ledError}</p>}
       </section>

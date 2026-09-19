@@ -18,6 +18,7 @@ mod led;
 mod sound;
 mod target;
 mod tmsc;
+mod vbcable;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -525,6 +526,17 @@ fn sound_reconnect() {
     sound::reopen();
 }
 
+/// Put the VB-CABLE device back from the driver Windows keeps (vbcable.rs),
+/// then open the sound devices again. One admin prompt.
+#[tauri::command]
+async fn sound_repair_cable() -> Result<(), String> {
+    blocking(vbcable::repair).await??;
+    // Windows needs a moment to publish the new endpoint
+    blocking(|| thread::sleep(Duration::from_millis(1500))).await?;
+    sound::reopen();
+    Ok(())
+}
+
 // ---- the Sol-R's RGB button LEDs (led.rs): [group, r, g, b] each
 
 #[tauri::command]
@@ -555,6 +567,7 @@ async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> R
 }
 
 pub fn run() {
+    vbcable::run_if_asked(); // the elevated copy that repairs the cable, then exits
     migrate_from_e();
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -591,6 +604,7 @@ pub fn run() {
             sound_preview,
             sound_stop,
             sound_reconnect,
+            sound_repair_cable,
             raw_stick_snapshot
         ])
         // the overlay has no close button: it goes when the editor goes
