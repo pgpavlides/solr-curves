@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { type SoundFired, type SoundStatus, ledSet, onEvent, soundFiles, soundPreview, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
 import SoundPicker from "./SoundPicker";
-import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, allTo, hexRgb, soundLabel } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, bankLeds, hexRgb, soundLabel } from "./voice";
 
 /*
   Voice control page. Part 1: the knob is the bank, the pads light up in the
@@ -84,7 +84,8 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
   }, [stick]);
 
   const setColor = (i: number, color: string) => update({ ...cfg, banks: cfg.banks.map((b, j) => (j === i ? { ...b, color } : b)) });
-  const test = (color: string) => ledSet(allTo(color)).catch((e) => setNote(String(e)));
+  // what that bank really looks like: its colour, with soundless pads dark
+  const test = (i: number) => ledSet(bankLeds(cfg, i)).catch((e) => setNote(String(e)));
 
   const shown = bank !== null ? cfg.banks[bank] : null;
 
@@ -152,7 +153,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
                 <input type="color" value={b.color} onChange={(e) => setColor(i, e.target.value)} />
                 <code>{b.color}</code>
               </label>
-              <button className="ghost-btn" onClick={() => test(b.color)} title="Light the pads in this colour now">Show on stick</button>
+              <button className="ghost-btn" onClick={() => test(i)} title="Light the stick as this bank: its colour, pads with no sound dark">Show on stick</button>
             </div>
           ))}
         </div>
@@ -184,8 +185,10 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
               const [r, g, b] = hexRgb(eb.color);
               const file = eb.pads?.[btn] ?? "";
               return (
-                <div key={btn} className={`vv-pad ${pressed.has(btn) && edit === bank ? "down" : ""} ${justFired(btn) ? "fired" : ""}`}
-                  style={{ background: `rgba(${r},${g},${b},0.16)`, borderColor: eb.color, boxShadow: `0 0 16px rgba(${r},${g},${b},0.35)` }}>
+                <div key={btn} className={`vv-pad ${pressed.has(btn) && edit === bank ? "down" : ""} ${justFired(btn) ? "fired" : ""} ${file ? "" : "dark"}`}
+                  style={file
+                    ? { background: `rgba(${r},${g},${b},0.16)`, borderColor: eb.color, boxShadow: `0 0 16px rgba(${r},${g},${b},0.35)` }
+                    : undefined}>
                   <div className="vv-pad-top">
                     <b>{btn}</b>
                     <span>LED {cfg.map[btn] ?? SOLR_LED_MAP[btn]}</span>
@@ -264,7 +267,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
                 </td>
                 <td><button className="ghost-btn" onClick={async () => {
                   await ledSet([[cfg.map[btn] ?? SOLR_LED_MAP[btn], 255, 255, 255]]).catch((e) => setNote(String(e)));
-                  setTimeout(() => { if (shown) test(shown.color); }, 900);
+                  setTimeout(() => { if (bank !== null) test(bank); }, 900);
                 }}>Flash white</button></td>
               </tr>
             ))}

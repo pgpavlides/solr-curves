@@ -507,3 +507,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mc-page .mc-steps { font-size: 14px; padding: 8px 10px; }
 .vv-stopbtn { display: flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
 .vv-stopbtn .num { width: 56px; }
+.vv-pad.dark { opacity: 0.62; }
+.vv-pad.dark b, .vv-pad.dark .vv-sound { color: var(--muted); }
