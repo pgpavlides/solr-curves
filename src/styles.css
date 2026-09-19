@@ -405,3 +405,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .styles-chips button { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; }
 .styles-chips button small { color: var(--muted); margin-left: 3px; }
 .styles-chips button.on { border-color: var(--accent); color: var(--accent); background: #213a2b; }
+.service-down { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--bad); background: #2a1616; border-radius: 10px; }
+.service-down .add-btn { white-space: nowrap; padding: 6px 12px; }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   type TargetLogLine, type TargetStatus,
-  inTauri, onEvent, targetLog, targetStart, targetStatus, targetStop,
+  inTauri, onEvent, targetLog, targetStart, targetStartService, targetStatus, targetStop,
 } from "./bridge";
 
 /*
@@ -32,7 +32,7 @@ const AUTOSTART_KEY = "solr:autostart";
 export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: number; ack: number | null }) {
   const [status, setStatus] = useState<TargetStatus | null>(null);
   const [log, setLog] = useState<TargetLogLine[]>([]);
-  const [busy, setBusy] = useState<"starting" | "stopping" | null>(null);
+  const [busy, setBusy] = useState<"starting" | "stopping" | "service" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [autostart, setAutostart] = useState(() => {
@@ -74,9 +74,25 @@ export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: numbe
     return () => { offLog(); offStatus(); clearInterval(t); };
   }, []);
 
-  // one app: start the script as soon as we know it isn't running
+  const serviceDown = status?.error === "service-stopped";
+  const startService = async () => {
+    setBusy("service");
+    setProblem(null);
+    try { await targetStartService(); } catch (e) { setProblem(String(e)); setOpen(true); }
+    setBusy(null);
+    refresh();
+  };
+
+  // one app: start the script as soon as we know it isn't running - on
+  // opening, and again whenever Thrustmaster's service comes back after
+  // being down (it has crashed under low memory before)
+  const wasDown = useRef(false);
   useEffect(() => {
-    if (!status || tried.current || !autostart) return;
+    if (!status) return;
+    if (serviceDown) { wasDown.current = true; return; }
+    const back = wasDown.current && status.connected;
+    if (back) wasDown.current = false;
+    if (!autostart || (tried.current && !back)) return;
     tried.current = true;
     if (status.connected && !status.running) start();
   }, [status, autostart]);
@@ -109,6 +125,8 @@ export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: numbe
   let text = SYNC_TEXT(sync, ack);
   if (busy === "starting") { cls = "waiting"; text = "Starting script…"; }
   else if (busy === "stopping") { cls = "waiting"; text = "Stopping script…"; }
+  else if (busy === "service") { cls = "waiting"; text = "Starting Thrustmaster service…"; }
+  else if (serviceDown) { cls = "error"; text = "Thrustmaster service stopped"; }
   else if (status && !status.connected) { cls = "error"; text = status.available ? "T.A.R.G.E.T. service unreachable" : "T.A.R.G.E.T. not installed"; }
   else if (status && !running) { cls = "offline"; text = problem ? "Script failed — see log" : "Script stopped"; }
 
@@ -140,7 +158,20 @@ export default function TargetPanel({ sync, gen, ack }: { sync: Sync; gen: numbe
             <input type="checkbox" checked={autostart} onChange={(e) => setAutostart(e.target.checked)} />
             Start the script when Sol-R Curves opens · it stops when the app closes
           </label>
-          {(problem || status?.error) && <p className="hint warn">{problem ?? status?.error}</p>}
+          {serviceDown && (
+            <div className="service-down">
+              <div>
+                <b>Thrustmaster FAST service isn't running</b>
+                <p className="hint">
+                  It runs every T.A.R.G.E.T. script, so nothing works until it's back. It normally starts with Windows;
+                  it can crash under low memory. Starting it needs admin approval - Windows will ask. Your script
+                  starts again by itself afterwards.
+                </p>
+              </div>
+              <button className="add-btn" onClick={startService} disabled={!!busy}>Start Thrustmaster service</button>
+            </div>
+          )}
+          {(problem || (status?.error && !serviceDown)) && <p className="hint warn">{problem ?? status?.error}</p>}
           <div className="target-log">
             {log.length === 0 && <div className="log-empty">No output yet.</div>}
             {log.map((l, i) => (
