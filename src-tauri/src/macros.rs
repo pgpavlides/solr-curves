@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum Step {
     /// A key tap: scan code, extended (E0) or not.
     Key(u16, bool),
@@ -23,6 +23,9 @@ pub enum Step {
     Wheel(i32),
     /// An extra pause, ms ("Wait 300").
     Wait(u32),
+    /// Text typed as-is ("Ask for supplies!"), as Unicode characters, so it
+    /// comes out right whatever the keyboard layout (Greek or English).
+    Text(String),
 }
 
 static CONFIG: Mutex<Value> = Mutex::new(Value::Null);
@@ -73,9 +76,54 @@ fn scan(name: &str) -> Option<(u16, bool)> {
     })
 }
 
+enum Piece {
+    Steps(String),
+    Text(String),
+}
+
+/// Split into steps at commas, semicolons, arrows and " - ", keeping "quoted
+/// text" whole - its commas, dashes and "!" are typed, not read as steps.
+fn split_quoted(text: &str) -> Result<Vec<Piece>, String> {
+    let mut out = vec![];
+    let mut cur = String::new();
+    let flush = |cur: &mut String, out: &mut Vec<Piece>| {
+        let s = cur.trim().to_string();
+        if !s.is_empty() {
+            out.push(Piece::Steps(s));
+        }
+        cur.clear();
+    };
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        let rest: String = chars[i..chars.len().min(i + 3)].iter().collect();
+        if c == '"' || c == '“' || c == '”' {
+            flush(&mut cur, &mut out);
+            let end = chars[i + 1..].iter().position(|&d| d == '"' || d == '”' || d == '“').ok_or("a \"quote\" isn't closed")?;
+            out.push(Piece::Text(chars[i + 1..i + 1 + end].iter().collect()));
+            i += end + 2;
+        } else if rest.starts_with("-->") {
+            flush(&mut cur, &mut out);
+            i += 3;
+        } else if rest.starts_with("->") || rest.starts_with(" - ") && rest.len() == 3 {
+            flush(&mut cur, &mut out);
+            i += if rest.starts_with("->") { 2 } else { 3 };
+        } else if c == ',' || c == ';' || c == '>' {
+            flush(&mut cur, &mut out);
+            i += 1;
+        } else {
+            cur.push(c);
+            i += 1;
+        }
+    }
+    flush(&mut cur, &mut out);
+    Ok(out)
+}
+
 /// One step as run: `fast` steps follow each other after FAST_GAP instead of
 /// the macro's gap (and hold their key shorter) - "Enter x24 fast".
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Timed {
     pub step: Step,
     pub fast: bool,
@@ -84,6 +132,8 @@ pub struct Timed {
 const FAST_GAP: u64 = 45;
 const FAST_HOLD: u64 = 20;
 const HOLD: u64 = 40;
+/// Between typed characters.
+const TEXT_GAP: u64 = 8;
 
 fn one(word: &str) -> Result<Step, String> {
     let key = word.replace([' ', '_'], "").to_ascii_lowercase();
@@ -100,8 +150,15 @@ fn one(word: &str) -> Result<Step, String> {
 /// fast", "24x Enter". "Down arrow" is just Down.
 pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
     let mut out = vec![];
-    let cleaned = text.replace("-->", ",").replace("->", ",").replace(" - ", ",").replace('>', ",");
-    for part in cleaned.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
+    for piece in split_quoted(text)? {
+        let part = match piece {
+            Piece::Text(s) => {
+                out.push(Timed { step: Step::Text(s), fast: false });
+                continue;
+            }
+            Piece::Steps(p) => p,
+        };
+        let part = part.as_str();
         let mut count = 1usize;
         let mut fast = false;
         let mut name: Vec<&str> = vec![];
@@ -130,14 +187,14 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
         }
         let step = one(&name.join(" "))?;
         for _ in 0..count {
-            out.push(Timed { step, fast });
+            out.push(Timed { step: step.clone(), fast });
         }
     }
     Ok(out)
 }
 
 #[cfg(windows)]
-fn send(step: Step, fast: bool) {
+fn send(step: &Step, fast: bool) {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     let key = |scan: u16, ext: bool, up: bool| INPUT {
         r#type: INPUT_KEYBOARD,
@@ -154,6 +211,7 @@ fn send(step: Step, fast: bool) {
     let one = |i: INPUT| unsafe { SendInput(1, &i, std::mem::size_of::<INPUT>() as i32) };
     match step {
         Step::Key(s, e) => {
+            let (s, e) = (*s, *e);
             one(key(s, e, false));
             // held briefly: games polling the keyboard miss a zero-length tap
             std::thread::sleep(Duration::from_millis(if fast { FAST_HOLD } else { HOLD }));
@@ -163,11 +221,26 @@ fn send(step: Step, fast: bool) {
             one(INPUT {
                 r#type: INPUT_MOUSE,
                 Anonymous: INPUT_0 {
-                    mi: MOUSEINPUT { dx: 0, dy: 0, mouseData: (n * 120) as u32, dwFlags: MOUSEEVENTF_WHEEL, time: 0, dwExtraInfo: 0 },
+                    mi: MOUSEINPUT { dx: 0, dy: 0, mouseData: (*n * 120) as u32, dwFlags: MOUSEEVENTF_WHEEL, time: 0, dwExtraInfo: 0 },
                 },
             });
         }
-        Step::Wait(ms) => std::thread::sleep(Duration::from_millis(ms as u64)),
+        Step::Wait(ms) => std::thread::sleep(Duration::from_millis(*ms as u64)),
+        Step::Text(s) => {
+            // each character as a Unicode key press (VK_PACKET) - independent
+            // of the keyboard layout and of Shift
+            for unit in s.encode_utf16() {
+                let u = |up: bool| INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: INPUT_0 {
+                        ki: KEYBDINPUT { wVk: 0, wScan: unit, dwFlags: KEYEVENTF_UNICODE | if up { KEYEVENTF_KEYUP } else { 0 }, time: 0, dwExtraInfo: 0 },
+                    },
+                };
+                one(u(false));
+                one(u(true));
+                std::thread::sleep(Duration::from_millis(TEXT_GAP));
+            }
+        }
     }
 }
 
@@ -201,7 +274,7 @@ pub fn press(button: u16) {
                 std::thread::sleep(Duration::from_millis(if fast { FAST_GAP } else { gap }));
             }
             #[cfg(windows)]
-            send(s.step, s.fast);
+            send(&s.step, s.fast);
         }
         if let Some(set) = RUNNING.lock().unwrap().as_mut() {
             set.remove(&button);
@@ -220,8 +293,8 @@ mod tests {
     #[test]
     fn reads_the_sequence_as_written() {
         let f = Step::Key(0x21, false);
-        assert_eq!(steps("F-->SCROLL DOWN-->SCROLL DOWN-->F-->ESC"), vec![f, Step::Wheel(-1), Step::Wheel(-1), f, Step::Key(0x01, false)]);
-        assert_eq!(steps("f, wheelup, wait 250, F5, Up"), vec![f, Step::Wheel(1), Step::Wait(250), Step::Key(0x3F, false), Step::Key(0x48, true)]);
+        assert_eq!(steps("F-->SCROLL DOWN-->SCROLL DOWN-->F-->ESC"), vec![f.clone(), Step::Wheel(-1), Step::Wheel(-1), f.clone(), Step::Key(0x01, false)]);
+        assert_eq!(steps("f, wheelup, wait 250, F5, Up"), vec![f.clone(), Step::Wheel(1), Step::Wait(250), Step::Key(0x3F, false), Step::Key(0x48, true)]);
         assert!(parse("F, Banana").is_err());
     }
 
@@ -240,5 +313,17 @@ mod tests {
         assert_eq!(steps("Wait 300"), vec![Step::Wait(300)]);
         assert_eq!(steps("F5"), vec![Step::Key(0x3F, false)]);
         assert_eq!(steps("5"), vec![Step::Key(0x06, false)], "a lone digit is the key");
+    }
+
+    #[test]
+    fn quoted_text_is_typed_whole() {
+        let enter = Step::Key(0x1C, false);
+        assert_eq!(
+            steps("ENTER - \"Ask for supplies from the Pilots!\" - ENTER"),
+            vec![enter.clone(), Step::Text("Ask for supplies from the Pilots!".into()), enter.clone()]
+        );
+        // commas and dashes inside the quotes are text, not steps
+        assert_eq!(steps("\"a, b - c\", Esc"), vec![Step::Text("a, b - c".into()), Step::Key(0x01, false)]);
+        assert!(parse("Enter, \"oops").is_err());
     }
 }
