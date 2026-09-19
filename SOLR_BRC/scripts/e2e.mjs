@@ -102,6 +102,24 @@ await sleep(1000);
 const fourth = poll(readFileSync(TABLE, "latin1"));
 ok(Math.abs(shape(fourth.t, 2, 32767 / 2) - shape(first.t, 2, 32767 / 2)) < 1, "Ctrl+Z undoes the copy in one step");
 
+// ---- split sides: only the left side gets a 20% deadzone
+await ev(`[...document.querySelectorAll('.sides button')].find(b => b.textContent.includes('Left')).click()`);
+await sleep(150);
+await ev(`(() => {
+  const r = [...document.querySelectorAll('.field')].find(f => f.textContent.startsWith('Centre deadzone')).querySelector('input[type=range]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  set.call(r, '20'); r.dispatchEvent(new Event('input', { bubbles: true }));
+  r.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+})()`);
+await sleep(1000);
+const sp = poll(readFileSync(TABLE, "latin1"));
+const L = shape(sp.t, 0, -32767 * 0.15), Rt = shape(sp.t, 0, 32767 * 0.15);
+ok(Math.abs(L) < 1 && Rt > 100, `split: left 15% stick -> ${(L / 327.67).toFixed(1)}% (inside its 20% deadzone), right 15% -> ${(Rt / 327.67).toFixed(1)}%`);
+ok(/split/.test(await ev(`document.querySelector('.tabs button.on small').textContent`)), "roll tab shows it is split");
+await ev(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true }))`);
+await ev(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true }))`);
+await sleep(800);
+
 const badge = await ev(`document.querySelector('.sync').textContent`);
 console.log(`badge: "${badge}"`);
 

@@ -1,13 +1,17 @@
 import { useMemo, useRef, useState } from "react";
-import { type AxisCurve, type Pt, evaluator } from "./curve";
+import { type AxisCurve, type Pt, type SideName, evaluator } from "./curve";
 
 /*
   The curve, the control points, and the live stick.
 
+  Each side of the stick is its own curve. Points are stored as magnitudes
+  (0..100 from centre), so the − side's point (30, 12) is DRAWN at (−30, −12).
+  `flip` below is that one conversion, used both ways.
+
   Precision tools, because a helicopter lives in the middle 20% of the stick:
     - zoom: the view can close in on the centre (±50 / ±25 / ±10 %)
     - Shift while dragging moves a point at a tenth of the mouse speed
-    - arrow keys nudge the selected point by 0.1 (Shift: 1.0)
+    - arrow keys nudge the selected point by 0.1 (Shift: 1.0), in screen directions
 */
 
 const S = 560;      // svg size
@@ -17,17 +21,20 @@ export const MIN_GAP = 2; // % of stick between two points
 
 interface Props {
   c: AxisCurve;
+  side: SideName;                // the side being edited (pos when linked)
   range: number;                 // view half-range in %
   stickX: number | null;         // physical stick, -1..1
   combinedY: number | null;      // what the game gets, -1..1
   selected: number | null;
   maxPoints: number;
   onSelect: (i: number | null) => void;
-  onPoints: (pts: Pt[], commit: boolean) => void;
+  /** side defaults to the one being edited */
+  onPoints: (pts: Pt[], commit: boolean, side?: SideName) => void;
+  onSide: (side: SideName, select: number | null) => void;
   onNotice: (msg: string) => void;
 }
 
-export default function Graph({ c, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints, onNotice }: Props) {
+export default function Graph({ c, side, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints, onSide, onNotice }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ i: number; start: Pt; px: number; py: number } | null>(null);
   const [hover, setHover] = useState<Pt | null>(null);
@@ -36,6 +43,8 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
   const R = range;
   const sx = (v: number) => PAD + ((v + R) / (2 * R)) * PLOT;
   const sy = (v: number) => PAD + ((R - v) / (2 * R)) * PLOT;
+  const sgn = (s: SideName) => (s === "neg" ? -1 : 1);
+  const flip = (s: SideName, [x, y]: Pt): Pt => [sgn(s) * x, sgn(s) * y];
 
   const path = useMemo(() => {
     const n = 400;
@@ -56,33 +65,32 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
     return { lines, label: R >= 100 ? 50 : R >= 50 ? 25 : R >= 25 ? 10 : 5 };
   }, [R]);
 
-  const editable = c.mode === "points";
-  const pts = c.points;
-  // symmetric curves show the mirrored half as ghosts; only the real half drags
-  const ghosts = editable && c.symmetric ? pts.filter((p) => p[0] > 0).map(([x, y]) => [-x, -y] as Pt) : [];
+  const other: SideName = side === "pos" ? "neg" : "pos";
+  const cur = c[side];
+  const editable = cur.mode === "points";
+  const pts = cur.points;
+  const otherPts = c.linked ? null : c[other].mode === "points" ? c[other].points : null;
 
-  // Screen -> svg units through the svg's own transform, so it stays right
-  // when the graph is scaled to fit the window and letterboxed.
   const toPct = (e: { clientX: number; clientY: number }): Pt => {
+    // screen -> svg units through the svg's own transform (right when letterboxed)
     const m = svg.current!.getScreenCTM()!.inverse();
-    const u = (e.clientX * m.a + e.clientY * m.c + m.e);
-    const v = (e.clientX * m.b + e.clientY * m.d + m.f);
+    const u = e.clientX * m.a + e.clientY * m.c + m.e;
+    const v = e.clientX * m.b + e.clientY * m.d + m.f;
     return [(u - PAD) / PLOT * 2 * R - R, R - (v - PAD) / PLOT * 2 * R];
   };
 
   const limits = (i: number): [number, number] => {
-    const lo = c.symmetric ? 0 : -100;
-    if (i === 0) return [lo, lo];
+    if (i === 0) return [0, 0];
     if (i === pts.length - 1) return [100, 100];
     return [pts[i - 1][0] + 0.1, pts[i + 1][0] - 0.1];
   };
 
+  // x, y in the side's own magnitude terms
   const place = (i: number, x: number, y: number, commit: boolean) => {
     const [a, b] = limits(i);
     const nx = Math.round(Math.min(b, Math.max(a, x)) * 10) / 10;
     const ny = Math.round(Math.min(100, Math.max(-100, y)) * 10) / 10;
-    const next = pts.map((p, j) => (j === i ? ([nx, ny] as Pt) : p));
-    onPoints(next, commit);
+    onPoints(pts.map((p, j) => (j === i ? ([nx, ny] as Pt) : p)), commit);
   };
 
   const down = (i: number) => (e: React.PointerEvent) => {
@@ -92,13 +100,19 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
     drag.current = { i, start: pts[i], px: e.clientX, py: e.clientY };
   };
 
+  // a point on the other side: switch to that side with it selected
+  const downOther = (i: number) => (e: React.PointerEvent) => {
+    e.stopPropagation();
+    onSide(other, i);
+  };
+
   const move = (e: React.PointerEvent) => {
-    const p = toPct(e);
-    setHover(p);
+    setHover(toPct(e));
     const d = drag.current;
     if (!d) return;
     const k = (1 / svg.current!.getScreenCTM()!.a) * (2 * R / PLOT) * (e.shiftKey ? 0.1 : 1);
-    place(d.i, d.start[0] + (e.clientX - d.px) * k, d.start[1] - (e.clientY - d.py) * k, false);
+    const s = sgn(side);
+    place(d.i, d.start[0] + s * (e.clientX - d.px) * k, d.start[1] - s * (e.clientY - d.py) * k, false);
   };
 
   const up = () => {
@@ -107,35 +121,41 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
   };
 
   /*
-    Double-click adds a point where you click. It used to also fire when the
-    double-click landed ON a handle (the dblclick still bubbles up), dropping
-    a new point a fraction of a percent from the old one, hidden under it.
-    Now: never on a handle, never closer than MIN_GAP to another point, and
-    every refusal says why.
+    Double-click adds a point where you click, on the side you click. It is
+    ignored on a handle (the dblclick bubbles up from it, and used to drop a
+    twin a fraction of a percent away, hidden under the old one), and never
+    closer than MIN_GAP to another point. Every refusal says why.
   */
   const dbl = (e: React.MouseEvent) => {
-    if (!editable) return;
     if ((e.target as Element).classList.contains("handle")) return;
-    if (pts.length >= maxPoints) return onNotice(`Maximum ${maxPoints} points — remove one first`);
-    let [x, y] = toPct(e);
-    if (c.symmetric && x < 0) [x, y] = [-x, -y];
-    const lo = c.symmetric ? 0 : -100;
-    if (x <= lo || x >= 100) return;
+    const [gx, gy] = toPct(e);
+    const clicked: SideName = c.linked ? "pos" : gx < 0 ? "neg" : "pos";
+    const target = c[clicked];
+    if (target.mode !== "points") {
+      if (!c.linked && clicked !== side) onSide(clicked, null);
+      return onNotice("That side is an S-curve — switch it to Custom points to add points");
+    }
+    const tp = target.points;
+    if (tp.length >= maxPoints) return onNotice(`Maximum ${maxPoints} points per side — remove one first`);
+    let [x, y] = gx < 0 ? [-gx, -gy] : [gx, gy];
+    if (x <= 0 || x >= 100) return;
     x = Math.round(x * 10) / 10;
     y = Math.round(y * 10) / 10;
-    const near = pts.findIndex((p) => Math.abs(p[0] - x) < MIN_GAP);
+    const near = tp.findIndex((p) => Math.abs(p[0] - x) < MIN_GAP);
     if (near >= 0) return onNotice(`Too close to point #${near + 1} — drag that one instead`);
-    const next = [...pts, [x, y] as Pt].sort((a, b) => a[0] - b[0]);
-    onPoints(next, true);
-    onSelect(next.findIndex((p) => p[0] === x));
+    const next = [...tp, [x, y] as Pt].sort((a, b) => a[0] - b[0]);
+    const idx = next.findIndex((p) => p[0] === x);
+    onPoints(next, true, clicked);
+    if (clicked !== side) onSide(clicked, idx);
+    else onSelect(idx);
   };
 
   const key = (e: React.KeyboardEvent) => {
-    if (!editable || selected === null) return;
-    const s = e.shiftKey ? 1 : 0.1;
+    if (!editable || selected === null || !pts[selected]) return;
+    const st = (e.shiftKey ? 1 : 0.1) * sgn(side); // screen direction -> side terms
     const [x, y] = pts[selected];
     const moves: Record<string, [number, number]> = {
-      ArrowLeft: [-s, 0], ArrowRight: [s, 0], ArrowUp: [0, s], ArrowDown: [0, -s],
+      ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st],
     };
     if (moves[e.key]) {
       e.preventDefault();
@@ -152,6 +172,9 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
   const liveY = liveX === null ? null : f(stickX!) * 100;
   const gameY = combinedY === null ? null : combinedY * 100;
 
+  // the half being edited is lit, the other dimmed (unless linked: both are it)
+  const shade = c.linked ? null : { x: side === "pos" ? PAD : sx(0), w: PLOT / 2 };
+
   return (
     <svg
       ref={svg}
@@ -166,6 +189,7 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
       onPointerDown={() => onSelect(null)}
     >
       <rect x={PAD} y={PAD} width={PLOT} height={PLOT} className="plot-bg" />
+      {shade && <rect x={shade.x} y={PAD} width={shade.w} height={PLOT} className="shade" />}
       {grid.lines.map((v) => (
         <g key={v}>
           <line x1={sx(v)} x2={sx(v)} y1={PAD} y2={PAD + PLOT} className={v === 0 ? "axis0" : "gridline"} />
@@ -189,19 +213,29 @@ export default function Graph({ c, range, stickX, combinedY, selected, maxPoints
             {gameY !== null && <circle cx={sx(liveX)} cy={sy(gameY)} r={10} className="game-dot" />}
           </>
         )}
-        {ghosts.map(([x, y], i) => (
-          <circle key={`g${i}`} cx={sx(x)} cy={sy(y)} r={5} className="ghost" />
-        ))}
-        {editable && pts.map(([x, y], i) => (
-          <circle
-            key={i}
-            cx={sx(x)}
-            cy={sy(y)}
-            r={selected === i ? 9 : 7}
-            className={`handle ${selected === i ? "sel" : ""}`}
-            onPointerDown={down(i)}
-          />
-        ))}
+        {/* linked: the − side is the same points, shown as ghosts */}
+        {editable && c.linked && pts.filter((p) => p[0] > 0).map((p, i) => {
+          const [x, y] = flip("neg", p);
+          return <circle key={`g${i}`} cx={sx(x)} cy={sy(y)} r={5} className="ghost" />;
+        })}
+        {/* split: the other side's points, dim; click one to edit that side */}
+        {otherPts && otherPts.map((p, i) => {
+          const [x, y] = flip(other, p);
+          return <circle key={`o${i}`} cx={sx(x)} cy={sy(y)} r={6} className="handle other" onPointerDown={downOther(i)} />;
+        })}
+        {editable && pts.map((p, i) => {
+          const [x, y] = flip(side, p);
+          return (
+            <circle
+              key={i}
+              cx={sx(x)}
+              cy={sy(y)}
+              r={selected === i ? 9 : 7}
+              className={`handle ${selected === i ? "sel" : ""}`}
+              onPointerDown={down(i)}
+            />
+          );
+        })}
       </g>
       {hover && inView(hover[0]) && inView(hover[1]) && (
         <text x={PAD + PLOT - 6} y={PAD + 16} className="hover" textAnchor="end">
