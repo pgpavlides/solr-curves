@@ -208,6 +208,11 @@ export async function soundStop(): Promise<void> {
 export async function soundRepairCable(): Promise<void> {
   if (inTauri) await invoke("sound_repair_cable");
 }
+/** a button macro's steps as typed: how many, or what's wrong (throws) */
+export async function macroCheck(steps: string): Promise<number> {
+  if (!inTauri) return 0;
+  return invoke("macro_check", { steps });
+}
 /** open the sound devices again (after installing VB-CABLE, replugging, ...) */
 export async function soundReconnect(): Promise<void> {
   if (inTauri) await invoke("sound_reconnect");

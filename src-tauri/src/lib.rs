@@ -15,6 +15,7 @@ mod audio;
 mod devices;
 mod hidraw;
 mod led;
+mod macros;
 mod ptt;
 mod sound;
 mod target;
@@ -492,6 +493,7 @@ async fn voice_save(voice: Value) -> Result<(), String> {
     }
     let json = serde_json::to_string_pretty(&voice).map_err(|e| e.to_string())?;
     atomic_write("hotas_voice.json", json.as_bytes())?;
+    macros::set_config(&voice);
     sound::set_config(voice);
     Ok(())
 }
@@ -514,6 +516,12 @@ async fn sound_files(folder: String) -> Result<Vec<String>, String> {
 #[tauri::command]
 fn sound_preview(folder: String, file: String) {
     sound::preview(std::path::Path::new(&folder).join(file));
+}
+
+/// Check a macro's steps as typed: Ok(number of steps) or what's wrong.
+#[tauri::command]
+fn macro_check(steps: String) -> Result<usize, String> {
+    macros::parse(&steps).map(|s| s.len())
 }
 
 #[tauri::command]
@@ -605,6 +613,7 @@ pub fn run() {
             sound_preview,
             sound_stop,
             sound_reconnect,
+            macro_check,
             sound_repair_cable,
             raw_stick_snapshot
         ])
@@ -617,7 +626,9 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            sound::start(app.handle(), voice_load());
+            let voice = voice_load();
+            macros::set_config(&voice);
+            sound::start(app.handle(), voice);
             Ok(())
         })
         .build(tauri::generate_context!())
