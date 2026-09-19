@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph, { MIN_GAP } from "./Graph";
 import { usePads } from "./gamepad";
+import { logLine } from "./describe";
 import {
   AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
   defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
@@ -33,6 +34,7 @@ export default function App() {
   const undo = useRef<State[]>([]);
   const redo = useRef<State[]>([]);
   const loaded = useRef(false);
+  const lastSent = useRef<State["axes"] | null>(null);
   const pads = usePads();
 
   const c = st.axes[axis];
@@ -66,14 +68,17 @@ export default function App() {
     const t = setTimeout(async () => {
       const g = Math.floor(Date.now() / 100) % 1_000_000_000;
       const tbl = [...table(st.axes.roll), ...table(st.axes.pitch), ...table(st.axes.yaw)];
+      // what changed since the table T.A.R.G.E.T. last got, for its console log
+      const note = logLine(lastSent.current, st.axes);
       setSync("saving");
       try {
         const r = await fetch("/api/state", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ state: st, table: tbl, gen: g }),
+          body: JSON.stringify({ state: st, table: tbl, gen: g, note }),
         });
         if (!r.ok) throw new Error(await r.text());
+        lastSent.current = st.axes;
         setGen(g);
         setSync("waiting");
       } catch {

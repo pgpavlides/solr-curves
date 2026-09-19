@@ -23,8 +23,10 @@ alias RMODE = "rb";
 alias WMODE = "wb";
 
 // Table layout: 3 axes (roll, pitch, yaw) x 257 samples over stick -100%..+100%.
-// File: <gen> <771 values, -32767..32767> <gen>. The repeated <gen> at the end
-// proves the file was read whole, not halfway through a write.
+// File: <gen> <771 values, -32767..32767> <gen> #<log line>. The repeated
+// <gen> proves the file was read whole, not halfway through a write. The log
+// line after '#' is written by the app (T.A.R.G.E.T. has no clock of its own):
+// date, time and what changed, printed as-is when the table loads.
 define NSAMP   257
 define NTAB    771
 define POLL_ID 20000			// AutoRepeat handler id, clear of target.tmh's
@@ -33,6 +35,8 @@ int crv[771];					// live tables
 int nxt[771];					// staging while reading
 int gen = -1;					// table number currently loaded (-1 = built-in)
 int rv;							// NextInt() result
+int note[200];					// the app's log line for the table being loaded
+int notelen;
 
 int main()
 {
@@ -150,6 +154,7 @@ int Poll(int p)
 	}
 	int ok = 0;
 	if(n == NTAB) if(NextInt(fp)) if(rv == g) ok = 1;
+	if(ok) ReadNote(fp);
 	fclose(fp);
 	if(!ok) return 0;				// caught mid-write: try again next poll
 
@@ -162,7 +167,40 @@ int Poll(int p)
 	gen = g;
 	Refresh();
 	Ack();
-	printf("curves loaded #%d\xa", g);
+	PrintNote(g);
+}
+
+// The rest of the line after '#', up to 199 characters.
+int ReadNote(int fp)
+{
+	notelen = 0;
+	int c = fgetc(fp);
+	while((c != -1) & (c != '#')) c = fgetc(fp);
+	if(c == -1) return 0;
+	c = fgetc(fp);
+	while((c != -1) & (c != 13) & (c != 10) & (notelen < 199))
+	{
+		note[notelen] = c;
+		notelen = notelen + 1;
+		c = fgetc(fp);
+	}
+}
+
+// "19 Sep 2026  01:23:45  |  Roll right: deadzone 2 -> 3  |  #898010556"
+int PrintNote(int g)
+{
+	int i = 0;
+	if(!notelen)
+	{
+		printf("curves loaded #%d\xa", g);
+		return 0;
+	}
+	while(i < notelen)
+	{
+		putchar(note[i]);
+		i = i + 1;
+	}
+	printf("  |  #%d\xa", g);
 }
 
 // Tell the app which table is live.
