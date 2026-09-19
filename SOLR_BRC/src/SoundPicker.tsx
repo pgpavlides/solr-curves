@@ -15,6 +15,8 @@ interface Props {
   value: string;
   color: string;
   onPick: (file: string) => void;
+  /** the list is about to show: re-read the folder */
+  onOpen?: () => void;
 }
 
 /** heli_can_you_hear_me.mp3 -> "heli" (the prefix groups the list) */
@@ -25,7 +27,7 @@ const groupOf = (f: string) => {
 
 const norm = (s: string) => s.toLowerCase().replace(/[_\-.]+/g, " ");
 
-export default function SoundPicker({ folder, files, value, color, onPick }: Props) {
+export default function SoundPicker({ folder, files, value, color, onPick, onOpen }: Props) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [hi, setHi] = useState(0);
@@ -89,7 +91,7 @@ export default function SoundPicker({ folder, files, value, color, onPick }: Pro
 
   return (
     <div className="sp" ref={box}>
-      <button className={`sp-current ${missing ? "warn" : ""} ${value ? "" : "silent"}`} onClick={() => (open ? close() : setOpen(true))}
+      <button className={`sp-current ${missing ? "warn" : ""} ${value ? "" : "silent"}`} onClick={() => { if (open) close(); else { onOpen?.(); setOpen(true); } }}
         title={value ? `${value} - click to change` : "Click to choose a sound"}>
         <span className="sp-label">{value ? soundLabel(value) : "silent"}</span>
         <span className="sp-file">{value ? (missing ? `${value} (missing)` : value) : "choose a sound..."}</span>

@@ -103,10 +103,12 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
     try { await soundRepairCable(); setRepair(null); setStatus(null); }
     catch (e) { setRepair({ busy: false, error: String(e) }); }
   };
-  useEffect(() => {
+  // read the folder again whenever a picker opens: clips get added while the app runs
+  const loadFiles = () => {
     if (!eb.folder) { setFiles([]); setFilesError(null); return; }
     soundFiles(eb.folder).then((f) => { setFiles(f); setFilesError(null); }).catch((e) => { setFiles([]); setFilesError(String(e)); });
-  }, [eb.folder]);
+  };
+  useEffect(loadFiles, [eb.folder]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     soundStatus().then(setStatus).catch(() => {});
     const a = onEvent<SoundStatus>("solr:sound-status", setStatus);
@@ -185,7 +187,7 @@ export default function VoiceView({ stick, bank, cfg, update, setHold, ledError 
                     <button className="vv-play" disabled={!file || !eb.folder} title="Hear it (your monitor only - not sent to the game)"
                       onClick={() => eb.folder && soundPreview(eb.folder, file)}>▶</button>
                   </div>
-                  <SoundPicker folder={eb.folder ?? ""} files={files} value={file} color={eb.color} onPick={(f) => setPad(btn, f)} />
+                  <SoundPicker folder={eb.folder ?? ""} files={files} value={file} color={eb.color} onPick={(f) => setPad(btn, f)} onOpen={loadFiles} />
                 </div>
               );
             })}
