@@ -156,3 +156,14 @@ export const deviceSetLed = (serial: number, flags: number, intensity: number) =
 export const deviceSetDeadzone = (serial: number, on: boolean) => invoke<void>("device_set_deadzone", { serial, on });
 /** resolves to true when Windows needs a restart for it to take effect */
 export const deviceSetHidEnabled = (serial: number, enabled: boolean) => invoke<boolean>("device_set_hid_enabled", { serial, enabled });
+
+/* ---- curve styles: single curve shapes, applied per axis / per side */
+export async function loadStyles(): Promise<unknown[]> {
+  if (inTauri) return invoke<unknown[]>("load_styles");
+  return (await fetch("/api/styles")).json();
+}
+export async function saveStyles(styles: unknown[]): Promise<void> {
+  if (inTauri) { await invoke("save_styles", { styles }); return; }
+  const r = await fetch("/api/styles", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(styles) });
+  if (!r.ok) throw new Error(await r.text());
+}

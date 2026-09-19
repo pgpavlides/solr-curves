@@ -120,6 +120,26 @@ async fn save_presets(presets: Value) -> Result<(), String> {
     atomic_write("hotas_presets.json", json.as_bytes())
 }
 
+/// Saved curve styles (`hotas_curve_styles.json`): single curve shapes, applied
+/// to one axis or one side independently. A JSON array, empty if none yet.
+#[tauri::command]
+fn load_styles() -> Value {
+    fs::read_to_string(dir().join("hotas_curve_styles.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .filter(|v| v.is_array())
+        .unwrap_or_else(|| Value::Array(vec![]))
+}
+
+#[tauri::command]
+async fn save_styles(styles: Value) -> Result<(), String> {
+    if !styles.is_array() {
+        return Err("styles must be a list".into());
+    }
+    let json = serde_json::to_string_pretty(&styles).map_err(|e| e.to_string())?;
+    atomic_write("hotas_curve_styles.json", json.as_bytes())
+}
+
 /*
   WARDOGS's own bindings. The curves only reach the game through "Thrustmaster
   Combined"; an action bound to the physical Sol-R bypasses them completely.
@@ -413,6 +433,8 @@ pub fn run() {
             read_ack,
             load_presets,
             save_presets,
+            load_styles,
+            save_styles,
             set_overlay,
             game_bindings,
             fix_game_bindings,
