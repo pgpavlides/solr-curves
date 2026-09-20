@@ -190,8 +190,8 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const { stick: s, bank: b, cfg: c, selected: sel, hovered: hov } = live.current;
-      const down = new Set((s?.buttons ?? []).flatMap((x, i) => (x.pressed ? [i + 1] : [])));
-      const bankColour = b !== null ? c.banks[b]?.color ?? "#39ff6a" : "#39ff6a";
+      // the knob keeps one of 20-23 held: it would sit there lit for ever
+      const down = new Set((s?.buttons ?? []).flatMap((x, i) => (x.pressed && !KNOB.includes(i + 1) ? [i + 1] : [])));
       const hat = s?.hat ?? -1;
 
       for (const [name, meshes] of parts.current) {
@@ -206,9 +206,6 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           continue;
         }
         const btn = partOf.current.get(name) ?? null;
-        const bankCfg = c.banks[b ?? 0];
-        const hasSound = btn !== null && !!bankCfg?.pads?.[btn];
-        const hasMacro = btn !== null && !!bankCfg?.macros?.[btn]?.steps;
         const pressed = btn !== null && down.has(btn);
         const isSelected = btn !== null && btn === sel;
         // the one you clicked stays yellow until you click another
@@ -227,12 +224,6 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           } else if (btn !== null && name === hov) {
             mat.emissive = colour.set(HOT);
             mat.emissiveIntensity = 0.7;
-          } else if (hasSound) {
-            mat.emissive = colour.set(bankColour);
-            mat.emissiveIntensity = 0.6;
-          } else if (hasMacro) {
-            mat.emissive = colour.set("#2f9bff");
-            mat.emissiveIntensity = 0.45;
           } else {
             mat.emissiveIntensity = 0;
           }
