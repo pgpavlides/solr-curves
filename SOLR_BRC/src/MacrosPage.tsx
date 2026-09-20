@@ -74,7 +74,7 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
 
   const sound = selected === null ? "" : eb?.pads?.[selected] ?? "";
   const macro = selected === null ? undefined : eb?.macros?.[selected];
-  const kind: "none" | "sound" | "macro" = sound ? "sound" : macro?.steps ? "macro" : "none";
+  const kind: "none" | "sound" | "macro" = macro ? "macro" : sound ? "sound" : "none";
 
   const loadFiles = () => {
     if (!eb?.folder) { setFiles([]); return; }
@@ -104,15 +104,21 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
 
   const setBank = (patch: Partial<VoiceConfig["banks"][number]>) =>
     update({ ...cfg, banks: cfg.banks.map((x, i) => (i === b ? { ...x, ...patch } : x)) });
+  // a button does one thing: choosing a sound drops its macro, and the other
+  // way round, or the sound would win and the Macro button would look dead
   const setSound = (file: string) => {
     if (selected === null) return;
-    setBank({ pads: { ...(eb.pads ?? {}), [selected]: file } });
+    const macros = { ...(eb.macros ?? {}) };
+    delete macros[selected];
+    setBank({ pads: { ...(eb.pads ?? {}), [selected]: file }, macros });
   };
   const setMacro = (patch: Partial<Macro>) => {
     if (selected === null) return;
     const next: Macro = { name: macro?.name, steps, gap: macro?.gap ?? 120, ...patch };
     if (patch.steps !== undefined) setSteps(patch.steps);
-    setBank({ macros: { ...(eb.macros ?? {}), [selected]: next } });
+    const pads = { ...(eb.pads ?? {}) };
+    delete pads[selected];
+    setBank({ pads, macros: { ...(eb.macros ?? {}), [selected]: next } });
   };
 
   // presets: named macros kept aside, ready to drop on any button
