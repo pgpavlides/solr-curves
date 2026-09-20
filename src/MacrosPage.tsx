@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import LedMapping from "./LedMapping";
 import SoundPicker from "./SoundPicker";
 import StickView from "./StickView";
-import { type SoundStatus, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
+import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { PADS, SOLR_LED_MAP, type VoiceConfig, soundLabel } from "./voice";
+import { PADS, SOLR_LED_MAP, type VoiceConfig, bankLeds, soundLabel } from "./voice";
 
 /*
   One page for the whole stick: the model on the left, what the selected
@@ -38,6 +38,8 @@ function assignments(cfg: VoiceConfig, bank: number) {
 
 export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError }: Props) {
   const [tab, setTab] = useState<number | null>(null); // null = follow the knob
+  // turn the knob and the page follows it
+  useEffect(() => setTab(null), [bank]);
   const b = tab ?? bank ?? 0;
   const eb = cfg.banks[b];
   const [selected, setSelected] = useState<number | null>(null);
@@ -62,6 +64,17 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
     return onEvent<SoundStatus>("solr:sound-status", setStatus);
   }, []);
   useEffect(() => setSteps(macro?.steps ?? ""), [selected, b]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    Look at another bank in the app and the stick shows it too: its colours go
+    on the LEDs, and the app's own painting is paused until you come back to
+    the knob's bank. The buttons still do what the KNOB's bank says - only the
+    knob can change that.
+  */
+  useEffect(() => {
+    const preview = tab !== null && tab !== bank;
+    setHold(preview);
+    if (preview) ledSet(bankLeds(cfg, tab)).catch(() => {});
+  }, [tab, bank, cfg, setHold]);
   useEffect(() => {
     if (!steps) { setProblem(null); setCount(0); return; }
     macroCheck(steps).then((n) => { setCount(n); setProblem(null); }).catch((e) => setProblem(String(e)));
@@ -98,13 +111,18 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
           {cfg.banks.map((x, i) => (
             <button key={i} className={`mx-bank ${i === b ? "on" : ""} ${bank === i ? "knob" : ""}`}
               style={{ ["--bank" as string]: x.color }} onClick={() => setTab(i)}
-              title={bank === i ? "The knob is on this bank" : `Knob position ${i + 1} (button ${20 + i})`}>
+              title={bank === i ? "The knob is on this bank" : `Knob position ${i + 1} (button ${20 + i}) - shown on the stick, but the knob decides what the buttons do`}>
               <span className="mx-dot" />
               {x.name}
               <small>{assignments(cfg, i).length}</small>
             </button>
           ))}
-          {tab !== null && tab !== bank && <button className="ghost-btn" onClick={() => setTab(null)}>Follow the knob</button>}
+          {tab !== null && tab !== bank && (
+            <>
+              <button className="ghost-btn" onClick={() => setTab(null)}>Back to the knob</button>
+              <span className="muted mx-preview">showing {cfg.banks[b]?.name} · the knob still runs {cfg.banks[bank ?? 0]?.name}</span>
+            </>
+          )}
         </div>
         <StickView stick={stick} bank={b} cfg={cfg} selected={selected} onSelect={setSelected} />
       </div>
