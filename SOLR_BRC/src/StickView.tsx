@@ -33,7 +33,7 @@ interface Props {
   model's btn1..btn23 and the grip model's btn_1..btn_21.
 */
 const GRIP_FIRST = 23;
-const partButton = (name: string): number | null => {
+const partNumber = (name: string): number | null => {
   const base = /^base:btn(\d+)$/i.exec(name);
   if (base) return Number(base[1]);
   const grip = /^btn_(\d+)$/i.exec(name);
@@ -59,6 +59,13 @@ const FIT = { x: 0.1, y: 11.9, z: -0.8 };
 export default function StickView({ stick, bank, cfg, selected = null, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const parts = useRef<Map<string, THREE.Mesh[]>>(new Map());
+  /*
+    Some buttons are hidden under their own cap: the base's pads are thin
+    plates (btn5, btn16...) with a separate moulded top over them, so a click
+    or a hover lands on the cap and finds nothing. Any small part sitting on a
+    button counts as that button.
+  */
+  const partOf = useRef<Map<string, number>>(new Map());
   const arrowParts = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +139,30 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         const box = new THREE.Box3().setFromObject(whole);
         const size = box.getSize(new THREE.Vector3());
         whole.position.sub(box.getCenter(new THREE.Vector3()));
+
+        // caps and covers -> the button underneath
+        const boxes = new Map<string, THREE.Box3>();
+        for (const [name, meshes] of parts.current) {
+          const bb = new THREE.Box3();
+          for (const m of meshes) bb.union(new THREE.Box3().setFromObject(m));
+          boxes.set(name, bb);
+          const n = partNumber(name);
+          if (n !== null) partOf.current.set(name, n);
+        }
+        const mid = new THREE.Vector3();
+        for (const [name, bb] of boxes) {
+          if (partOf.current.has(name) || arrowParts.current.has(name)) continue;
+          if (bb.getSize(new THREE.Vector3()).length() > 4) continue; // shells and plates stay themselves
+          bb.getCenter(mid);
+          for (const [other, ob] of boxes) {
+            const n = partOf.current.get(other);
+            if (n === undefined) continue;
+            if (ob.clone().expandByScalar(0.35).containsPoint(mid)) {
+              partOf.current.set(name, n);
+              break;
+            }
+          }
+        }
         scene.add(whole);
         const reach = Math.max(size.x, size.y, size.z);
         camera.position.set(reach * 0.75, reach * 0.45, reach * 1.35);
@@ -149,7 +180,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     el.addEventListener("pointermove", move);
     const click = () => {
       // clicking the background keeps the button you had: only a button changes it
-      const n = picked ? partButton(picked) : null;
+      const n = picked ? partOf.current.get(picked) ?? null : null;
       if (n !== null) onSelect?.(n);
     };
     el.addEventListener("click", click);
@@ -174,7 +205,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           }
           continue;
         }
-        const btn = partButton(name);
+        const btn = partOf.current.get(name) ?? null;
         const bankCfg = c.banks[b ?? 0];
         const hasSound = btn !== null && !!bankCfg?.pads?.[btn];
         const hasMacro = btn !== null && !!bankCfg?.macros?.[btn]?.steps;
@@ -214,7 +245,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
       if (name !== picked) {
         picked = name;
         setHovered(name);
-        el.style.cursor = name && partButton(name) !== null ? "pointer" : "default";
+        el.style.cursor = name && partOf.current.has(name) ? "pointer" : "default";
       }
       controls.update();
       renderer.render(scene, camera);
@@ -231,6 +262,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
       renderer.dispose();
       el.removeChild(renderer.domElement);
       parts.current.clear();
+      partOf.current.clear();
       arrowParts.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,7 +270,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
 
   // the knob (20-23) holds one of its buttons the whole time: that isn't a press
   const pressed = (stick?.buttons ?? []).flatMap((b, i) => (b.pressed && !KNOB.includes(i + 1) ? [i + 1] : []));
-  const hoveredButton = hovered ? partButton(hovered) : null;
+  const hoveredButton = hovered ? partOf.current.get(hovered) ?? null : null;
 
   return (
     <div className="stick-view">
