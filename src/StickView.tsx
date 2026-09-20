@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PadLike } from "./gamepad";
-import { PADS, SOLR_LED_MAP, type VoiceConfig } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig } from "./voice";
 
 /*
   The stick itself, in 3D: public/solr.glb (the grip, Handle_SolR.xaml) on
@@ -220,7 +220,8 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pressed = (stick?.buttons ?? []).flatMap((b, i) => (b.pressed ? [i + 1] : []));
+  // the knob (20-23) holds one of its buttons the whole time: that isn't a press
+  const pressed = (stick?.buttons ?? []).flatMap((b, i) => (b.pressed && !KNOB.includes(i + 1) ? [i + 1] : []));
   const hoveredButton = hovered ? partButton(hovered) : null;
 
   return (
