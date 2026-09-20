@@ -51,18 +51,28 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
   const [count, setCount] = useState(0);
   const [repairing, setRepairing] = useState(false);
   const [live, setLive] = useState(false);
+  const [focused, setFocused] = useState(() => (typeof document === "undefined" ? true : document.hasFocus()));
   const before = useRef<Set<number>>(new Set());
 
+  // only while this window is in front: behind it, the stick is the game's again
+  useEffect(() => {
+    const on = () => setFocused(true);
+    const off = () => setFocused(false);
+    window.addEventListener("focus", on);
+    window.addEventListener("blur", off);
+    return () => { window.removeEventListener("focus", on); window.removeEventListener("blur", off); };
+  }, []);
+
   /*
-    While this page is open the stick is quiet: a press would otherwise type
-    its macro into whatever window is in front, or play into the game, just
-    because you were mapping it. A press picks the button instead. "Let the
-    stick fire" hands it back when you want to try something out.
+    While this page is open and in front, the stick is quiet: a press would
+    otherwise type its macro into whatever window is there, or play into the
+    game, just because you were mapping it. A press picks the button instead.
+    Click away to the game and it all works again, as does "Let the stick fire".
   */
   useEffect(() => {
-    stickSuppress(!live).catch(() => {});
+    stickSuppress(!live && focused).catch(() => {});
     return () => { stickSuppress(false).catch(() => {}); };
-  }, [live]);
+  }, [live, focused]);
 
   // a press picks that button - the quickest way to map the one under your thumb
   useEffect(() => {
@@ -284,9 +294,10 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                 onChange={(e) => update({ ...cfg, stopButton: Math.max(0, Math.min(128, Number(e.target.value) || 0)) })} />
             </label>
             <button className="ghost-btn" onClick={() => soundStop()}>Stop all</button>
-            <label className="vv-ptt" title="Off while you are editing: a press only picks the button, it doesn't type or play">
+            <label className="vv-ptt" title="While this window is in front, a press only picks the button - it doesn't type or play. Behind another window the stick works as usual.">
               <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
               Let the stick fire while this page is open
+              <span className="mx-pill">{live || !focused ? "stick is live" : "stick is quiet"}</span>
             </label>
           </div>
           <p className={`hint ${status && (!status.cable || status.errors.length) ? "warn" : ""}`}>
