@@ -87,6 +87,8 @@ struct State {
     ranges: BTreeMap<u16, (i64, i64)>, // axis usage -> (min, max)
     stick: RawStick,
     pressed: Vec<bool>,
+    /// the knob's last reported position (0-3), kept while it turns
+    bank: Option<usize>,
     last_emit: Option<Instant>,
 }
 static STATE: Mutex<State> = Mutex::new(State {
@@ -95,6 +97,7 @@ static STATE: Mutex<State> = Mutex::new(State {
     ranges: BTreeMap::new(),
     stick: RawStick { device: String::new(), axes: [0.0; 8], buttons: Vec::new(), hat: None },
     pressed: Vec::new(),
+    bank: None,
     last_emit: None,
 });
 static APP: OnceLock<AppHandle> = OnceLock::new();
@@ -154,9 +157,13 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
             _ => {}
         }
     }
-    // voice control: a press plays its bank's sound (the knob, 20-23, is the bank)
+    // voice control: a press plays its bank's sound (the knob, 20-23, is the bank).
+    // Mid-turn the knob holds nothing, so the last position it reported stands.
+    if let Some(k) = KNOB.iter().position(|&b| st.pressed.get(b).copied().unwrap_or(false)) {
+        st.bank = Some(k);
+    }
     if !downs.is_empty() {
-        let bank = KNOB.iter().position(|&b| st.pressed.get(b).copied().unwrap_or(false));
+        let bank = st.bank;
         for b in downs {
             crate::sound::press(b, bank);
             crate::macros::press(b, bank);
