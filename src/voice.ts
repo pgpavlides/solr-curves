@@ -140,7 +140,17 @@ export function useVoiceBanks(stick: PadLike | null) {
   const [loaded, setLoaded] = useState(false);
   const [hold, setHold] = useState(false);
   const [ledError, setLedError] = useState<string | null>(null);
-  const bank = knobBank(stick);
+  /*
+    The knob is four buttons and holds none of them while it turns, so reading
+    it straight would blink through "no bank" on every change - the colours
+    and the page would flicker. The last position it reported stands until it
+    reports the next one.
+  */
+  const [bank, setBank] = useState<number | null>(null);
+  useEffect(() => {
+    const k = knobBank(stick);
+    if (k !== null && k !== bank) setBank(k);
+  }, [stick, bank]);
   const lastSent = useRef<string>("");
 
   useEffect(() => {
