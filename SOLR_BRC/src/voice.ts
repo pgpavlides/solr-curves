@@ -180,6 +180,18 @@ export function useVoiceBanks(stick: PadLike | null) {
         delete next.macros;
         delete next.macroSets;
         delete next.macroSet;
+        /*
+          A button holds either a sound or a macro, never both. Files written
+          before that rule can have both on one button: the sound stays, since
+          the stray macros came from switching the kind back and forth.
+        */
+        next.banks = next.banks.map((b) => {
+          const macros = { ...(b.macros ?? {}) };
+          for (const btn of Object.keys(b.pads ?? {})) {
+            if (b.pads?.[Number(btn)]) delete macros[Number(btn)];
+          }
+          return { ...b, macros };
+        });
         setCfg(next);
         // the sound thread plays what the file says: bring it up to date
         if (JSON.stringify(next) !== JSON.stringify(x)) voiceSave(next).catch(() => {});

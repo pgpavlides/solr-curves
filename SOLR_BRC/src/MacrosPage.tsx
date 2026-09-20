@@ -132,14 +132,17 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
   const dropPreset = (name: string) =>
     update({ ...cfg, macroPresets: presets.filter((p) => p.name !== name) });
   const savedPreset: MacroPreset | undefined = presets.find((p) => p.name === (macro?.name ?? "").trim());
-  const clear = () => {
-    if (selected === null) return;
+  /** take whatever is on a button off it */
+  const clearButton = (button: number) => {
     const pads = { ...(eb.pads ?? {}) };
     const macros = { ...(eb.macros ?? {}) };
-    delete pads[selected];
-    delete macros[selected];
-    setSteps("");
+    delete pads[button];
+    delete macros[button];
+    if (button === selected) setSteps("");
     setBank({ pads, macros });
+  };
+  const clear = () => {
+    if (selected !== null) clearButton(selected);
   };
 
   const isPad = selected !== null && PADS.includes(selected);
@@ -182,6 +185,9 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                     : "Stick button"}
               </p>
             </div>
+            {kind !== "none" && selected !== null && (
+              <button className="mx-drop big" title={`Clear button ${selected}`} onClick={clear}>×</button>
+            )}
             <label className="mx-bankname" title="This bank's name and its colour on the stick">
               <input type="color" value={eb?.color ?? "#39ff6a"} onChange={(e) => setBank({ color: e.target.value })} />
               <input className="mx-bankinput" value={eb?.name ?? ""} maxLength={20}
@@ -249,14 +255,17 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
           <div className="mx-rows">
             {list.length === 0 && <p className="hint">Nothing on this bank's buttons yet.</p>}
             {list.map((a) => (
-              <button key={`${a.kind}${a.button}`} className={`mx-row ${selected === a.button ? "on" : ""}`} onClick={() => setSelected(a.button)}>
-                <b>{a.button}</b>
-                <span className={`tag ${a.kind}`}>{a.kind}</span>
-                <span className="mx-what">
-                  {a.what}
-                  {a.sub && <small>{a.sub}</small>}
-                </span>
-              </button>
+              <div key={`${a.kind}${a.button}`} className={`mx-row ${selected === a.button ? "on" : ""}`}>
+                <button className="mx-rowpick" onClick={() => setSelected(a.button)}>
+                  <b>{a.button}</b>
+                  <span className={`tag ${a.kind}`}>{a.kind}</span>
+                  <span className="mx-what">
+                    {a.what}
+                    {a.sub && <small>{a.sub}</small>}
+                  </span>
+                </button>
+                <button className="mx-drop" title={`Clear button ${a.button}`} onClick={() => clearButton(a.button)}>×</button>
+              </div>
             ))}
           </div>
         </section>

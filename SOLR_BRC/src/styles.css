@@ -601,3 +601,9 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-what small { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-open { white-space: nowrap; }
 .mp .sp-row small { font: 11px var(--mono); }
+
+.mx-row { padding: 0; }
+.mx-rowpick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; background: none; border: none; color: inherit; text-align: left; padding: 7px 4px 7px 10px; cursor: pointer; }
+.mx-drop { border: none; background: none; color: var(--muted); font-size: 17px; line-height: 1; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.mx-drop:hover { color: var(--bad); background: #2a1616; }
+.mx-drop.big { font-size: 20px; padding: 6px 12px; }
