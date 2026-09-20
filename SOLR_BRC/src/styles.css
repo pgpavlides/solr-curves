@@ -527,7 +527,7 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .sv-bar { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13px; }
 
 /* ---- Macros: the stick on the left, what a button does on the right */
-.mx-page { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 14px; }
+.mx-page { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .mx-left { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 .mx-left .stick-view { flex: 1; min-height: 0; }
 .mx-right { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
@@ -561,3 +561,4 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-leds summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .mx-leds .led-map { padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .sv-arrows { display: flex; align-items: center; gap: 5px; color: var(--muted); cursor: pointer; }
+.mx-preview { font-size: 12px; }
