@@ -148,8 +148,9 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     };
     el.addEventListener("pointermove", move);
     const click = () => {
+      // clicking the background keeps the button you had: only a button changes it
       const n = picked ? partButton(picked) : null;
-      onSelect?.(n);
+      if (n !== null) onSelect?.(n);
     };
     el.addEventListener("click", click);
 
@@ -178,7 +179,9 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         const hasSound = btn !== null && !!bankCfg?.pads?.[btn];
         const hasMacro = btn !== null && !!bankCfg?.macros?.[btn]?.steps;
         const pressed = btn !== null && down.has(btn);
-        const hot = pressed || (btn !== null && name === hov);
+        const isSelected = btn !== null && btn === sel;
+        // the one you clicked stays yellow until you click another
+        const hot = pressed || isSelected || (btn !== null && name === hov);
         for (const m of meshes) {
           const mat = m.material as THREE.MeshStandardMaterial;
           // a button turns yellow under the pointer and under your thumb - the
@@ -187,12 +190,12 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           if (pressed) {
             mat.emissive = colour.set(HOT);
             mat.emissiveIntensity = 1.4;
+          } else if (isSelected) {
+            mat.emissive = colour.set(HOT);
+            mat.emissiveIntensity = 1;
           } else if (btn !== null && name === hov) {
             mat.emissive = colour.set(HOT);
-            mat.emissiveIntensity = 0.8;
-          } else if (btn !== null && btn === sel) {
-            mat.emissive = colour.set("#ffffff");
-            mat.emissiveIntensity = 0.5;
+            mat.emissiveIntensity = 0.7;
           } else if (hasSound) {
             mat.emissive = colour.set(bankColour);
             mat.emissiveIntensity = 0.6;
