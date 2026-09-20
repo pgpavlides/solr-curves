@@ -539,7 +539,7 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-bank.on { border-color: var(--bank); background: color-mix(in srgb, var(--bank) 14%, var(--panel)); }
 .mx-bank.knob::after { content: "knob"; font: 10px var(--mono); color: var(--accent); }
 .mx-edit-head { display: flex; align-items: flex-start; gap: 10px; }
-.mx-edit-head > div { flex: 1; min-width: 0; }
+.mx-edit-head > .mx-title { flex: 1; min-width: 0; }
 .mx-edit-head h2 { margin: 0; }
 .mx-edit-head .vv-name { width: 130px; }
 .mx-kind { display: flex; gap: 8px; }
@@ -562,3 +562,32 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-leds .led-map { padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .sv-arrows { display: flex; align-items: center; gap: 5px; color: var(--muted); cursor: pointer; }
 .mx-preview { font-size: 12px; }
+
+/* ---- Macros: the right column */
+.mx-right > .vv-panel { border-radius: 16px; padding: 16px 18px; }
+.mx-edit { border-top: 3px solid var(--bank); }
+.mx-edit-head { align-items: center; gap: 14px; }
+.mx-badge { flex: none; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font: 700 22px var(--mono); color: var(--bank); background: color-mix(in srgb, var(--bank) 14%, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--bank) 45%, transparent); }
+.mx-title { flex: 1; min-width: 0; }
+.mx-title h2 { margin: 0; font-size: 19px; }
+.mx-title .hint { margin: 2px 0 0; }
+.mx-bankname { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px 5px 6px; }
+.mx-bankname input[type="color"] { width: 26px; height: 26px; border: none; background: none; padding: 0; cursor: pointer; }
+.mx-bankinput { width: 104px; background: none; border: none; outline: none; color: inherit; font-weight: 700; font-size: 13.5px; }
+.mx-kind { gap: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+.mx-kind button { border: none; background: none; border-radius: 9px; padding: 9px; font-size: 13.5px; color: var(--muted); }
+.mx-kind button.on { background: color-mix(in srgb, var(--bank) 18%, var(--panel)); color: #fff; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bank) 55%, transparent); }
+.mx-macro-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mx-pill { font: 11.5px var(--mono); color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+.mx-pill.warn { color: var(--bad); border-color: var(--bad); }
+.mx-help summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.mx-help .hint { margin: 6px 0 0; }
+.mx-list-head { display: flex; align-items: center; justify-content: space-between; }
+.mx-list-head h2 { margin: 0; font-size: 15px; }
+.mx-rows { max-height: 320px; }
+.mx-row { padding: 7px 10px; border-radius: 10px; gap: 10px; }
+.mx-row b { color: var(--muted); }
+.mx-row.on b { color: #fff; }
+.mx-row .tag { border-radius: 999px; padding: 1px 9px; font: 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.mx-settings > details > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.mx-settings > details[open] > summary { margin-bottom: 10px; }

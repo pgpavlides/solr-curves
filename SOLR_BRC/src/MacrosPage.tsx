@@ -149,22 +149,23 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
       </div>
 
       <div className="mx-right">
-        <section className="vv-panel mx-edit">
+        <section className="vv-panel mx-edit" style={{ ["--bank" as string]: eb?.color ?? "#39ff6a" }}>
           <div className="mx-edit-head">
-            <div>
+            <div className="mx-badge">{selected ?? "-"}</div>
+            <div className="mx-title">
               <h2>{selected === null ? "Pick a button" : `Button ${selected}`}</h2>
               <p className="hint">
                 {selected === null
-                  ? "Click a button on the model, press one on the stick, or pick one from the list."
+                  ? "Click one on the model, press one on the stick, or pick one from the list."
                   : isPad
-                    ? `A pad in ${eb.name} · LED ${cfg.map[selected] ?? SOLR_LED_MAP[selected]}`
-                    : `In ${eb.name}`}
+                    ? `Pad · LED ${cfg.map[selected] ?? SOLR_LED_MAP[selected]}`
+                    : "Stick button"}
               </p>
             </div>
-            <input className="vv-name" value={eb?.name ?? ""} maxLength={20} title="This bank's name"
-              onChange={(e) => setBank({ name: e.target.value })} />
-            <label className="vv-color" title="This bank's colour on the stick">
+            <label className="mx-bankname" title="This bank's name and its colour on the stick">
               <input type="color" value={eb?.color ?? "#39ff6a"} onChange={(e) => setBank({ color: e.target.value })} />
+              <input className="mx-bankinput" value={eb?.name ?? ""} maxLength={20}
+                onChange={(e) => setBank({ name: e.target.value })} />
             </label>
           </div>
 
@@ -187,17 +188,20 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                 <div className="mx-macro">
                   <input className="mc-steps" value={steps} spellCheck={false} placeholder="F, WheelDown, Enter x5, &quot;text&quot;, Esc"
                     onChange={(e) => setMacro(e.target.value)} />
-                  <div className="mc-top">
+                  <div className="mx-macro-foot">
                     <label className="mc-gap" title="Pause between steps - raise it if the game misses some">
                       every <input className="num" type="number" min={10} max={5000} step={10} value={macro?.gap ?? 120}
                         onChange={(e) => setMacro(steps, Number(e.target.value) || 120)} /> ms
                     </label>
-                    {problem ? <span className="warn">{problem}</span> : <span className="muted">{count} steps</span>}
+                    <span className={problem ? "mx-pill warn" : "mx-pill"}>{problem ?? `${count} steps`}</span>
                   </div>
-                  <p className="hint">
-                    Keys (F, Esc, Enter, 1, F5, Up…), <code>WheelDown</code>, <code>Wait 200</code>, <code>"text to type"</code>,{" "}
-                    <code>F hold 2s</code>, <code>Enter x24 fast</code>, <code>Esc instant</code>.
-                  </p>
+                  <details className="mx-help">
+                    <summary>What can go in a macro</summary>
+                    <p className="hint">
+                      Keys (F, Esc, Enter, 1, F5, Up…), <code>WheelDown</code>, <code>Wait 200</code>,{" "}
+                      <code>"text to type"</code>, <code>F hold 2s</code>, <code>Enter x24 fast</code>, <code>Esc instant</code>.
+                    </p>
+                  </details>
                 </div>
               )}
             </>
@@ -205,7 +209,10 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
         </section>
 
         <section className="vv-panel mx-list">
-          <h2>{eb?.name} holds {list.length}</h2>
+          <div className="mx-list-head">
+            <h2>{eb?.name}</h2>
+            <span className="mx-pill">{list.length} buttons</span>
+          </div>
           <div className="mx-rows">
             {list.length === 0 && <p className="hint">Nothing on this bank's buttons yet.</p>}
             {list.map((a) => (
@@ -219,6 +226,8 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
         </section>
 
         <section className="vv-panel mx-settings">
+          <details>
+          <summary>Sound and stick settings</summary>
           <div className="row">
             <label className="vv-ptt" title="The game only hears you while its push-to-talk key is down">
               <input type="checkbox" checked={cfg.ptt !== false} onChange={(e) => update({ ...cfg, ptt: e.target.checked })} />
@@ -251,8 +260,9 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
           </div>
           {ledError && <p className="hint warn">LEDs: {ledError}</p>}
           <details className="mx-leds">
-            <summary>Stick LEDs</summary>
+            <summary>LED mapping</summary>
             <LedMapping stick={stick} bank={bank} cfg={cfg} update={update} setHold={setHold} />
+          </details>
           </details>
         </section>
       </div>
