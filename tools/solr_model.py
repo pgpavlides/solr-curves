@@ -82,6 +82,9 @@ def read_materials(root):
     return out
 
 
+FLIPS = [0, 0]  # triangles turned round, triangles seen
+
+
 def tag(e):
     return e.tag.split("}")[-1]
 
@@ -161,6 +164,34 @@ def apply(m, x, y, z, w=1.0):
     )
 
 
+def fix_winding(verts, norms, idx):
+    """Make each triangle face the way its vertex normals point.
+
+    WPF and glTF don't agree on which winding is the front, and this model
+    mixes both (some parts are authored with BackMaterial). The normals in the
+    file are right, so the winding is made to match them - otherwise you see
+    the inside of the shell.
+    """
+    flipped = 0
+    out = list(idx)
+    for i in range(0, len(out) - 2, 3):
+        a, b, c = out[i], out[i + 1], out[i + 2]
+        if max(a, b, c) >= len(verts) or max(a, b, c) >= len(norms):
+            continue
+        ax, ay, az = verts[a]
+        bx, by, bz = verts[b]
+        cx, cy, cz = verts[c]
+        ux, uy, uz = bx - ax, by - ay, bz - az
+        vx, vy, vz = cx - ax, cy - ay, cz - az
+        # winding normal (cross product) against the authored one
+        nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+        mx, my, mz = (sum(n[k] for n in (norms[a], norms[b], norms[c])) for k in range(3))
+        if nx * mx + ny * my + nz * mz < 0:
+            out[i + 1], out[i + 2] = c, b
+            flipped += 1
+    return out, flipped
+
+
 def material_of(geom, materials):
     """'{StaticResource inchis}' -> 'inchis'."""
     ref = geom.get("Material") or ""
@@ -184,6 +215,9 @@ def collect(e, parent_m, name, out, materials):
             gm = mat_mul(read_transform(e), m)
             verts = [apply(gm, *pos[i : i + 3]) for i in range(0, len(pos), 3)]
             norms = [apply(gm, *nor[i : i + 3], 0.0) for i in range(0, len(nor), 3)] or [(0, 0, 1)] * len(verts)
+            idx, flipped = fix_winding(verts, norms, idx)
+            FLIPS[0] += flipped
+            FLIPS[1] += len(idx) // 3
             out.setdefault(name or "part", []).append((verts, norms, idx, material_of(e, materials)))
     for c in e:
         collect(c, m, name, out, materials)
@@ -265,6 +299,7 @@ def main():
     glb = build_glb(parts, materials)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(glb)
+    print(f"  turned {FLIPS[0]} of {FLIPS[1]} triangles the right way round")
     print(f"{OUT}: {len(glb) / 1024:.0f} KB, {len(parts)} named parts, materials: " + ", ".join(
         f"{k} rgb({', '.join(f'{c:.2f}' for c in v['base'][:3])}) rough {v['rough']:.2f}" for k, v in materials.items()))
     lo = [min(v[i] for c in parts.values() for vs, *_ in c for v in vs) for i in range(3)]
