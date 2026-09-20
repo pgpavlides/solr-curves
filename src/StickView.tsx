@@ -49,21 +49,10 @@ const partButton = (name: string): number | null => {
 
 const HAT_PART = ["HAT_UP", "HAT_RIGHT", "HAT_DOWN", "HAT_LEFT"];
 
-/** Where the grip sits on the base - nudged by hand, then kept. */
-interface Fit { x: number; y: number; z: number; turn: number; scale: number }
-const FIT_KEY = "solr:gripfit";
-/** where the grip sits on the base, set on the real model by eye */
-const DEFAULT_FIT: Fit = { x: 0.1, y: 11.9, z: -0.8, turn: 0, scale: 1 };
-function loadFit(): Fit {
-  try {
-    const saved = JSON.parse(localStorage.getItem(FIT_KEY) ?? "null");
-    if (!saved || typeof saved.y !== "number") return DEFAULT_FIT;
-    // anything left over from the first guess gives way to the placement above
-    return saved.y === 10.16 ? DEFAULT_FIT : { ...DEFAULT_FIT, ...saved };
-  } catch {
-    return DEFAULT_FIT;
-  }
-}
+/** Where the grip sits on the base: the two models have their own origins,
+    and this is where the grip's skirt meets the socket. Found by eye on the
+    model itself. */
+const FIT = { x: 0.1, y: 11.9, z: -0.8 };
 
 export default function StickView({ stick, bank, cfg, selected = null, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -75,20 +64,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
   const [arrows, setArrows] = useState(false);
   const arrowsRef = useRef(arrows);
   arrowsRef.current = arrows;
-  const gripRef = useRef<THREE.Object3D | null>(null);
-  const [placing, setPlacing] = useState(false);
-  const [fit, setFit] = useState<Fit>(loadFit);
-  const fitRef = useRef(fit);
-  fitRef.current = fit;
-  // the grip follows the numbers live, so it can be nudged while you watch it
-  useEffect(() => {
-    const g = gripRef.current;
-    if (!g) return;
-    g.position.set(fit.x, fit.y, fit.z);
-    g.rotation.y = (fit.turn * Math.PI) / 180;
-    g.scale.setScalar(fit.scale);
-    try { localStorage.setItem(FIT_KEY, JSON.stringify(fit)); } catch { /* private window */ }
-  }, [fit]);
+
   const live = useRef({ stick, bank, cfg, selected, hovered });
   live.current = { stick, bank, cfg, selected, hovered };
 
@@ -146,12 +122,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     const whole = new THREE.Group();
     Promise.all([load("/solr_base.glb", "base:"), load("/solr.glb", "")])
       .then(([base, grip]) => {
-        // each model has its own origin: where the grip sits on the base is
-        // set by hand below ("place the grip"), and kept between launches
-        gripRef.current = grip;
-        grip.position.set(fitRef.current.x, fitRef.current.y, fitRef.current.z);
-        grip.rotation.y = (fitRef.current.turn * Math.PI) / 180;
-        grip.scale.setScalar(fitRef.current.scale);
+        grip.position.set(FIT.x, FIT.y, FIT.z);
         whole.add(base, grip);
         const box = new THREE.Box3().setFromObject(whole);
         const size = box.getSize(new THREE.Vector3());
@@ -262,30 +233,10 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         {loading && !error && <div className="sv-note">Loading the stick...</div>}
         {error && <div className="sv-note warn">{error}</div>}
       </div>
-      {placing && (
-        <div className="sv-fit">
-          {([["x", 0.05], ["y", 0.05], ["z", 0.05], ["turn", 1], ["scale", 0.01]] as const).map(([k, step]) => (
-            <label key={k}>
-              {k}
-              <input type="range" step={step} value={fit[k]}
-                min={k === "turn" ? -180 : k === "scale" ? 0.5 : -15}
-                max={k === "turn" ? 180 : k === "scale" ? 1.5 : 15}
-                onChange={(e) => setFit({ ...fit, [k]: Number(e.target.value) })} />
-              <input className="num" type="number" step={step} value={fit[k]}
-                onChange={(e) => setFit({ ...fit, [k]: Number(e.target.value) })} />
-            </label>
-          ))}
-          <code className="sv-fitline">{JSON.stringify(fit)}</code>
-          <button className="ghost-btn" onClick={() => setFit(DEFAULT_FIT)}>Reset</button>
-        </div>
-      )}
       <div className="sv-bar">
         <span className="muted">Drag to turn · wheel to zoom · click a button to edit it</span>
         <label className="sv-arrows" title="T.A.R.G.E.T.'s own blue arrows showing which way each axis moves">
           <input type="checkbox" checked={arrows} onChange={(e) => setArrows(e.target.checked)} /> axis arrows
-        </label>
-        <label className="sv-arrows" title="Move the grip until it sits right on the base">
-          <input type="checkbox" checked={placing} onChange={(e) => setPlacing(e.target.checked)} /> place the grip
         </label>
         <span>
           Pressed: <b>{pressed.length ? pressed.join(", ") : "nothing"}</b>
