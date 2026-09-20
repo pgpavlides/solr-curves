@@ -123,6 +123,9 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           const mat = mesh.material as THREE.MeshStandardMaterial;
           mat.userData.own = mat.color?.clone();
           const name = prefix + (mesh.parent?.name || mesh.name).trim();
+          // the ray gives back a mesh, not a name: keep the part's name on it,
+          // prefix and all, or the base's parts are looked up as the grip's
+          mesh.userData.part = name;
           if ((mesh.material as THREE.Material).name === "axes") arrowParts.current.add(name);
           const list = parts.current.get(name) ?? [];
           list.push(mesh);
@@ -232,7 +235,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
 
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObjects(scene.children, true)[0];
-      const name = hit ? (hit.object.parent?.name || hit.object.name).trim() : null;
+      const name = hit ? (hit.object.userData.part as string | undefined) ?? null : null;
       if (name !== picked) {
         picked = name;
         setHovered(name);
