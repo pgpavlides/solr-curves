@@ -48,6 +48,8 @@ const partButton = (name: string): number | null => {
 */
 
 const HAT_PART = ["HAT_UP", "HAT_RIGHT", "HAT_DOWN", "HAT_LEFT"];
+/** a button under the pointer, or under your thumb */
+const HOT = "#ffd23f";
 
 /** Where the grip sits on the base: the two models have their own origins,
     and this is where the grip's skirt meets the socket. Found by eye on the
@@ -175,9 +177,15 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         const pressed = btn !== null && down.has(btn);
         for (const m of meshes) {
           const mat = m.material as THREE.MeshStandardMaterial;
+          // a button lights yellow under the pointer and under your thumb -
+          // the same colour, so the model answers a press the way it answers a
+          // hover. Parts that aren't buttons never light up.
           if (pressed) {
-            mat.emissive = colour.set("#ffffff");
-            mat.emissiveIntensity = 1;
+            mat.emissive = colour.set(HOT);
+            mat.emissiveIntensity = 1.1;
+          } else if (btn !== null && name === hov) {
+            mat.emissive = colour.set(HOT);
+            mat.emissiveIntensity = 0.7;
           } else if (btn !== null && btn === sel) {
             mat.emissive = colour.set("#ffffff");
             mat.emissiveIntensity = 0.5;
@@ -187,9 +195,6 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           } else if (hasMacro) {
             mat.emissive = colour.set("#2f9bff");
             mat.emissiveIntensity = 0.45;
-          } else if (name === hov) {
-            mat.emissive = colour.set("#8899aa");
-            mat.emissiveIntensity = 0.3;
           } else {
             mat.emissiveIntensity = 0;
           }
@@ -202,6 +207,7 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
       if (name !== picked) {
         picked = name;
         setHovered(name);
+        el.style.cursor = name && partButton(name) !== null ? "pointer" : "default";
       }
       controls.update();
       renderer.render(scene, camera);
@@ -241,11 +247,10 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         <span>
           Pressed: <b>{pressed.length ? pressed.join(", ") : "nothing"}</b>
         </span>
-        {hovered && (
+        {hoveredButton !== null && (
           <span className="muted">
-            Under the pointer: <b>{hovered}</b>
-            {hoveredButton !== null && ` (button ${hoveredButton})`}
-            {hoveredButton !== null && PADS.includes(hoveredButton) && ` · LED ${cfg.map[hoveredButton] ?? SOLR_LED_MAP[hoveredButton]}`}
+            Button <b>{hoveredButton}</b>
+            {PADS.includes(hoveredButton) && ` · LED ${cfg.map[hoveredButton] ?? SOLR_LED_MAP[hoveredButton]}`}
           </span>
         )}
       </div>
