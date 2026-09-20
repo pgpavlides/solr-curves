@@ -112,6 +112,9 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
           const mesh = o as THREE.Mesh;
           if (!mesh.isMesh) return;
           mesh.material = (mesh.material as THREE.Material).clone();
+          // keep the model's own colour: highlights paint over it and back
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          mat.userData.own = mat.color?.clone();
           const name = prefix + (mesh.parent?.name || mesh.name).trim();
           if ((mesh.material as THREE.Material).name === "axes") arrowParts.current.add(name);
           const list = parts.current.get(name) ?? [];
@@ -175,17 +178,18 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
         const hasSound = btn !== null && !!bankCfg?.pads?.[btn];
         const hasMacro = btn !== null && !!bankCfg?.macros?.[btn]?.steps;
         const pressed = btn !== null && down.has(btn);
+        const hot = pressed || (btn !== null && name === hov);
         for (const m of meshes) {
           const mat = m.material as THREE.MeshStandardMaterial;
-          // a button lights yellow under the pointer and under your thumb -
-          // the same colour, so the model answers a press the way it answers a
-          // hover. Parts that aren't buttons never light up.
+          // a button turns yellow under the pointer and under your thumb - the
+          // paint changes, not just the glow, so it reads on the dark plastic
+          mat.color?.copy(hot ? colour.set(HOT) : (mat.userData.own ?? colour.set("#888888")));
           if (pressed) {
             mat.emissive = colour.set(HOT);
-            mat.emissiveIntensity = 1.1;
+            mat.emissiveIntensity = 1.4;
           } else if (btn !== null && name === hov) {
             mat.emissive = colour.set(HOT);
-            mat.emissiveIntensity = 0.7;
+            mat.emissiveIntensity = 0.8;
           } else if (btn !== null && btn === sel) {
             mat.emissive = colour.set("#ffffff");
             mat.emissiveIntensity = 0.5;
