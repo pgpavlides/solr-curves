@@ -159,7 +159,7 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
         let bank = KNOB.iter().position(|&b| st.pressed.get(b).copied().unwrap_or(false));
         for b in downs {
             crate::sound::press(b, bank);
-            crate::macros::press(b);
+            crate::macros::press(b, bank);
         }
     }
     st.stick.buttons = st.pressed.iter().enumerate().filter(|(_, p)| **p).map(|(i, _)| i as u16).collect();

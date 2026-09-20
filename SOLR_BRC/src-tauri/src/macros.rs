@@ -6,11 +6,11 @@
 //! its own thread, a step every `gap` ms; pressing the button again while it
 //! runs does nothing, so a bouncy press can't start it twice.
 //!
-//! Setup lives in hotas_voice.json:
-//!   "macroSets": { "Helicopter": { "1": { "steps": "F, WheelDown, ...", "gap": 120 } } },
-//!   "macroSet": "Helicopter"        <- the set the buttons run right now
+//! Setup lives in hotas_voice.json, per bank - the knob (buttons 20-23) picks
+//! the whole layout, sounds and macros together:
+//!   "banks": [ { "name": "Bank 1", "macros": { "1": { "steps": "F, ...", "gap": 120 } } }, ... ]
 //!
-//! (an older "macros" object, with no sets, still works as the only set.)
+//! Older files still work: "macroSets"/"macroSet", or a single "macros" object.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -288,23 +288,37 @@ fn send(step: &Step, fast: bool) {
 }
 
 pub fn set_config(voice: &Value) {
-    // the chosen set, or the old single "macros" object
-    let sets = voice.get("macroSets");
-    let chosen = voice.get("macroSet").and_then(|s| s.as_str());
-    let active = match (sets, chosen) {
+    *CONFIG.lock().unwrap() = voice.clone();
+}
+
+/// What this button does in this bank: the bank's own macros, else an older
+/// file's set, else the oldest single "macros" object.
+fn macro_for(cfg: &Value, button: u16, bank: Option<usize>) -> Option<Value> {
+    let key = button.to_string();
+    if let Some(b) = bank {
+        if let Some(m) = cfg.get("banks").and_then(|v| v.get(b)).and_then(|b| b.get("macros")).and_then(|m| m.get(&key)) {
+            return Some(m.clone());
+        }
+    }
+    let sets = cfg.get("macroSets");
+    let chosen = cfg.get("macroSet").and_then(|s| s.as_str());
+    let legacy = match (sets, chosen) {
         (Some(s), Some(name)) => s.get(name).cloned(),
         (Some(s), None) => s.as_object().and_then(|o| o.values().next().cloned()),
         (None, _) => None,
     };
-    *CONFIG.lock().unwrap() = active.or_else(|| voice.get("macros").cloned()).unwrap_or(Value::Null);
+    legacy
+        .or_else(|| cfg.get("macros").cloned())
+        .and_then(|m| m.get(&key).cloned())
 }
 
-/// From the stick's callback: start the button's macro, if it has one.
-pub fn press(button: u16) {
+/// From the stick's callback: start the button's macro in this bank, if it has one.
+pub fn press(button: u16, bank: Option<usize>) {
     let (steps, gap) = {
         let cfg = CONFIG.lock().unwrap();
-        let Some(m) = cfg.get(button.to_string()) else { return };
+        let Some(m) = macro_for(&cfg, button, bank) else { return };
         let Ok(steps) = parse(m.get("steps").and_then(|s| s.as_str()).unwrap_or("")) else { return };
+        #[allow(clippy::let_and_return)]
         let gap = m.get("gap").and_then(|g| g.as_u64()).unwrap_or(120).clamp(10, 5000);
         (steps, gap)
     };

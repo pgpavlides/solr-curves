@@ -25,6 +25,8 @@ export interface PadLike {
   id: string;
   axes: readonly number[];
   buttons: readonly { pressed: boolean }[];
+  /** hat direction, 0 = up then clockwise; -1 or undefined = centred */
+  hat?: number;
 }
 
 export interface Pads {
@@ -52,6 +54,8 @@ function fromRaw(r: RawStick): PadLike {
     id: `${r.device} (through T.A.R.G.E.T.)`,
     axes: r.axes,
     buttons: Array.from({ length: n }, (_, i) => ({ pressed: down.has(i + 1) })),
+    // T.A.R.G.E.T. reports the hat in hundredths of a degree, -1 when centred
+    hat: r.hat === null || r.hat === undefined || r.hat < 0 ? -1 : Math.round(r.hat / 9000) % 4,
   };
 }
 

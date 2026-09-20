@@ -517,3 +517,47 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mc-setbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .mc-setbar label { display: flex; align-items: center; gap: 6px; }
 .mc-setname { background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; font-weight: 700; width: 180px; }
+
+/* ---- the stick in 3D (StickView.tsx) */
+.stick-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.sv-canvas { flex: 1; min-height: 0; position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #0f1412; }
+.sv-canvas canvas { display: block; width: 100%; height: 100%; }
+.sv-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.sv-note.warn { color: var(--bad); padding: 20px; text-align: center; }
+.sv-bar { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+
+/* ---- Macros: the stick on the left, what a button does on the right */
+.mx-page { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 14px; }
+.mx-left { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.mx-left .stick-view { flex: 1; min-height: 0; }
+.mx-right { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.mx-right > .vv-panel { flex: none; overflow: visible; gap: 10px; }
+.mx-banks { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.mx-bank { display: flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 13.5px; }
+.mx-bank .mx-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bank); box-shadow: 0 0 8px var(--bank); }
+.mx-bank small { color: var(--muted); font: 11px var(--mono); }
+.mx-bank.on { border-color: var(--bank); background: color-mix(in srgb, var(--bank) 14%, var(--panel)); }
+.mx-bank.knob::after { content: "knob"; font: 10px var(--mono); color: var(--accent); }
+.mx-edit-head { display: flex; align-items: flex-start; gap: 10px; }
+.mx-edit-head > div { flex: 1; min-width: 0; }
+.mx-edit-head h2 { margin: 0; }
+.mx-edit-head .vv-name { width: 130px; }
+.mx-kind { display: flex; gap: 8px; }
+.mx-kind button { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px; cursor: pointer; font-size: 13.5px; }
+.mx-kind button.on { border-color: var(--accent); color: var(--accent); background: #172a1f; }
+.mx-sound, .mx-macro { display: flex; flex-direction: column; gap: 8px; }
+.mx-macro .mc-steps { font: 13px var(--mono); }
+.mx-macro .mc-top { justify-content: space-between; }
+.mx-list h2 { margin: 0; font-size: 15px; }
+.mx-rows { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; }
+.mx-row { display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 5px 8px; cursor: pointer; color: inherit; }
+.mx-row:hover { background: var(--panel-2); }
+.mx-row.on { border-color: var(--accent); background: #172a1f; }
+.mx-row b { font: 700 14px var(--mono); width: 26px; }
+.mx-row .tag.sound { color: #39ff6a; }
+.mx-row .tag.macro { color: #2f9bff; }
+.mx-what { flex: 1; min-width: 0; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-settings .row { flex-wrap: wrap; gap: 12px; }
+.mx-leds summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.mx-leds .led-map { padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.sv-arrows { display: flex; align-items: center; gap: 5px; color: var(--muted); cursor: pointer; }
