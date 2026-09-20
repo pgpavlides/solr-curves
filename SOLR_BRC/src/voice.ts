@@ -54,16 +54,25 @@ export interface VoiceConfig {
   macros?: Record<number, Macro>;
   macroSets?: Record<string, MacroSet>;
   macroSet?: string;
+  /** named macros kept aside, ready to drop on a button */
+  macroPresets?: MacroPreset[];
 }
 
 /** stick button -> what it types */
 export type MacroSet = Record<number, Macro>;
 
 export interface Macro {
+  /** what it is for, in your words ("Call supplies") */
+  name?: string;
   /** "F, WheelDown, WheelDown, F, Esc" */
   steps: string;
   /** ms between steps */
   gap: number;
+}
+
+/** A named macro kept aside, to put on any button later. */
+export interface MacroPreset extends Macro {
+  name: string;
 }
 
 export const defaultVoice = (): VoiceConfig => ({

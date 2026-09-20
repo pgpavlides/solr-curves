@@ -4,7 +4,7 @@ import SoundPicker from "./SoundPicker";
 import StickView from "./StickView";
 import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, bankLeds, soundLabel } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type Macro, type MacroPreset, type VoiceConfig, bankLeds, soundLabel } from "./voice";
 
 /*
   One page for the whole stick: the model on the left, what the selected
@@ -26,12 +26,12 @@ interface Props {
 /** Everything this bank has on its buttons, in button order. */
 function assignments(cfg: VoiceConfig, bank: number) {
   const b = cfg.banks[bank];
-  const out: { button: number; kind: "sound" | "macro"; what: string }[] = [];
+  const out: { button: number; kind: "sound" | "macro"; what: string; sub?: string }[] = [];
   for (const [btn, file] of Object.entries(b?.pads ?? {})) {
     if (file) out.push({ button: Number(btn), kind: "sound", what: soundLabel(file) });
   }
   for (const [btn, m] of Object.entries(b?.macros ?? {})) {
-    if (m?.steps) out.push({ button: Number(btn), kind: "macro", what: m.steps });
+    if (m?.steps) out.push({ button: Number(btn), kind: "macro", what: m.name?.trim() || m.steps, sub: m.name?.trim() ? m.steps : "" });
   }
   return out.sort((a, b2) => a.button - b2.button);
 }
@@ -107,11 +107,28 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
     if (selected === null) return;
     setBank({ pads: { ...(eb.pads ?? {}), [selected]: file } });
   };
-  const setMacro = (text: string, gap = macro?.gap ?? 120) => {
+  const setMacro = (patch: Partial<Macro>) => {
     if (selected === null) return;
-    setSteps(text);
-    setBank({ macros: { ...(eb.macros ?? {}), [selected]: { steps: text, gap } } });
+    const next: Macro = { name: macro?.name, steps, gap: macro?.gap ?? 120, ...patch };
+    if (patch.steps !== undefined) setSteps(patch.steps);
+    setBank({ macros: { ...(eb.macros ?? {}), [selected]: next } });
   };
+
+  // presets: named macros kept aside, ready to drop on any button
+  const presets = cfg.macroPresets ?? [];
+  const usePreset = (name: string) => {
+    const p = presets.find((x) => x.name === name);
+    if (p) setMacro({ name: p.name, steps: p.steps, gap: p.gap });
+  };
+  const keepAsPreset = () => {
+    const name = (macro?.name ?? "").trim();
+    if (!name || !steps) return;
+    const rest = presets.filter((p) => p.name !== name);
+    update({ ...cfg, macroPresets: [...rest, { name, steps, gap: macro?.gap ?? 120 }].sort((a, c) => a.name.localeCompare(c.name)) });
+  };
+  const dropPreset = (name: string) =>
+    update({ ...cfg, macroPresets: presets.filter((p) => p.name !== name) });
+  const savedPreset: MacroPreset | undefined = presets.find((p) => p.name === (macro?.name ?? "").trim());
   const clear = () => {
     if (selected === null) return;
     const pads = { ...(eb.pads ?? {}) };
@@ -173,7 +190,7 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
             <>
               <div className="mx-kind">
                 <button className={kind === "sound" ? "on" : ""} onClick={() => { if (kind !== "sound") setSound(files[0] ?? ""); }}>Sound</button>
-                <button className={kind === "macro" ? "on" : ""} onClick={() => { if (kind !== "macro") setMacro(steps || "F"); }}>Macro</button>
+                <button className={kind === "macro" ? "on" : ""} onClick={() => { if (kind !== "macro") setMacro({ steps: steps || "F" }); }}>Macro</button>
                 <button className={kind === "none" ? "on" : ""} onClick={clear}>Nothing</button>
               </div>
 
@@ -186,14 +203,30 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
 
               {kind === "macro" && (
                 <div className="mx-macro">
+                  <div className="mx-macro-top">
+                    <input className="mx-macroname" value={macro?.name ?? ""} maxLength={40} placeholder="Name this macro"
+                      onChange={(e) => setMacro({ name: e.target.value })} />
+                    <select className="mx-presetpick" value="" onChange={(e) => { usePreset(e.target.value); e.currentTarget.value = ""; }}
+                      title="Put a saved macro on this button">
+                      <option value="">{presets.length ? "Use a preset..." : "No presets yet"}</option>
+                      {presets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
                   <input className="mc-steps" value={steps} spellCheck={false} placeholder="F, WheelDown, Enter x5, &quot;text&quot;, Esc"
-                    onChange={(e) => setMacro(e.target.value)} />
+                    onChange={(e) => setMacro({ steps: e.target.value })} />
                   <div className="mx-macro-foot">
                     <label className="mc-gap" title="Pause between steps - raise it if the game misses some">
                       every <input className="num" type="number" min={10} max={5000} step={10} value={macro?.gap ?? 120}
-                        onChange={(e) => setMacro(steps, Number(e.target.value) || 120)} /> ms
+                        onChange={(e) => setMacro({ gap: Number(e.target.value) || 120 })} /> ms
                     </label>
                     <span className={problem ? "mx-pill warn" : "mx-pill"}>{problem ?? `${count} steps`}</span>
+                    <button className="ghost-btn" onClick={keepAsPreset} disabled={!(macro?.name ?? "").trim() || !steps}
+                      title={(macro?.name ?? "").trim() ? "Keep this macro under its name, for any button" : "Name it first"}>
+                      {savedPreset ? "Update preset" : "Save as preset"}
+                    </button>
+                    {savedPreset && (
+                      <button className="ghost-btn" onClick={() => dropPreset(savedPreset.name)} title="Forget this preset">Delete preset</button>
+                    )}
                   </div>
                   <details className="mx-help">
                     <summary>What can go in a macro</summary>
@@ -219,7 +252,10 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
               <button key={`${a.kind}${a.button}`} className={`mx-row ${selected === a.button ? "on" : ""}`} onClick={() => setSelected(a.button)}>
                 <b>{a.button}</b>
                 <span className={`tag ${a.kind}`}>{a.kind}</span>
-                <span className="mx-what">{a.what}</span>
+                <span className="mx-what">
+                  {a.what}
+                  {a.sub && <small>{a.sub}</small>}
+                </span>
               </button>
             ))}
           </div>
