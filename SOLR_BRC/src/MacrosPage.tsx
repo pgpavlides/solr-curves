@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import LedMapping from "./LedMapping";
+import MacroPicker from "./MacroPicker";
 import SoundPicker from "./SoundPicker";
 import StickView from "./StickView";
 import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
@@ -116,10 +117,6 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
 
   // presets: named macros kept aside, ready to drop on any button
   const presets = cfg.macroPresets ?? [];
-  const usePreset = (name: string) => {
-    const p = presets.find((x) => x.name === name);
-    if (p) setMacro({ name: p.name, steps: p.steps, gap: p.gap });
-  };
   const keepAsPreset = () => {
     const name = (macro?.name ?? "").trim();
     if (!name || !steps) return;
@@ -206,11 +203,8 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                   <div className="mx-macro-top">
                     <input className="mx-macroname" value={macro?.name ?? ""} maxLength={40} placeholder="Name this macro"
                       onChange={(e) => setMacro({ name: e.target.value })} />
-                    <select className="mx-presetpick" value="" onChange={(e) => { usePreset(e.target.value); e.currentTarget.value = ""; }}
-                      title="Put a saved macro on this button">
-                      <option value="">{presets.length ? "Use a preset..." : "No presets yet"}</option>
-                      {presets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
-                    </select>
+                    <MacroPicker presets={presets} value={(macro?.name ?? "").trim()} color={eb?.color ?? "#39ff6a"}
+                      onPick={(p) => setMacro({ name: p.name, steps: p.steps, gap: p.gap })} onDelete={dropPreset} />
                   </div>
                   <input className="mc-steps" value={steps} spellCheck={false} placeholder="F, WheelDown, Enter x5, &quot;text&quot;, Esc"
                     onChange={(e) => setMacro({ steps: e.target.value })} />

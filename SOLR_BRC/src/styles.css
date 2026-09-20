@@ -599,3 +599,5 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-macro-foot .ghost-btn { padding: 4px 10px; font-size: 12px; }
 .mx-what { display: flex; flex-direction: column; }
 .mx-what small { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-open { white-space: nowrap; }
+.mp .sp-row small { font: 11px var(--mono); }
