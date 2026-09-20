@@ -562,3 +562,8 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-leds .led-map { padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .sv-arrows { display: flex; align-items: center; gap: 5px; color: var(--muted); cursor: pointer; }
 .mx-preview { font-size: 12px; }
+.sv-fit { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); font-size: 12.5px; }
+.sv-fit label { display: flex; align-items: center; gap: 6px; }
+.sv-fit input[type="range"] { width: 110px; }
+.sv-fit .num { width: 74px; }
+.sv-fitline { font: 11.5px var(--mono); color: var(--muted); }
