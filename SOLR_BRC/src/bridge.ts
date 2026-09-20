@@ -208,6 +208,10 @@ export async function soundStop(): Promise<void> {
 export async function soundRepairCable(): Promise<void> {
   if (inTauri) await invoke("sound_repair_cable");
 }
+/** while the editor is open, a stick press must not type or play anything */
+export async function stickSuppress(on: boolean): Promise<void> {
+  if (inTauri) await invoke("stick_suppress", { on });
+}
 /** a button macro's steps as typed: how many, or what's wrong (throws) */
 export async function macroCheck(steps: string): Promise<number> {
   if (!inTauri) return 0;

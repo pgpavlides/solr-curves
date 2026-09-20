@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LedMapping from "./LedMapping";
 import SoundPicker from "./SoundPicker";
 import StickView from "./StickView";
-import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop } from "./bridge";
+import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { PADS, SOLR_LED_MAP, type VoiceConfig, bankLeds, soundLabel } from "./voice";
+import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig, bankLeds, soundLabel } from "./voice";
 
 /*
   One page for the whole stick: the model on the left, what the selected
@@ -49,6 +49,27 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
   const [problem, setProblem] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   const [repairing, setRepairing] = useState(false);
+  const [live, setLive] = useState(false);
+  const before = useRef<Set<number>>(new Set());
+
+  /*
+    While this page is open the stick is quiet: a press would otherwise type
+    its macro into whatever window is in front, or play into the game, just
+    because you were mapping it. A press picks the button instead. "Let the
+    stick fire" hands it back when you want to try something out.
+  */
+  useEffect(() => {
+    stickSuppress(!live).catch(() => {});
+    return () => { stickSuppress(false).catch(() => {}); };
+  }, [live]);
+
+  // a press picks that button - the quickest way to map the one under your thumb
+  useEffect(() => {
+    const now = new Set((stick?.buttons ?? []).flatMap((x, i) => (x.pressed && !KNOB.includes(i + 1) ? [i + 1] : [])));
+    const fresh = [...now].find((n) => !before.current.has(n));
+    before.current = now;
+    if (fresh !== undefined) setSelected(fresh);
+  }, [stick]);
 
   const sound = selected === null ? "" : eb?.pads?.[selected] ?? "";
   const macro = selected === null ? undefined : eb?.macros?.[selected];
@@ -134,7 +155,7 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
               <h2>{selected === null ? "Pick a button" : `Button ${selected}`}</h2>
               <p className="hint">
                 {selected === null
-                  ? "Click a button on the stick, or one from the list below."
+                  ? "Click a button on the model, press one on the stick, or pick one from the list."
                   : isPad
                     ? `A pad in ${eb.name} · LED ${cfg.map[selected] ?? SOLR_LED_MAP[selected]}`
                     : `In ${eb.name}`}
@@ -209,6 +230,10 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                 onChange={(e) => update({ ...cfg, stopButton: Math.max(0, Math.min(128, Number(e.target.value) || 0)) })} />
             </label>
             <button className="ghost-btn" onClick={() => soundStop()}>Stop all</button>
+            <label className="vv-ptt" title="Off while you are editing: a press only picks the button, it doesn't type or play">
+              <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
+              Let the stick fire while this page is open
+            </label>
           </div>
           <p className={`hint ${status && (!status.cable || status.errors.length) ? "warn" : ""}`}>
             {!status ? "Opening the sound devices..." : <>

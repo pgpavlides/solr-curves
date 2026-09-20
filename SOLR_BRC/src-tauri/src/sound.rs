@@ -230,6 +230,10 @@ impl Worker {
     }
 
     fn press(&mut self, button: u16, bank: Option<usize>) {
+        // the editor is open: the stick shouldn't play anything into the game
+        if crate::macros::suppressed() {
+            return;
+        }
         // the stop button ("stopButton", default 11): silence everything, let go of Caps Lock
         let stop_button = self.config.get("stopButton").and_then(|v| v.as_u64()).unwrap_or(11);
         if stop_button > 0 && button as u64 == stop_button {

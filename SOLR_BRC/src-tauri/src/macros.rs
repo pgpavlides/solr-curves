@@ -15,6 +15,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -34,6 +35,8 @@ pub enum Step {
 }
 
 static CONFIG: Mutex<Value> = Mutex::new(Value::Null);
+/// While the editor is open the stick must not type into the desktop.
+static SUPPRESSED: AtomicBool = AtomicBool::new(false);
 static RUNNING: Mutex<Option<HashSet<u16>>> = Mutex::new(None);
 
 /// Scan codes (set 1, as SendInput wants them) for a key name.
@@ -312,8 +315,20 @@ fn macro_for(cfg: &Value, button: u16, bank: Option<usize>) -> Option<Value> {
         .and_then(|m| m.get(&key).cloned())
 }
 
+/// Stop (or let through) everything the stick would fire.
+pub fn suppress(on: bool) {
+    SUPPRESSED.store(on, Ordering::Relaxed);
+}
+
+pub fn suppressed() -> bool {
+    SUPPRESSED.load(Ordering::Relaxed)
+}
+
 /// From the stick's callback: start the button's macro in this bank, if it has one.
 pub fn press(button: u16, bank: Option<usize>) {
+    if suppressed() {
+        return;
+    }
     let (steps, gap) = {
         let cfg = CONFIG.lock().unwrap();
         let Some(m) = macro_for(&cfg, button, bank) else { return };
