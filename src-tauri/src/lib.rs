@@ -524,6 +524,16 @@ fn macro_check(steps: String) -> Result<usize, String> {
     macros::parse(&steps).map(|s| s.len())
 }
 
+/// While the Macros page is open, a button press only picks that button: it
+/// must not type into the desktop or play into the game.
+#[tauri::command]
+fn stick_suppress(on: bool) {
+    macros::suppress(on);
+    if on {
+        sound::stop();
+    }
+}
+
 #[tauri::command]
 fn sound_stop() {
     sound::stop();
@@ -614,6 +624,7 @@ pub fn run() {
             sound_stop,
             sound_reconnect,
             macro_check,
+            stick_suppress,
             sound_repair_cable,
             raw_stick_snapshot
         ])
