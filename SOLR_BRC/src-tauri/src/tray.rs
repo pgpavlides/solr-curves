@@ -22,6 +22,9 @@ static REPAINT: AtomicBool = AtomicBool::new(false);
 /// Pad button -> LED group, as measured on the stick (voice.ts SOLR_LED_MAP).
 const PADS: [(u16, u32); 8] = [(5, 0), (6, 1), (7, 2), (8, 3), (16, 5), (17, 4), (18, 7), (19, 6)];
 const ALL_GROUPS: u32 = 64;
+/// All eight pads at once - the same LEDs as their own groups, last write wins
+/// (voice.ts PADS_ALL_GROUP): never sent, and the pads go last.
+const PADS_ALL_GROUP: u32 = 30;
 
 pub fn window_closed(app: &AppHandle) {
     WINDOW_OPEN.store(false, Ordering::Relaxed);
@@ -57,7 +60,10 @@ fn bank_leds(cfg: &Value, bank: usize) -> Vec<(u32, u8, u8, u8)> {
         }
     }
     let skip = cfg["throttleLed"].as_u64().map(|v| v as u32);
-    out.retain(|(i, ..)| Some(*i) != skip);
+    out.retain(|(i, ..)| Some(*i) != skip && *i != PADS_ALL_GROUP);
+    // the pads last, so nothing written after them can change them
+    let pad_groups: Vec<u32> = PADS.iter().map(|(button, default)| cfg["map"][&button.to_string()].as_u64().map_or(*default, |v| v as u32)).collect();
+    out.sort_by_key(|(i, ..)| pad_groups.contains(i));
     out
 }
 
@@ -110,10 +116,13 @@ mod tests {
             "throttleLed": 10
         });
         let leds = super::bank_leds(&cfg, 0);
-        assert_eq!(leds.len(), 63, "the throttle LED is left out");
+        assert_eq!(leds.len(), 62, "the throttle LED and the all-pads group are left out");
         assert!(leds.contains(&(0, 255, 0, 0)), "pad 5 has a sound: lit");
         assert!(leds.contains(&(1, 0, 0, 0)), "pad 6 has none: dark");
         assert!(leds.contains(&(8, 255, 0, 0)), "the rest in the bank colour");
+        assert!(!leds.iter().any(|l| l.0 == 30), "the all-pads group is never sent");
+        let first_pad = leds.iter().position(|l| l.0 < 8).unwrap();
+        assert!(leds[first_pad..].iter().all(|l| l.0 < 8), "the pads go last");
         assert!(!leds.iter().any(|l| l.0 == 10));
     }
 }
