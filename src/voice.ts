@@ -120,7 +120,8 @@ export const hexRgb = (hex: string): [number, number, number] => {
 
 /** heli_can_you_hear_me.mp3 -> "Can You Hear Me" (the part before the first _ is its group) */
 export function soundLabel(file: string): string {
-  const stem = file.replace(/\.[^.]+$/, "");
+  // a horn song is a full path (C:/SolR/horn/songs/horn_Jaws.wav): its name is the file's
+  const stem = file.replace(/^.*[\\/]/, "").replace(/\.[^.]+$/, "");
   const words = stem.split("_");
   return (words.length > 1 ? words.slice(1) : words).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }

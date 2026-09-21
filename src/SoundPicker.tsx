@@ -20,8 +20,9 @@ interface Props {
 }
 
 /** heli_can_you_hear_me.mp3 -> "heli" (the prefix groups the list) */
+const baseName = (f: string) => f.replace(/^.*[\\/]/, "");
 const groupOf = (f: string) => {
-  const stem = f.replace(/\.[^.]+$/, "");
+  const stem = baseName(f).replace(/\.[^.]+$/, "");
   return stem.includes("_") ? stem.split("_")[0] : "other";
 };
 
@@ -94,7 +95,7 @@ export default function SoundPicker({ folder, files, value, color, onPick, onOpe
       <button className={`sp-current ${missing ? "warn" : ""} ${value ? "" : "silent"}`} onClick={() => { if (open) close(); else { onOpen?.(); setOpen(true); } }}
         title={value ? `${value} - click to change` : "Click to choose a sound"}>
         <span className="sp-label">{value ? soundLabel(value) : "silent"}</span>
-        <span className="sp-file">{value ? (missing ? `${value} (missing)` : value) : "choose a sound..."}</span>
+        <span className="sp-file">{value ? (missing ? `${baseName(value)} (missing)` : baseName(value)) : "choose a sound..."}</span>
       </button>
       {open && (
         <div className="sp-pop" style={{ ["--bank" as string]: color, ...(at ?? { opacity: 0 }) }}>
@@ -117,7 +118,7 @@ export default function SoundPicker({ folder, files, value, color, onPick, onOpe
                     onMouseEnter={() => setHi(i)} onClick={() => pick(f)}>
                     <div className="sp-text">
                       <b>{f ? soundLabel(f) : "Silent"}</b>
-                      <small>{f || "this pad plays nothing"}</small>
+                      <small>{f ? baseName(f) : "this pad plays nothing"}</small>
                     </div>
                     {f && (
                       <button className="vv-play" title="Hear it (your monitor only)"

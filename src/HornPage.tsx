@@ -3,7 +3,7 @@ import {
   type HornInfo, type HornNote, type HornSong,
   hornHear, hornInfo, hornLoadFile, hornMidi, hornPlay, hornRecord, hornRender, hornRestore, hornSetBase, onEvent, soundStop,
 } from "./bridge";
-import { HORN_SONGS, builtinSong } from "./hornSongs";
+import { HORN_SONGS, builtinSong, exportHornSongs } from "./hornSongs";
 
 /*
   Horn Music: any MIDI file, played on the helicopter's horn into voice chat.
@@ -43,6 +43,12 @@ export default function HornPage() {
   const rendered = useRef<string>("");
 
   useEffect(() => { hornInfo().then(setHorn).catch(() => {}); }, []);
+  // a new horn (or tuning): the songs on stick buttons are rendered again with it
+  const horned = (h: HornInfo) => {
+    setHorn(h);
+    rendered.current = "";
+    exportHornSongs(true).catch(() => {});
+  };
   // the timeline starts when the sound does - the backend says so once the
   // song is loaded and actually playing, not when the button was clicked
   useEffect(() => onEvent<{ error: string | null; seconds: number; load_ms: number }>("solr:horn-playing", (e) => {
@@ -58,8 +64,7 @@ export default function HornPage() {
     setRecording(secs);
     const tick = setInterval(() => setRecording(Math.max(0, Math.ceil((until - Date.now()) / 1000))), 200);
     try {
-      setHorn(await hornRecord(secs));
-      rendered.current = "";
+      horned(await hornRecord(secs));
     } catch (e) { setMsg(String(e)); }
     clearInterval(tick);
     setRecording(null);
@@ -68,14 +73,13 @@ export default function HornPage() {
     if (!f) return;
     setMsg(null);
     try {
-      setHorn(await hornLoadFile(new Uint8Array(await f.arrayBuffer()), f.name.split(".").pop() ?? "wav"));
-      rendered.current = "";
+      horned(await hornLoadFile(new Uint8Array(await f.arrayBuffer()), f.name.split(".").pop() ?? "wav"));
     } catch (e) { setMsg(String(e)); }
   };
-  const tune = async (base: number) => { setHorn(await hornSetBase(base)); rendered.current = ""; };
+  const tune = async (base: number) => horned(await hornSetBase(base));
   const restore = async () => {
     setMsg(null);
-    try { setHorn(await hornRestore()); rendered.current = ""; } catch (e) { setMsg(String(e)); }
+    try { horned(await hornRestore()); } catch (e) { setMsg(String(e)); }
   };
 
   // ---- 2. the song

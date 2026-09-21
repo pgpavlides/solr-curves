@@ -586,6 +586,70 @@ pub fn render(notes: Vec<Note>, transpose: i32, speed: f32) -> Result<Rendered, 
     Ok(Rendered { seconds: out.len() as f32 / rate as f32, notes: notes.len() })
 }
 
+// ---------------------------------------------------------------- songs as sounds
+
+/// The built-in songs, each rendered to its own file, so a stick button can
+/// play one like any soundboard sound (the Macros page lists them).
+fn songs_dir() -> PathBuf {
+    let d = folder().join("songs");
+    let _ = std::fs::create_dir_all(&d);
+    d
+}
+
+#[derive(Deserialize)]
+pub struct SongOut {
+    pub name: String,
+    pub notes: Vec<Note>,
+}
+
+/// "Hedwig's Theme" -> horn_Hedwig's Theme.wav (the "horn_" groups them in the picker)
+fn song_file(name: &str) -> String {
+    let safe: String = name.chars().map(|c| if "\\/:*?\"<>|".contains(c) { '-' } else { c }).collect();
+    format!("horn_{}.wav", safe.trim())
+}
+
+/// What the song files were made from: the horn set, its pitch, the songs.
+fn songs_stamp(songs: &[SongOut]) -> String {
+    let honks: Vec<(String, u64)> = honk_files()
+        .iter()
+        .map(|p| (p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(), std::fs::metadata(p).map(|m| m.len()).unwrap_or(0)))
+        .collect();
+    let s = settings();
+    let songs: Vec<(&str, Vec<(u32, u32, u8)>)> =
+        songs.iter().map(|x| (x.name.as_str(), x.notes.iter().map(|n| ((n.t * 1000.0) as u32, (n.d * 1000.0) as u32, n.key)).collect())).collect();
+    serde_json::to_string(&(honks, (s.base * 1000.0) as i64, songs)).unwrap_or_default()
+}
+
+/// Render every built-in song to C:\SolR\horn\songs - only when the horn or
+/// the songs changed since last time. Returns each song's file, full path.
+pub fn export_songs(songs: Vec<SongOut>) -> Result<Vec<String>, String> {
+    let dir = songs_dir();
+    let stamp_path = dir.join("stamp.json");
+    let stamp = songs_stamp(&songs);
+    let paths: Vec<PathBuf> = songs.iter().map(|s| dir.join(song_file(&s.name))).collect();
+    let fresh = std::fs::read_to_string(&stamp_path).ok().as_deref() == Some(stamp.as_str()) && paths.iter().all(|p| p.exists());
+    if !fresh {
+        let honks = load_honks();
+        let rate = honks.first().map(|h| h.rate).ok_or("There is no horn.")?;
+        let set: Vec<Vec<f32>> = honks.into_iter().filter(|h| h.rate == rate).map(|h| h.m).collect();
+        let base = settings().base;
+        // songs no longer in the list go
+        for old in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+            let p = old.path();
+            if p.extension().is_some_and(|x| x == "wav") && !paths.contains(&p) {
+                let _ = std::fs::remove_file(p);
+            }
+        }
+        for (s, p) in songs.iter().zip(&paths) {
+            write_wav(p, &render_notes(&set, rate, base, &s.notes, 0, 1.0), rate)?;
+        }
+        std::fs::write(&stamp_path, &stamp).map_err(|e| e.to_string())?;
+        // buttons already playing these: load the new versions
+        crate::sound::forget(paths.clone());
+    }
+    Ok(paths.iter().map(|p| p.to_string_lossy().replace('\\', "/")).collect())
+}
+
 /// The last render: into the game (talk key held), or to you only.
 pub fn play(game: bool) -> Result<(), String> {
     let p = song_path();

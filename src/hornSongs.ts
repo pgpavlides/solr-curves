@@ -1,4 +1,4 @@
-import type { HornNote, HornSong } from "./bridge";
+import { type HornNote, type HornSong, hornExportSongs } from "./bridge";
 
 /*
   Built-in horn songs: short, well-known hooks, one line each, written out by
@@ -272,6 +272,20 @@ export const HORN_SONGS: BuiltinSong[] = [
     tune: "C4/1 F4/1 A4/1 C5/2 A4/1 C5/4",
   },
 ];
+
+/**
+  Every built-in song rendered to a sound file with the current horn, so a
+  stick button can play it like any other sound. Cheap when nothing changed.
+  Resolves to the files' full paths.
+*/
+let exporting: Promise<string[]> | null = null;
+export function exportHornSongs(force = false): Promise<string[]> {
+  if (!exporting || force) {
+    exporting = hornExportSongs(HORN_SONGS.map((s) => ({ name: s.name, notes: builtinSong(s).notes })))
+      .catch((e) => { exporting = null; throw e; });
+  }
+  return exporting;
+}
 
 /** A built-in song as the page's song: one track, "Melody". */
 export function builtinSong(s: BuiltinSong): HornSong {

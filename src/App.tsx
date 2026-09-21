@@ -9,6 +9,7 @@ import Dashboard, { type Page } from "./Dashboard";
 import MacrosPage from "./MacrosPage";
 import HelpPage from "./HelpPage";
 import HornPage from "./HornPage";
+import { exportHornSongs } from "./hornSongs";
 import RamBadge from "./RamBadge";
 import MiniGraph from "./MiniGraph";
 import { useVoiceBanks } from "./voice";
@@ -85,6 +86,8 @@ export default function App() {
 
   // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
   // the app opens on the dashboard; the logo in the header brings you back to it
+  // the built-in horn songs as sound files, for stick buttons (a no-op when nothing changed)
+  useEffect(() => { if (inTauri) exportHornSongs().catch(() => {}); }, []);
   const [page, setPage] = useState<"home" | "help" | "horn" | Page>("home");
 
   const c = st.axes[axis];
