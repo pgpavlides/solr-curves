@@ -17,6 +17,7 @@ import { KNOB, PADS, SOLR_LED_MAP, type Macro, type MacroPreset, type VoiceConfi
 
 interface Props {
   stick: PadLike | null;
+  throttle?: PadLike | null;
   bank: number | null;
   cfg: VoiceConfig;
   update: (c: VoiceConfig) => void;
@@ -37,7 +38,7 @@ function assignments(cfg: VoiceConfig, bank: number) {
   return out.sort((a, b2) => a.button - b2.button);
 }
 
-export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError }: Props) {
+export default function MacrosPage({ stick, throttle = null, bank, cfg, update, setHold, ledError }: Props) {
   const [tab, setTab] = useState<number | null>(null); // null = follow the knob
   // turn the knob and the page follows it
   useEffect(() => setTab(null), [bank]);
@@ -85,10 +86,12 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
   // a press picks that button - the quickest way to map the one under your thumb
   useEffect(() => {
     const now = new Set((stick?.buttons ?? []).flatMap((x, i) => (x.pressed && !KNOB.includes(i + 1) ? [i + 1] : [])));
+    // the throttle's buttons are 45 and up, as the game counts them
+    (throttle?.buttons ?? []).forEach((x, i) => { if (x.pressed) now.add(44 + i + 1); });
     const fresh = [...now].find((n) => !before.current.has(n));
     before.current = now;
     if (fresh !== undefined) setSelected(fresh);
-  }, [stick]);
+  }, [stick, throttle]);
 
   const sound = selected === null ? "" : eb?.pads?.[selected] ?? "";
   const macro = selected === null ? undefined : eb?.macros?.[selected];
@@ -200,7 +203,7 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
             </>
           )}
         </div>
-        <StickView stick={stick} bank={b} cfg={cfg} selected={selected} onSelect={setSelected} />
+        <StickView stick={stick} throttle={throttle} bank={b} cfg={cfg} selected={selected} onSelect={setSelected} />
       </div>
 
       <div className="mx-right">
@@ -214,7 +217,7 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
                   ? "Click one on the model, press one on the stick, or pick one from the list."
                   : isPad
                     ? `Pad · LED ${cfg.map[selected] ?? SOLR_LED_MAP[selected]}`
-                    : "Stick button"}
+                    : selected > 44 ? "Throttle button" : "Stick button"}
               </p>
             </div>
             {kind !== "none" && selected !== null && (
