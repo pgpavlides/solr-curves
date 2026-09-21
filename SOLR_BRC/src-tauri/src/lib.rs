@@ -579,8 +579,13 @@ fn horn_info() -> horn::HornInfo {
 async fn horn_record(seconds: f32) -> Result<horn::HornInfo, String> {
     blocking(move || horn::record(seconds)).await?
 }
+/// The file comes as the raw request body (a video can be tens of MB - far
+/// too big to go as a JSON list of numbers), its extension in a header.
 #[tauri::command]
-async fn horn_load_file(bytes: Vec<u8>, ext: String) -> Result<horn::HornInfo, String> {
+async fn horn_load_file(request: tauri::ipc::Request<'_>) -> Result<horn::HornInfo, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected the file's bytes".into()) };
+    let bytes = bytes.clone();
+    let ext = request.headers().get("x-ext").and_then(|v| v.to_str().ok()).unwrap_or("wav").to_string();
     blocking(move || horn::load_file(bytes, ext)).await?
 }
 #[tauri::command]
@@ -592,16 +597,20 @@ async fn horn_midi(bytes: Vec<u8>) -> Result<horn::Song, String> {
     blocking(move || horn::parse_midi(&bytes)).await?
 }
 #[tauri::command]
-async fn horn_render(notes: Vec<horn::Note>, transpose: i32, speed: f32) -> Result<horn::Rendered, String> {
-    blocking(move || horn::render(notes, transpose, speed)).await?
+async fn horn_render(notes: Vec<horn::Note>, transpose: i32, speed: f32, intro: bool) -> Result<horn::Rendered, String> {
+    blocking(move || horn::render(notes, transpose, speed, intro)).await?
 }
 #[tauri::command]
 fn horn_play(game: bool) -> Result<(), String> {
     horn::play(game)
 }
 #[tauri::command]
-fn horn_hear() -> Result<(), String> {
-    horn::hear_horn()
+fn horn_hear(index: usize) -> Result<(), String> {
+    horn::hear_honk(index)
+}
+#[tauri::command]
+async fn horn_restore() -> Result<horn::HornInfo, String> {
+    blocking(horn::restore_defaults).await?
 }
 
 /// Open a web page in the default browser (the Help page's download links).
@@ -862,7 +871,8 @@ pub fn run() {
             horn_midi,
             horn_render,
             horn_play,
-            horn_hear
+            horn_hear,
+            horn_restore
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {
