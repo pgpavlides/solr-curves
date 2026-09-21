@@ -8,6 +8,7 @@ import DevicesView from "./DevicesView";
 import Dashboard, { type Page } from "./Dashboard";
 import MacrosPage from "./MacrosPage";
 import HelpPage from "./HelpPage";
+import RamBadge from "./RamBadge";
 import MiniGraph from "./MiniGraph";
 import { useVoiceBanks } from "./voice";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
@@ -779,6 +780,7 @@ export default function App() {
           <PadBars title="Thrustmaster Combined" sub="what the game gets" pad={pads.combined} input={st.input} current={axis} />
         </section>
       </main>
+      {inTauri && <RamBadge />}
     </div>
   );
 }

@@ -692,3 +692,10 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .help-faq dt:first-child { margin-top: 0; }
 .help-faq dd { margin: 3px 0 0; color: var(--muted); }
 .mx-hands small { opacity: 0.6; margin-left: 3px; font-size: 11px; }
+
+/* ---- RAM in use (RamBadge.tsx), out of the way in the bottom right */
+.ram { position: fixed; right: 12px; bottom: 8px; z-index: 50; font: 11px var(--mono); color: var(--muted); background: color-mix(in srgb, var(--bg) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; pointer-events: auto; cursor: default; }
+.ram b { color: var(--ink); font-weight: 500; }
+/* a strip of its own under every page, so it never sits on anything */
+.app:has(> .ram) { padding-bottom: 28px; }
+.ram { bottom: 5px; }

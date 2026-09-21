@@ -15,6 +15,19 @@ export interface Loaded {
   dir: string;
 }
 
+/** The RAM the app uses (memory.rs): this process plus its WebView2 processes, in bytes. */
+export interface MemoryUsage {
+  total: number;
+  app: number;
+  webview: number;
+  processes: number;
+}
+
+export async function memoryUsage(): Promise<MemoryUsage | null> {
+  if (!inTauri) return null;
+  return invoke<MemoryUsage>("memory_usage");
+}
+
 export async function loadState(): Promise<Loaded> {
   if (inTauri) return invoke<Loaded>("load_state");
   return (await fetch("/api/state")).json();
