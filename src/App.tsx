@@ -8,6 +8,7 @@ import DevicesView from "./DevicesView";
 import Dashboard, { type Page } from "./Dashboard";
 import MacrosPage from "./MacrosPage";
 import HelpPage from "./HelpPage";
+import HornPage from "./HornPage";
 import RamBadge from "./RamBadge";
 import MiniGraph from "./MiniGraph";
 import { useVoiceBanks } from "./voice";
@@ -84,7 +85,7 @@ export default function App() {
 
   // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
   // the app opens on the dashboard; the logo in the header brings you back to it
-  const [page, setPage] = useState<"home" | "help" | Page>("home");
+  const [page, setPage] = useState<"home" | "help" | "horn" | Page>("home");
 
   const c = st.axes[axis];
   // which side the controls edit. Linked: both, stored on pos and mirrored to neg
@@ -505,6 +506,7 @@ export default function App() {
                 {pg === "curves" ? "Curves" : pg === "macros" ? "Macros" : pg === "script" ? "Script" : "Devices"}
               </button>
             ))}
+            <button className={page === "horn" ? "on" : ""} onClick={() => setPage("horn")} title="Songs on the helicopter's horn">Horn</button>
             <button className={page === "help" ? "on" : ""} onClick={() => setPage("help")}>Help</button>
           </nav>
         )}
@@ -542,6 +544,7 @@ export default function App() {
       {inTauri && page === "home" && (
         <Dashboard onOpen={setPage} onHelp={() => setPage("help")} sync={sync} preset={activePreset} stick={pads.stick} cfg={voice.cfg} bank={voice.bank} />
       )}
+      {inTauri && page === "horn" && <HornPage />}
       {inTauri && page === "help" && <HelpPage sync={sync} pads={pads} cfg={voice.cfg} />}
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}

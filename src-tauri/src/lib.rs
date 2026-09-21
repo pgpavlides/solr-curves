@@ -14,6 +14,7 @@
 mod audio;
 mod devices;
 mod hidraw;
+mod horn;
 mod led;
 mod macros;
 mod memory;
@@ -569,6 +570,40 @@ fn throttle_led_pause(on: bool) {
     thrbank::pause(on);
 }
 
+/// Horn Music (horn.rs): the instrument, a MIDI file, the render, playing it.
+#[tauri::command]
+fn horn_info() -> horn::HornInfo {
+    horn::info()
+}
+#[tauri::command]
+async fn horn_record(seconds: f32) -> Result<horn::HornInfo, String> {
+    blocking(move || horn::record(seconds)).await?
+}
+#[tauri::command]
+async fn horn_load_file(bytes: Vec<u8>, ext: String) -> Result<horn::HornInfo, String> {
+    blocking(move || horn::load_file(bytes, ext)).await?
+}
+#[tauri::command]
+fn horn_set_base(base: f32) -> horn::HornInfo {
+    horn::set_base(base)
+}
+#[tauri::command]
+async fn horn_midi(bytes: Vec<u8>) -> Result<horn::Song, String> {
+    blocking(move || horn::parse_midi(&bytes)).await?
+}
+#[tauri::command]
+async fn horn_render(notes: Vec<horn::Note>, transpose: i32, speed: f32) -> Result<horn::Rendered, String> {
+    blocking(move || horn::render(notes, transpose, speed)).await?
+}
+#[tauri::command]
+fn horn_play(game: bool) -> Result<(), String> {
+    horn::play(game)
+}
+#[tauri::command]
+fn horn_hear() -> Result<(), String> {
+    horn::hear_horn()
+}
+
 /// Open a web page in the default browser (the Help page's download links).
 /// Only https: nothing else gets handed to the shell.
 #[tauri::command]
@@ -819,7 +854,15 @@ pub fn run() {
             throttle_bank,
             set_throttle_bank,
             throttle_led_pause,
-            open_url
+            open_url,
+            horn_info,
+            horn_record,
+            horn_load_file,
+            horn_set_base,
+            horn_midi,
+            horn_render,
+            horn_play,
+            horn_hear
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {

@@ -44,6 +44,9 @@ enum Job {
     Config(Value),
     /// Play one file on the monitor only - trying a clip out while setting up.
     Preview(PathBuf),
+    /// Play one file loaded fresh (a rendered horn song): into the game with
+    /// the talk key held like a pad, or with `game` false on the monitor only.
+    PlayFile { path: PathBuf, game: bool },
     Stop,
     /// Open the devices again (after installing VB-CABLE, replugging, ...).
     Reopen,
@@ -100,6 +103,7 @@ fn board_settings() -> BoardSettings {
         .unwrap_or_default()
 }
 
+#[derive(Clone)]
 struct Clip {
     cable: Option<Arc<Prepared>>,
     monitor: Option<Arc<Prepared>>,
@@ -247,44 +251,60 @@ impl Worker {
         }
         let Some(path) = bank.and_then(|b| assigned(&self.config, b, button)) else { return };
         let file = path.file_name().map(|n| n.to_string_lossy().into_owned());
-        let error = match self.clips.get(&path) {
+        let error = match self.clips.get(&path).cloned() {
             None => Some("not loaded".to_string()),
-            Some(c) => {
-                let mut err = None;
-                // talk key down first, so the game is transmitting from the first word
-                if let (Some(e), Some(buf), true) = (&self.cable, &c.cable, self.ptt_enabled()) {
-                    let was_held = self.ptt.held();
-                    match self.ptt.press() {
-                        Ok(()) => {
-                            if !was_held {
-                                self.emit_ptt();
-                                std::thread::sleep(PTT_LEAD);
-                            }
-                            let secs = buf.frames() as f64 / e.rate.max(1) as f64;
-                            let until = Instant::now() + Duration::from_secs_f64(secs) + PTT_TAIL;
-                            self.ptt_until = Some(self.ptt_until.map_or(until, |u| u.max(until)));
-                        }
-                        Err(e) => err = Some(format!("Caps Lock: {e}")),
-                    }
-                }
-                let c = &self.clips[&path];
-                let played = match (&self.cable, &c.cable) {
-                    (Some(e), Some(buf)) => e.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
-                    _ => Some("no VB-CABLE - only you hear it".into()),
-                };
-                if played.is_some() {
-                    err = played;
-                }
-                // the monitor is for you only; a hiccup there doesn't stop the clip going out
-                if let (Some(m), Some(buf)) = (&self.monitor, &c.monitor) {
-                    if let Err(e) = m.play(buf.clone(), 1.0) {
-                        err.get_or_insert(format!("monitor: {e:#}"));
-                    }
-                }
-                err
-            }
+            Some(c) => self.play_clip(&c),
         };
         let _ = self.app.emit("solr:sound", Fired { button, bank, file, error });
+    }
+
+    /// Into the game: talk key down, the cable, and the monitor for you.
+    fn play_clip(&mut self, c: &Clip) -> Option<String> {
+        let mut err = None;
+        // talk key down first, so the game is transmitting from the first word
+        if let (Some(e), Some(buf), true) = (&self.cable, &c.cable, self.ptt_enabled()) {
+            let was_held = self.ptt.held();
+            match self.ptt.press() {
+                Ok(()) => {
+                    if !was_held {
+                        self.emit_ptt();
+                        std::thread::sleep(PTT_LEAD);
+                    }
+                    let secs = buf.frames() as f64 / e.rate.max(1) as f64;
+                    let until = Instant::now() + Duration::from_secs_f64(secs) + PTT_TAIL;
+                    self.ptt_until = Some(self.ptt_until.map_or(until, |u| u.max(until)));
+                }
+                Err(e) => err = Some(format!("Caps Lock: {e}")),
+            }
+        }
+        let played = match (&self.cable, &c.cable) {
+            (Some(e), Some(buf)) => e.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
+            _ => Some("no VB-CABLE - only you hear it".into()),
+        };
+        if played.is_some() {
+            err = played;
+        }
+        // the monitor is for you only; a hiccup there doesn't stop the clip going out
+        if let (Some(m), Some(buf)) = (&self.monitor, &c.monitor) {
+            if let Err(e) = m.play(buf.clone(), 1.0) {
+                err.get_or_insert(format!("monitor: {e:#}"));
+            }
+        }
+        err
+    }
+
+    /// A file that isn't one of the banks' (the horn song): loaded each time,
+    /// since it changes every render.
+    fn play_file(&mut self, path: PathBuf, game: bool) {
+        let result = match self.load(&path) {
+            Err(e) => Some(e),
+            Ok(c) if game => self.play_clip(&c),
+            Ok(c) => match (&self.monitor, &c.monitor) {
+                (Some(m), Some(buf)) => m.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
+                _ => Some("no monitor device to play it on".into()),
+            },
+        };
+        let _ = self.app.emit("solr:horn-playing", result);
     }
 
     fn preview(&mut self, path: PathBuf) {
@@ -366,6 +386,7 @@ pub fn start(app: &AppHandle, config: Value) {
                     w.publish();
                 }
                 Job::Preview(p) => w.preview(p),
+                Job::PlayFile { path, game } => w.play_file(path, game),
                 Job::Stop => w.stop(),
                 Job::Quit(done) => {
                     w.release_ptt();
@@ -404,6 +425,9 @@ pub fn preview(path: PathBuf) {
 }
 pub fn stop() {
     send(Job::Stop);
+}
+pub fn play_file(path: PathBuf, game: bool) {
+    send(Job::PlayFile { path, game });
 }
 /// On exit: never leave Caps Lock held down.
 pub fn shutdown() {
