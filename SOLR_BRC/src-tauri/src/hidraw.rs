@@ -97,6 +97,8 @@ struct State {
     thr: RawStick,
     thr_pressed: Vec<bool>,
     thr_emit: Option<Instant>,
+    /// last time we looked for the throttle (it can join the filter later)
+    thr_tried: Option<Instant>,
 }
 
 /// The throttle's buttons as the game sees them: after the stick's 44 (the
@@ -116,6 +118,7 @@ static STATE: Mutex<State> = Mutex::new(State {
     thr: RawStick { device: String::new(), axes: [0.0; 8], buttons: Vec::new(), hat: None },
     thr_pressed: Vec::new(),
     thr_emit: None,
+    thr_tried: None,
 });
 static APP: OnceLock<AppHandle> = OnceLock::new();
 
@@ -215,6 +218,16 @@ pub fn start(app: &AppHandle) -> RawStatus {
         return RawStatus { connected: false, device: None, error: Some("busy".into()) };
     };
     if st.device_id.is_some() {
+        /*
+          Connected to the stick, but maybe not yet to the throttle: T.A.R.G.E.T.
+          only puts a device in its filter once it can drive it (after a driver
+          update or a replug), so keep looking now and then until it's there.
+        */
+        let due = st.thr_tried.map_or(true, |t| t.elapsed() >= Duration::from_secs(5));
+        if st.thr_id.is_none() && due && crate::target::service_running() {
+            st.thr_tried = Some(Instant::now());
+            unsafe { attach_throttle(&mut st) };
+        }
         return RawStatus { connected: true, device: Some(st.stick.device.clone()), error: None };
     }
     // the filter's reader needs Thrustmaster's service; without it the DLL
@@ -309,19 +322,60 @@ unsafe fn connect(st: &mut State) -> Result<String, String> {
     st.stick.device = if name.is_empty() { format!("device {id}") } else { name.clone() };
 
     // the throttle, when there is one: optional, the stick works without it
-    if let Some((tid, tname, tcaps)) = throttle {
-        st.thr_ranges = tcaps
-            .iter()
-            .filter(|c| c.usage_page == PAGE_GENERIC && (USAGE_X..USAGE_X + 8).contains(&c.usage))
-            .map(|c| (c.usage, (c.min as i64, c.max as i64)))
-            .collect();
-        if (api.set_read_values_callback)(tid, Some(on_throttle), std::ptr::null_mut()) == 0 {
-            (api.set_polling)(tid, 1);
-            st.thr_id = Some(tid);
-            st.thr.device = if tname.is_empty() { format!("device {tid}") } else { tname };
-        }
+    if let Some(t) = throttle {
+        use_throttle(st, t);
     }
+    st.thr_tried = Some(Instant::now());
     Ok(st.stick.device.clone())
+}
+
+/// Start reading the throttle found in the filter.
+unsafe fn use_throttle(st: &mut State, (tid, tname, tcaps): (u32, String, Vec<Capability>)) {
+    let Some(api) = st.api.as_ref() else { return };
+    let ranges = tcaps
+        .iter()
+        .filter(|c| c.usage_page == PAGE_GENERIC && (USAGE_X..USAGE_X + 8).contains(&c.usage))
+        .map(|c| (c.usage, (c.min as i64, c.max as i64)))
+        .collect();
+    if (api.set_read_values_callback)(tid, Some(on_throttle), std::ptr::null_mut()) == 0 {
+        (api.set_polling)(tid, 1);
+        st.thr_ranges = ranges;
+        st.thr_id = Some(tid);
+        st.thr.device = if tname.is_empty() { format!("device {tid}") } else { tname };
+    }
+}
+
+/// Look through the filter for the throttle alone (the stick is already on).
+unsafe fn attach_throttle(st: &mut State) {
+    let Some(api) = st.api.as_ref() else { return };
+    let mut p: Ptr = std::ptr::null_mut();
+    let mut n: u32 = 0;
+    if (api.filter_get_devices_list)(&mut p, &mut n) != 0 || p.is_null() {
+        return;
+    }
+    let ids = std::slice::from_raw_parts(p as *const u32, (n as usize).min(32)).to_vec();
+    (api.free)(p);
+    for id in ids {
+        if Some(id) == st.device_id {
+            continue;
+        }
+        let mut np: Ptr = std::ptr::null_mut();
+        let name = if (api.get_device_name)(id, &mut np) == 0 { take_string(api, np).unwrap_or_default() } else { String::new() };
+        if !(name.to_lowercase().contains("throttle") || name.contains("0447")) {
+            continue;
+        }
+        let mut cp: Ptr = std::ptr::null_mut();
+        let mut cn: u32 = 0;
+        let caps = if (api.get_device_capabilities)(id, &mut cp, &mut cn) == 0 && !cp.is_null() {
+            let v = std::slice::from_raw_parts(cp as *const Capability, (cn as usize).min(256)).to_vec();
+            (api.free)(cp);
+            v
+        } else {
+            vec![]
+        };
+        use_throttle(st, (id, name, caps));
+        return;
+    }
 }
 
 /// The throttle's callback: the same record layout as the stick's.

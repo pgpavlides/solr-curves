@@ -75,8 +75,11 @@ export function usePads(): Pads {
   useEffect(() => {
     if (!inTauri) return;
     let connected = false;
+    let polls = 0;
     const tryStart = () => {
-      if (connected) return;
+      // once connected, only now and then: the backend also looks for a
+      // throttle that joined T.A.R.G.E.T.'s filter late
+      if (connected && ++polls % 2) return;
       invoke<{ connected: boolean }>("raw_stick_start")
         .then((s) => {
           connected = s.connected;
