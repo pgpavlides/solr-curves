@@ -44,9 +44,10 @@ export default function DevicesView() {
       {note && <p className="dv-note">{note}</p>}
       <div className="dv-grid">
         {devs?.map((d) => {
-          // only the flightstick goes through the curve script; hiding anything
-          // else takes it out of games completely (the throttle has no script)
-          const scripted = /PID_0422/i.test(d.hardware_id ?? "");
+          // the flightstick and the Sol-R 6 Throttle both go through the curve
+          // script; hiding anything else takes it out of games completely
+          const scripted = /PID_(0422|0447)/i.test(d.hardware_id ?? "");
+          const what = /PID_0447/i.test(d.hardware_id ?? "") ? "the throttle" : "the stick";
           const byScript = scripted && scriptRunning;
           const hidden = d.hid_enabled === false || byScript;
           return (
@@ -88,7 +89,7 @@ export default function DevicesView() {
                   <div>
                     <b>Hidden from games by the running script</b>
                     <p className="hint">
-                      T.A.R.G.E.T. takes the stick over while the curve script runs: games can only bind Thrustmaster Combined,
+                      T.A.R.G.E.T. takes {what} over while the curve script runs: games can only bind Thrustmaster Combined,
                       so nothing can bypass your curves. Sol-R Curves still reads your hand through T.A.R.G.E.T. It comes back
                       to Windows when the script stops.
                     </p>
