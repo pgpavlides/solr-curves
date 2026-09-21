@@ -788,3 +788,7 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .horn-songbtn small { color: var(--muted); font-size: 11px; }
 .horn-songbtn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
 .horn-songbtn:hover { border-color: var(--muted); }
+.horn-songs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); max-height: 160px; overflow: auto; padding-right: 4px; }
+.horn-songbtn b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.horn-songbtn small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.horn-roll { height: 190px; }
