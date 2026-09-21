@@ -45,10 +45,9 @@ export default function MacrosPage({ stick, throttle = null, bank, thrBank, cfg,
   // turn the knob and the page follows it
   useEffect(() => setTab(null), [bank]);
   const [selected, setSelected] = useState<number | null>(null);
-  // the joystick and the throttle each get the page to themselves
-  const [hand, setHandState] = useState<HandView>(() => {
-    try { return localStorage.getItem("solr:macrohand") === "throttle" ? "throttle" : "stick"; } catch { return "stick"; }
-  });
+  // the joystick and the throttle each get the page to themselves; it always
+  // opens on the joystick (a throttle press still switches it over)
+  const [hand, setHand] = useState<HandView>("stick");
   /*
     Each has its own banks: the stick's follow the knob (a tab only previews
     another), the throttle's are the app's to switch - its tab IS the bank,
@@ -60,10 +59,6 @@ export default function MacrosPage({ stick, throttle = null, bank, thrBank, cfg,
   const b = which === "banks" ? stickBank : thrBank;
   const onBank = which === "banks" ? bank : thrBank;
   const eb = banks[b];
-  const setHand = (h: HandView) => {
-    setHandState(h);
-    try { localStorage.setItem("solr:macrohand", h); } catch { /* only a convenience */ }
-  };
   // the throttle's buttons are 45 and up, as the game counts them
   const handOf = (button: number): HandView => (isThrottleButton(button) ? "throttle" : "stick");
   /** pick a button and show the device it's on */
