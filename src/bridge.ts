@@ -197,8 +197,8 @@ export const hornRecord = (seconds: number) => invoke<HornInfo>("horn_record", {
 export const hornLoadFile = (bytes: Uint8Array, ext: string) => invoke<HornInfo>("horn_load_file", bytes, { headers: { "x-ext": ext } });
 export const hornSetBase = (base: number) => invoke<HornInfo>("horn_set_base", { base });
 export const hornMidi = (bytes: Uint8Array) => invoke<HornSong>("horn_midi", { bytes: Array.from(bytes) });
-export const hornRender = (notes: HornNote[], transpose: number, speed: number, intro: boolean) =>
-  invoke<{ seconds: number; notes: number }>("horn_render", { notes, transpose, speed, intro });
+export const hornRender = (notes: HornNote[], transpose: number, speed: number) =>
+  invoke<{ seconds: number; notes: number }>("horn_render", { notes, transpose, speed });
 export const hornPlay = (game: boolean) => invoke<void>("horn_play", { game });
 export const hornHear = (index: number) => invoke<void>("horn_hear", { index });
 export const hornRestore = () => invoke<HornInfo>("horn_restore");
