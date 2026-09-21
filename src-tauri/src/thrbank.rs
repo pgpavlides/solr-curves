@@ -40,7 +40,7 @@ fn count(cfg: &Value) -> usize {
     cfg.get("throttleBanks").and_then(|b| b.as_array()).map_or(0, |b| b.len())
 }
 
-fn rgb(hex: &str) -> (u8, u8, u8) {
+pub(crate) fn rgb(hex: &str) -> (u8, u8, u8) {
     let n = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xffffff);
     ((n >> 16) as u8, (n >> 8) as u8, n as u8)
 }
@@ -78,6 +78,11 @@ pub fn set_config(config: &Value) {
     let mut st = STATE.lock().unwrap();
     st.config = config.clone();
     st.bank = st.bank.min(count(config).saturating_sub(1));
+}
+
+/// The voice settings as last saved (tray.rs paints the stick from them).
+pub fn config() -> Value {
+    STATE.lock().unwrap().config.clone()
 }
 
 pub fn bank() -> usize {

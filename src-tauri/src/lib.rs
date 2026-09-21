@@ -21,6 +21,7 @@ mod ptt;
 mod sound;
 mod target;
 mod thrbank;
+mod tray;
 mod tmsc;
 mod vbcable;
 
@@ -710,13 +711,23 @@ fn release_all() {
     target::shutdown();
 }
 
-/// Bring the main window back from the tray, in front.
+/// Bring the main window back from the tray, in front - built again if it
+/// was closed (tray.rs: closing it is what frees its RAM).
 fn show_main(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.show();
-        let _ = w.unminimize();
-        let _ = w.set_focus();
-    }
+    let w = match app.get_webview_window("main") {
+        Some(w) => w,
+        None => {
+            let Some(conf) = app.config().app.windows.first().cloned() else { return };
+            match WebviewWindowBuilder::from_config(app, &conf).and_then(|b| b.build()) {
+                Ok(w) => w,
+                Err(_) => return,
+            }
+        }
+    };
+    tray::window_opened();
+    let _ = w.show();
+    let _ = w.unminimize();
+    let _ = w.set_focus();
 }
 
 /// The tray icon: click it to open the window, right-click for Show / Quit.
@@ -738,6 +749,9 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
                 // the same tidy-up as quitting (script stopped, Caps Lock let go,
                 // the stick handed back), then a fresh start of the app
                 release_all();
+                // let go of "the one copy" first, or the new one would find
+                // this one still here and hand over to it instead of starting
+                tauri_plugin_single_instance::destroy(app);
                 app.restart();
             }
             "quit" => app.exit(0),
@@ -759,6 +773,9 @@ pub fn run() {
     vbcable::run_if_asked(); // the elevated copy that repairs the cable, then exits
     migrate_from_e();
     tauri::Builder::default()
+        // one copy: starting the app again (the shortcut, the .exe) opens the
+        // window of the copy already in the tray instead of a second one
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .invoke_handler(tauri::generate_handler![
             load_state,
             save_state,
@@ -804,18 +821,14 @@ pub fn run() {
             throttle_led_pause,
             open_url
         ])
-        // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                match event {
-                    // the X only tucks the window into the tray: the script,
-                    // the sounds and the macros keep running. Quit from the tray.
-                    WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
-                        let _ = window.hide();
-                    }
-                    WindowEvent::Destroyed => window.app_handle().exit(0),
-                    _ => {}
+                // the X closes the window for real - its WebView2 and nearly
+                // all the RAM go with it - but not the app: the script, the
+                // sounds, the macros and the banks keep running from the tray
+                // (tray.rs). Quit from the tray. The overlay stays if it's on.
+                if let WindowEvent::Destroyed = event {
+                    tray::window_closed(window.app_handle());
                 }
             }
         })
@@ -823,17 +836,20 @@ pub fn run() {
             let voice = voice_load();
             macros::set_config(&voice);
             thrbank::start(app.handle(), &voice);
+            tray::start(app.handle());
             sound::start(app.handle(), voice);
             tray(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building Sol-R Curves")
-        .run(|_app, event| {
+        .run(|_app, event| match event {
+            // the last window closing is no reason to go: only Quit (an exit
+            // with a code) ends the app
+            tauri::RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
             // one app: when it goes, the script goes, and the stick is plain again
-            if let tauri::RunEvent::Exit = event {
-                release_all();
-            }
+            tauri::RunEvent::Exit => release_all(),
+            _ => {}
         });
 }
 

@@ -477,6 +477,11 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
 }
 
 /// The throttle's last reading, if it is connected.
+/// The knob's position (the stick's bank), as last reported.
+pub fn knob() -> Option<usize> {
+    STATE.lock().ok()?.bank
+}
+
 pub fn snapshot_throttle() -> Option<RawStick> {
     let st = STATE.lock().unwrap();
     st.thr_id.map(|_| st.thr.clone())
