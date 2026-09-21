@@ -585,6 +585,44 @@ async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> R
     blocking(move || devices::set_hid_enabled(&app, serial, enabled)).await?
 }
 
+/// Bring the main window back from the tray, in front.
+fn show_main(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+/// The tray icon: click it to open the window, right-click for Show / Quit.
+/// Quit is the only way to close the app - the window's X hides it here.
+fn tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    let show = MenuItem::with_id(app, "show", "Open Sol-R Curves", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let mut tray = TrayIconBuilder::with_id("main")
+        .tooltip("Sol-R Curves")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, e| match e.id.as_ref() {
+            "show" => show_main(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, e| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = e {
+                show_main(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
 pub fn run() {
     vbcable::run_if_asked(); // the elevated copy that repairs the cable, then exits
     migrate_from_e();
@@ -631,8 +669,15 @@ pub fn run() {
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let WindowEvent::Destroyed = event {
-                    window.app_handle().exit(0);
+                match event {
+                    // the X only tucks the window into the tray: the script,
+                    // the sounds and the macros keep running. Quit from the tray.
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    WindowEvent::Destroyed => window.app_handle().exit(0),
+                    _ => {}
                 }
             }
         })
@@ -640,6 +685,7 @@ pub fn run() {
             let voice = voice_load();
             macros::set_config(&voice);
             sound::start(app.handle(), voice);
+            tray(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())
