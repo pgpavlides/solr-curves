@@ -552,13 +552,6 @@ export default function App() {
                 <small>{tabInfo(a)}</small>
               </button>
             ))}
-            <div className="curve-views" role="tablist" title="How the curves are shown">
-              <button className={curveView === "one" ? "on" : ""} onClick={() => setCurveView("one")}>One</button>
-              <button className={curveView === "overlay" ? "on" : ""} onClick={() => setCurveView("overlay")}
-                title="All four on one graph, the others dashed behind">All curves</button>
-              <button className={curveView === "split" ? "on" : ""} onClick={() => setCurveView("split")}
-                title="All four, each on its own graph">Side by side</button>
-            </div>
           </nav>
 
           <div className="sides">
@@ -566,6 +559,13 @@ export default function App() {
             <button className={c.linked ? "on" : ""} onClick={() => chooseSide("linked")}>Both sides · linked</button>
             <button className={!c.linked && view === "neg" ? "on" : ""} onClick={() => chooseSide("neg")}>− {SIDE_LABEL[axis].neg}</button>
             <button className={!c.linked && view === "pos" ? "on" : ""} onClick={() => chooseSide("pos")}>+ {SIDE_LABEL[axis].pos}</button>
+            <div className="curve-views" role="tablist" title="How the curves are shown">
+              <button className={curveView === "one" ? "on" : ""} onClick={() => setCurveView("one")}>One</button>
+              <button className={curveView === "overlay" ? "on" : ""} onClick={() => setCurveView("overlay")}
+                title="All four on one graph, the others dashed behind">All curves</button>
+              <button className={curveView === "split" ? "on" : ""} onClick={() => setCurveView("split")}
+                title="All four, each on its own graph">Side by side</button>
+            </div>
           </div>
 
           <div className="graph-wrap">
