@@ -19,6 +19,14 @@ import struct
 import sys
 import xml.etree.ElementTree as ET
 
+# T.A.R.G.E.T. draws the white Sol-R with orange buttons; this one is the black
+# edition with red buttons (the same red as the throttle's). Only the colour
+# changes: "deschis" is the light shell, "red" the buttons it calls red.
+BLACK_EDITION = {
+    "deschis": {"base": (0.03, 0.03, 0.035, 1.0)},
+    "red": {"base": (0.46, 0.0, 0.0, 1.0), "emissive": (0.35, 0.0, 0.0)},
+}
+
 DEVCFG = pathlib.Path(r"C:\Program Files (x86)\Thrustmaster\TARGET\DevCfg")
 SRC = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else DEVCFG / "Handle_SolR.xaml"
 if not SRC.is_absolute():
@@ -243,6 +251,7 @@ def build_glb(parts, materials):
                 continue
             if matkey not in mat_index:
                 spec = materials.get(matkey, {"base": FALLBACK, "emissive": (0, 0, 0), "rough": 0.6})
+                spec = {**spec, **BLACK_EDITION.get(matkey, {})}
                 r, g, b, a = spec["base"]
                 out_materials.append({
                     "name": matkey,
