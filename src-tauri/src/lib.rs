@@ -16,6 +16,7 @@ mod devices;
 mod hidraw;
 mod led;
 mod macros;
+mod memory;
 mod ptt;
 mod sound;
 mod target;
@@ -548,6 +549,12 @@ fn raw_throttle_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot_throttle()
 }
 
+/// The RAM the app uses right now, WebView2 included.
+#[tauri::command]
+fn memory_usage() -> memory::Usage {
+    memory::usage()
+}
+
 /// Voice control settings (`hotas_voice.json`): banks, LED colours, the LED map.
 #[tauri::command]
 fn voice_load() -> Value {
@@ -752,7 +759,8 @@ pub fn run() {
             stick_suppress,
             sound_repair_cable,
             raw_stick_snapshot,
-            raw_throttle_snapshot
+            raw_throttle_snapshot,
+            memory_usage
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
