@@ -574,7 +574,12 @@ export default function App() {
               onNotice={setFlash}
               onSelect={setSelected}
               onPoints={onPoints}
-              others={showAll ? AXES.filter((a) => a !== axis).map((a) => ({ name: a, c: st.axes[a], color: AXIS_COLOUR[a] })) : []}
+              others={showAll ? AXES.filter((a) => a !== axis).map((a) => ({
+                name: a, c: st.axes[a], color: AXIS_COLOUR[a],
+                // each axis moves on its own curve, read from its own input
+                stickX: pads.stick ? pads.stick.axes[st.input[a]] ?? null : null,
+                combinedY: pads.combined ? pads.combined.axes[st.input[a]] ?? null : null,
+              })) : []}
               color={showAll ? AXIS_COLOUR[axis] : undefined}
             />
           </div>

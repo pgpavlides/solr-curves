@@ -33,7 +33,7 @@ interface Props {
   onSide: (side: SideName, select: number | null) => void;
   onNotice: (msg: string) => void;
   /** the other axes' curves, drawn thin behind this one for comparison */
-  others?: { name: string; c: AxisCurve; color: string }[];
+  others?: { name: string; c: AxisCurve; color: string; stickX?: number | null; combinedY?: number | null }[];
   /** this curve's own colour, when it is drawn among the others */
   color?: string;
 }
@@ -65,6 +65,10 @@ export default function Graph({ c, side, range, stickX, combinedY, selected, max
   // the same line for every other axis shown alongside
   const otherPaths = useMemo(() => others.map((o) => {
     const g = evaluator(o.c);
+    // where the hand is on this axis, and what the game gets from it
+    const lx = o.stickX === null || o.stickX === undefined ? null : o.stickX * 100;
+    const ly = lx === null ? null : g(o.stickX!) * 100;
+    const gy = o.combinedY === null || o.combinedY === undefined ? null : o.combinedY * 100;
     const n = 300;
     let d = "";
     for (let i = 0; i <= n; i++) {
@@ -72,7 +76,7 @@ export default function Graph({ c, side, range, stickX, combinedY, selected, max
       const y = g(x / 100) * 100;
       d += `${i ? "L" : "M"}${sx(x).toFixed(2)},${sy(Math.max(-R * 1.2, Math.min(R * 1.2, y))).toFixed(2)}`;
     }
-    return { ...o, d };
+    return { ...o, d, lx, ly, gy };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [others, R]);
 
@@ -227,6 +231,13 @@ export default function Graph({ c, side, range, stickX, combinedY, selected, max
           <path key={o.name} d={o.d} className="curve-other" style={{ stroke: o.color }} />
         ))}
         <path d={path} className="curve" style={color ? { stroke: color } : undefined} />
+        {otherPaths.map((o) => o.lx !== null && inView(o.lx) && (
+          <g key={`live-${o.name}`} className="live-other" style={{ ["--c" as string]: o.color }}>
+            <line x1={sx(o.lx)} x2={sx(o.lx)} y1={PAD} y2={PAD + PLOT} />
+            {o.ly !== null && <circle cx={sx(o.lx)} cy={sy(o.ly)} r={5} className="dot" />}
+            {o.gy !== null && <circle cx={sx(o.lx)} cy={sy(o.gy)} r={8} className="ring" />}
+          </g>
+        ))}
         {liveX !== null && inView(liveX) && (
           <>
             <line x1={sx(liveX)} x2={sx(liveX)} y1={PAD} y2={PAD + PLOT} className="live-line" />
