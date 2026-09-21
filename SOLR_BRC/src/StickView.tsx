@@ -26,7 +26,11 @@ interface Props {
   /** the button being edited, ringed in white */
   selected?: number | null;
   onSelect?: (button: number | null) => void;
+  /** which device is on show: each gets the whole view to itself */
+  view?: HandView;
 }
+
+export type HandView = "stick" | "throttle";
 
 /*
   Part name -> the button number Windows reports. The device file
@@ -68,15 +72,12 @@ const HAT_PART = ["HAT_UP", "HAT_RIGHT", "HAT_DOWN", "HAT_LEFT"];
 /** a button under the pointer, or under your thumb */
 const HOT = "#ffd23f";
 
-/** The throttle, to the left of the stick as it sits on the desk. */
-const THR_AT = { x: -26, y: 0, z: 2 };
-
 /** Where the grip sits on the base: the two models have their own origins,
     and this is where the grip's skirt meets the socket. Found by eye on the
     model itself. */
 const FIT = { x: 0.1, y: 11.9, z: -0.8 };
 
-export default function StickView({ stick, throttle = null, bank, cfg, selected = null, onSelect }: Props) {
+export default function StickView({ stick, throttle = null, bank, cfg, selected = null, onSelect, view = "stick" }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const parts = useRef<Map<string, THREE.Mesh[]>>(new Map());
   /*
@@ -91,6 +92,11 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
   const [loading, setLoading] = useState(true);
   const [hovered, setHovered] = useState<string | null>(null);
   const [arrows, setArrows] = useState(false);
+  const [noThrottle, setNoThrottle] = useState(false);
+  /** show one device and point the camera at it (set once the models load) */
+  const show = useRef<(v: HandView) => void>(() => {});
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const arrowsRef = useRef(arrows);
   arrowsRef.current = arrows;
 
@@ -154,7 +160,9 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
         res(g.scene);
       }, undefined, rej));
 
-    const whole = new THREE.Group();
+    // one group per device, each centred on its own: only one is shown at a time
+    const groups: Record<HandView, THREE.Group> = { stick: new THREE.Group(), throttle: new THREE.Group() };
+    let shown: THREE.Object3D[] = [];
     Promise.all([
       load("/solr_base.glb", "base:"),
       load("/solr.glb", ""),
@@ -163,14 +171,18 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
     ])
       .then(([base, grip, thr]) => {
         grip.position.set(FIT.x, FIT.y, FIT.z);
-        whole.add(base, grip);
-        if (thr) {
-          thr.position.set(THR_AT.x, THR_AT.y, THR_AT.z);
-          whole.add(thr);
+        groups.stick.add(base, grip);
+        if (thr) groups.throttle.add(thr);
+        else setNoThrottle(true);
+        const reachOf: Record<HandView, number> = { stick: 1, throttle: 1 };
+        for (const v of ["stick", "throttle"] as HandView[]) {
+          const g = groups[v];
+          const box = new THREE.Box3().setFromObject(g);
+          if (box.isEmpty()) continue;
+          const size = box.getSize(new THREE.Vector3());
+          g.position.sub(box.getCenter(new THREE.Vector3()));
+          reachOf[v] = Math.max(size.x, size.y, size.z);
         }
-        const box = new THREE.Box3().setFromObject(whole);
-        const size = box.getSize(new THREE.Vector3());
-        whole.position.sub(box.getCenter(new THREE.Vector3()));
 
         // caps and covers -> the button underneath
         const boxes = new Map<string, THREE.Box3>();
@@ -195,12 +207,20 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
             }
           }
         }
-        scene.add(whole);
-        const reach = Math.max(size.x, size.y, size.z);
-        camera.position.set(reach * 0.75, reach * 0.45, reach * 1.35);
-        controls.minDistance = reach * 0.5;
-        controls.maxDistance = reach * 4;
-        controls.update();
+        scene.add(groups.stick, groups.throttle);
+        show.current = (v: HandView) => {
+          groups.stick.visible = v === "stick";
+          groups.throttle.visible = v === "throttle";
+          shown = [groups[v]];
+          // the throttle is long and low: stand a little further back from it
+          const reach = reachOf[v] * (v === "throttle" ? 1.3 : 1);
+          controls.target.set(0, 0, 0);
+          camera.position.set(reach * 0.75, reach * 0.45, reach * 1.35);
+          controls.minDistance = reach * 0.5;
+          controls.maxDistance = reach * 4;
+          controls.update();
+        };
+        show.current(viewRef.current);
         setLoading(false);
       })
       .catch((e) => setError(`Couldn't load the stick model: ${e}`));
@@ -267,7 +287,8 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
       }
 
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(scene.children, true)[0];
+      // only the device on show: the hidden one still sits in the scene
+      const hit = raycaster.intersectObjects(shown, true)[0];
       const name = hit ? (hit.object.userData.part as string | undefined) ?? null : null;
       if (name !== picked) {
         picked = name;
@@ -295,15 +316,20 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => show.current(view), [view]);
+
   // the knob (20-23) holds one of its buttons the whole time: that isn't a press
-  const pressed = (stick?.buttons ?? []).flatMap((b, i) => (b.pressed && !KNOB.includes(i + 1) ? [i + 1] : []));
+  const pressed = view === "throttle"
+    ? (throttle?.buttons ?? []).flatMap((b, i) => (b.pressed ? [THROTTLE_FIRST + i + 1] : []))
+    : (stick?.buttons ?? []).flatMap((b, i) => (b.pressed && !KNOB.includes(i + 1) ? [i + 1] : []));
   const hoveredButton = hovered ? partOf.current.get(hovered) ?? null : null;
 
   return (
     <div className="stick-view">
       <div className="sv-canvas" ref={host}>
-        {loading && !error && <div className="sv-note">Loading the stick...</div>}
+        {loading && !error && <div className="sv-note">Loading the {view === "throttle" ? "throttle" : "stick"}...</div>}
         {error && <div className="sv-note warn">{error}</div>}
+        {!loading && view === "throttle" && noThrottle && <div className="sv-note warn">The throttle's model (solr_throttle.glb) didn't load.</div>}
       </div>
       <div className="sv-bar">
         <span className="muted">Drag to turn · wheel to zoom · click a button to edit it</span>

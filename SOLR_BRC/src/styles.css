@@ -691,3 +691,4 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .help-faq dt { font-weight: 600; margin-top: 12px; }
 .help-faq dt:first-child { margin-top: 0; }
 .help-faq dd { margin: 3px 0 0; color: var(--muted); }
+.mx-hands small { opacity: 0.6; margin-left: 3px; font-size: 11px; }
