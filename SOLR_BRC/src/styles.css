@@ -710,3 +710,14 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-bank { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; }
 .mx-banks .mx-preview { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mx-banks .mx-hands { flex: none; }
+.hp-need { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+.hp-need:last-child { border-bottom: none; }
+.hp-need > i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #6b7280; align-self: flex-start; margin-top: 6px; }
+.hp-need.ok > i { background: #39ff6a; box-shadow: 0 0 8px #39ff6a; }
+.hp-need.bad > i { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+.hp-need-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hp-need-body b small { margin-left: 8px; font: 11px var(--mono); color: var(--muted); font-weight: 400; }
+.hp-need-body span { color: var(--muted); font-size: 13px; }
+.hp-need-body em { font-style: normal; font-size: 12px; color: var(--accent); }
+.hp-need.bad .hp-need-body em { color: var(--bad); }
+.hp-need-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex: none; max-width: 45%; }
