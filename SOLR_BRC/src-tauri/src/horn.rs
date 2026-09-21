@@ -513,41 +513,20 @@ fn at(s: &[f32], p: f64) -> f32 {
     s[i] * (1.0 - f) + s[i + 1] * f
 }
 
-/// The opening honk: an ordinary honk, then this much quiet before the tune.
-const INTRO_GAP: f64 = 0.6;
-const INTRO_HONK: f64 = 0.5;
-
 /// Every note on the horn, mixed into one track. `honks` shortest first, all
-/// at `rate`. With `intro`, the song opens with one ordinary honk - the horn at
-/// its own pitch, the honk nearest half a second - and a pause, so it starts
-/// out sounding like somebody just honking.
-pub fn render_notes(honks: &[Vec<f32>], rate: u32, base: f32, notes: &[Note], transpose: i32, speed: f32, intro: bool) -> Vec<f32> {
+/// at `rate`.
+pub fn render_notes(honks: &[Vec<f32>], rate: u32, base: f32, notes: &[Note], transpose: i32, speed: f32) -> Vec<f32> {
     let r = rate as f64;
     let speed = speed.clamp(0.25, 4.0) as f64;
-    let opener = if intro {
-        honks.iter().min_by(|a, b| {
-            let d = |h: &Vec<f32>| (h.len() as f64 / r - INTRO_HONK).abs();
-            d(a).total_cmp(&d(b))
-        })
-    } else {
-        None
-    };
-    // the tune starts after the opener and its pause (in output seconds)
-    let lead = opener.map_or(0.0, |h| h.len() as f64 / r + INTRO_GAP);
     let release = 0.05;
     let attack = (r * 0.005).max(1.0);
-    let end = lead + notes.iter().fold(0.0f64, |m, x| m.max((x.t as f64 + (x.d as f64).max(0.08)) / speed)) + 2.0;
+    let end = notes.iter().fold(0.0f64, |m, x| m.max((x.t as f64 + (x.d as f64).max(0.08)) / speed)) + 2.0;
     let mut out = vec![0.0f32; ((end.min(600.0)) * r) as usize + 1];
     if honks.is_empty() {
         return out;
     }
-    if let Some(h) = opener {
-        for (o, s) in out.iter_mut().zip(h.iter()) {
-            *o += s;
-        }
-    }
     for note in notes {
-        let start = ((lead + note.t as f64 / speed) * r) as usize;
+        let start = (note.t as f64 / speed * r) as usize;
         if start >= out.len() {
             continue;
         }
@@ -593,14 +572,14 @@ pub fn render_notes(honks: &[Vec<f32>], rate: u32, base: f32, notes: &[Note], tr
     out
 }
 
-pub fn render(notes: Vec<Note>, transpose: i32, speed: f32, intro: bool) -> Result<Rendered, String> {
+pub fn render(notes: Vec<Note>, transpose: i32, speed: f32) -> Result<Rendered, String> {
     let honks = load_honks();
     let rate = honks.first().map(|h| h.rate).ok_or("There is no horn - record it or restore the default.")?;
     if notes.is_empty() {
         return Err("No notes to play - pick at least one track.".into());
     }
     let set: Vec<Vec<f32>> = honks.into_iter().filter(|h| h.rate == rate).map(|h| h.m).collect();
-    let out = render_notes(&set, rate, settings().base, &notes, transpose, speed, intro);
+    let out = render_notes(&set, rate, settings().base, &notes, transpose, speed);
     write_wav(&song_path(), &out, rate)?;
     Ok(Rendered { seconds: out.len() as f32 / rate as f32, notes: notes.len() })
 }
@@ -690,7 +669,7 @@ mod tests {
         let horn = tone(200.0, rate, 1.0);
         let base = 69.0 + 12.0 * (200.0f32 / 440.0).log2(); // 200 Hz, between notes
         let notes = [Note { t: 0.0, d: 0.5, key: (base.round() as u8) + 12, vel: 127, track: 0 }];
-        let out = render_notes(&[horn], rate, base, &notes, 0, 1.0, false);
+        let out = render_notes(&[horn], rate, base, &notes, 0, 1.0);
         let heard = detect_pitch(&out[..(rate as usize / 2)], rate).unwrap();
         // the note asked for, not the horn's pitch plus an octave
         assert!((heard - (base.round() + 12.0)).abs() < 0.1, "heard {heard}");
@@ -705,31 +684,13 @@ mod tests {
         let long = tone(150.0, rate, 1.5);
         let base = 60.0;
         let short_note = [Note { t: 0.0, d: 0.15, key: 60, vel: 127, track: 0 }];
-        let out = render_notes(&[short.clone(), long.clone()], rate, base, &short_note, 0, 1.0, false);
+        let out = render_notes(&[short.clone(), long.clone()], rate, base, &short_note, 0, 1.0);
         let f = detect_pitch(&out[..(rate as f32 * 0.14) as usize], rate).unwrap();
         assert!((f - (69.0 + 12.0 * (300.0f32 / 440.0).log2())).abs() < 0.2, "short note played the short honk: {f}");
         let long_note = [Note { t: 0.0, d: 1.0, key: 60, vel: 127, track: 0 }];
-        let out = render_notes(&[short, long], rate, base, &long_note, 0, 1.0, false);
+        let out = render_notes(&[short, long], rate, base, &long_note, 0, 1.0);
         let f = detect_pitch(&out[(rate as f32 * 0.4) as usize..(rate as f32 * 0.7) as usize], rate).unwrap();
         assert!((f - (69.0 + 12.0 * (150.0f32 / 440.0).log2())).abs() < 0.2, "long note played the long honk: {f}");
-    }
-
-    #[test]
-    fn the_song_opens_with_a_plain_honk_then_the_tune() {
-        let rate = 48000;
-        let honk = tone(200.0, rate, 0.5);
-        let base = 69.0 + 12.0 * (200.0f32 / 440.0).log2();
-        let notes = [Note { t: 0.0, d: 0.5, key: (base.round() as u8) + 7, vel: 127, track: 0 }];
-        let out = render_notes(&[honk], rate, base, &notes, 0, 1.0, true);
-        let s = |a: f32, b: f32| &out[(a * rate as f32) as usize..(b * rate as f32) as usize];
-        // first the horn as it is ...
-        let first = detect_pitch(s(0.0, 0.45), rate).unwrap();
-        assert!((first - base).abs() < 0.1, "opener at the horn's own pitch: {first}");
-        // ... then quiet ...
-        assert!(loud(s(0.55, 1.05)) < 0.01, "a pause after it");
-        // ... then the tune, a fifth up
-        let tune = detect_pitch(s(1.15, 1.55), rate).unwrap();
-        assert!((tune - (base.round() + 7.0)).abs() < 0.1, "then the melody: {tune}");
     }
 
     #[test]
@@ -737,7 +698,7 @@ mod tests {
         let rate = 48000;
         let horn = tone(200.0, rate, 0.4);
         let notes = [Note { t: 0.0, d: 2.0, key: 60, vel: 127, track: 0 }];
-        let out = render_notes(&[horn], rate, 60.0, &notes, 0, 1.0, false);
+        let out = render_notes(&[horn], rate, 60.0, &notes, 0, 1.0);
         // still loud a second and a half in, well past the 0.4 s honk
         assert!(loud(&out[(rate as f32 * 1.5) as usize..(rate as f32 * 1.6) as usize]) > 0.3);
     }

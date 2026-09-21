@@ -597,8 +597,8 @@ async fn horn_midi(bytes: Vec<u8>) -> Result<horn::Song, String> {
     blocking(move || horn::parse_midi(&bytes)).await?
 }
 #[tauri::command]
-async fn horn_render(notes: Vec<horn::Note>, transpose: i32, speed: f32, intro: bool) -> Result<horn::Rendered, String> {
-    blocking(move || horn::render(notes, transpose, speed, intro)).await?
+async fn horn_render(notes: Vec<horn::Note>, transpose: i32, speed: f32) -> Result<horn::Rendered, String> {
+    blocking(move || horn::render(notes, transpose, speed)).await?
 }
 #[tauri::command]
 fn horn_play(game: bool) -> Result<(), String> {

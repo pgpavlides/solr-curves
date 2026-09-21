@@ -37,8 +37,6 @@ export default function HornPage() {
   const [on, setOn] = useState<Set<number>>(new Set());
   const [transpose, setTranspose] = useState(0);
   const [speed, setSpeed] = useState(100);
-  // every song opens with an ordinary honk, so nobody sees it coming
-  const [intro, setIntro] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ from: number; secs: number } | null>(null);
   const [now, setNow] = useState(0);
@@ -105,12 +103,12 @@ export default function HornPage() {
   const play = async (game: boolean) => {
     if (!horn?.has || !notes.length) return;
     setMsg(null);
-    const key = JSON.stringify([songName, [...on].sort(), transpose, speed, intro, horn.base, horn.custom, horn.honks.map((h) => h.seconds)]);
+    const key = JSON.stringify([songName, [...on].sort(), transpose, speed, horn.base, horn.custom, horn.honks.map((h) => h.seconds)]);
     try {
       let length = playing?.secs ?? 0;
       if (rendered.current !== key) {
         setBusy("Tuning the horn…");
-        const r = await hornRender(notes, transpose, speed / 100, intro);
+        const r = await hornRender(notes, transpose, speed / 100);
         rendered.current = key;
         length = r.seconds;
       }
@@ -260,9 +258,6 @@ export default function HornPage() {
             </button>
             <button className="ghost-btn" disabled={!horn?.has || !notes.length || !!busy} onClick={() => play(false)}>🎧 Only me</button>
             <button className="ghost-btn" onClick={stop}>■ Stop</button>
-            <label className="check" title="One ordinary honk and a pause first, so it starts out sounding like someone just honking">
-              <input type="checkbox" checked={intro} onChange={(e) => setIntro(e.target.checked)} /> Start with a normal honk
-            </label>
             {busy && <span className="muted">{busy}</span>}
             {playing && <span className="horn-now">{clock(now)} / {clock(playing.secs)}</span>}
           </div>
