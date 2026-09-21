@@ -48,6 +48,8 @@ export default function DevicesView() {
           // script; hiding anything else takes it out of games completely
           const scripted = /PID_(0422|0447)/i.test(d.hardware_id ?? "");
           const what = /PID_0447/i.test(d.hardware_id ?? "") ? "the throttle" : "the stick";
+          // a picture of it, rendered from T.A.R.G.E.T.'s own model (.testdata/snapdevices.mjs)
+          const pic = /PID_0447/i.test(d.hardware_id ?? "") ? "/devices/solr_throttle.png" : /PID_0422/i.test(d.hardware_id ?? "") ? "/devices/solr_stick.png" : null;
           const byScript = scripted && scriptRunning;
           const hidden = d.hid_enabled === false || byScript;
           return (
@@ -56,6 +58,7 @@ export default function DevicesView() {
                 <b>{d.oem_name ?? d.name ?? `Device ${d.serial}`}</b>
                 <span className={`tag ${hidden && !byScript ? "warn" : ""}`}>{byScript ? "✓ working through the script" : hidden ? "hidden from games" : "visible to games"}</span>
               </div>
+              {pic && <div className="dv-pic"><img src={pic} alt="" draggable={false} /></div>}
               <dl>
                 <dt>Hardware ID</dt><dd>{d.hardware_id ?? "—"}</dd>
                 <dt>Instance</dt><dd>{d.instance_id ?? "—"}</dd>
