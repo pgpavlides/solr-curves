@@ -657,6 +657,14 @@ async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> R
     blocking(move || devices::set_hid_enabled(&app, serial, enabled)).await?
 }
 
+/// Let go of everything outside the app before it goes: the raw feed, Caps
+/// Lock and the sounds, and the T.A.R.G.E.T. script (the stick plain again).
+fn release_all() {
+    hidraw::shutdown();
+    sound::shutdown();
+    target::shutdown();
+}
+
 /// Bring the main window back from the tray, in front.
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
@@ -672,14 +680,21 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     let show = MenuItem::with_id(app, "show", "Open Sol-R Curves", true, None::<&str>)?;
+    let restart = MenuItem::with_id(app, "restart", "Restart", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let menu = Menu::with_items(app, &[&show, &PredefinedMenuItem::separator(app)?, &restart, &quit])?;
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Sol-R Curves")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, e| match e.id.as_ref() {
             "show" => show_main(app),
+            "restart" => {
+                // the same tidy-up as quitting (script stopped, Caps Lock let go,
+                // the stick handed back), then a fresh start of the app
+                release_all();
+                app.restart();
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -766,9 +781,7 @@ pub fn run() {
         .run(|_app, event| {
             // one app: when it goes, the script goes, and the stick is plain again
             if let tauri::RunEvent::Exit = event {
-                hidraw::shutdown();
-                sound::shutdown();
-                target::shutdown();
+                release_all();
             }
         });
 }
