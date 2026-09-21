@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePads } from "./gamepad";
 import { loadState, emitEvent, onEvent } from "./bridge";
-import { AXES, AXIS_LABEL, type AxisCurve, type AxisName, defaultAxis, evaluator, migrate } from "./curve";
+import { AXES, AXIS_LABEL, ON_THROTTLE, type AxisCurve, type AxisName, defaultAxis, evaluator, migrate } from "./curve";
 
 /*
   The in-game overlay window: three small curve cards and the live stick.
@@ -22,7 +22,7 @@ export interface OverlayData {
 export const CARD: Record<OverlaySize, number> = { S: 120, M: 160, L: 210 };
 const PAD = 8, GAP = 8, LABEL = 20;
 export const overlayWindowSize = (s: OverlaySize) => ({
-  width: 3 * CARD[s] + 2 * GAP + 2 * PAD,
+  width: AXES.length * CARD[s] + (AXES.length - 1) * GAP + 2 * PAD,
   height: CARD[s] + LABEL + 2 * PAD,
 });
 
@@ -42,7 +42,7 @@ export default function Overlay() {
         const s = j.state as any;
         if (!s?.axes) return;
         const axes = Object.fromEntries(AXES.map((a) => [a, migrate(s.axes[a], a)])) as OverlayData["axes"];
-        setData((d) => d ?? { axes, input: { roll: 0, pitch: 1, yaw: 5, ...(s.input ?? {}) }, opacity: 0.85 });
+        setData((d) => d ?? { axes, input: { roll: 0, pitch: 1, yaw: 5, throttle: 2, ...(s.input ?? {}) }, opacity: 0.85 });
       })
       .catch(() => {});
     const resize = () => setWidth(window.innerWidth);
@@ -50,8 +50,8 @@ export default function Overlay() {
     return () => { off(); window.removeEventListener("resize", resize); };
   }, []);
 
-  const axes = data?.axes ?? { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw") };
-  const card = Math.max(60, Math.floor((width - 2 * PAD - 2 * GAP) / 3));
+  const axes = data?.axes ?? { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw"), throttle: defaultAxis("throttle") };
+  const card = Math.max(60, Math.floor((width - 2 * PAD - (AXES.length - 1) * GAP) / AXES.length));
 
   return (
     <div className="ov" style={{ opacity: data?.opacity ?? 0.85, padding: PAD, gap: GAP }}>
@@ -61,7 +61,7 @@ export default function Overlay() {
           name={a}
           c={axes[a]}
           size={card}
-          x={pads.stick && data ? pads.stick.axes[data.input[a]] ?? null : null}
+          x={data ? (ON_THROTTLE[a] ? pads.throttle : pads.stick)?.axes[data.input[a]] ?? null : null}
         />
       ))}
     </div>

@@ -28,13 +28,13 @@ export const BUILTINS: Preset[] = [
     name: "Default (tuned)",
     savedAt: "",
     builtin: true,
-    axes: { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw") },
+    axes: { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw"), throttle: defaultAxis("throttle") },
   },
   {
     name: "Linear",
     savedAt: "",
     builtin: true,
-    axes: { roll: linearAxis("roll"), pitch: linearAxis("pitch"), yaw: linearAxis("yaw") },
+    axes: { roll: linearAxis("roll"), pitch: linearAxis("pitch"), yaw: linearAxis("yaw"), throttle: linearAxis("throttle") },
   },
 ];
 

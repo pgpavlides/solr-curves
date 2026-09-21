@@ -92,20 +92,26 @@ export interface AxisCurve {
   invert: boolean;
 }
 
-export const AXES = ["roll", "pitch", "yaw"] as const;
+/** The order is the table order in hotas_curves.txt - the script reads it so. */
+export const AXES = ["roll", "pitch", "yaw", "throttle"] as const;
 export type AxisName = (typeof AXES)[number];
 
 export const AXIS_LABEL: Record<AxisName, string> = {
   roll: "Roll",
   pitch: "Pitch",
   yaw: "Yaw (twist)",
+  throttle: "Throttle",
 };
+
+/** Axes read from the Sol-R 6 Throttle rather than the stick. */
+export const ON_THROTTLE: Record<AxisName, boolean> = { roll: false, pitch: false, yaw: false, throttle: true };
 
 /** What each side of each control is, in the hand. DirectInput: forward = −. */
 export const SIDE_LABEL: Record<AxisName, Record<SideName, string>> = {
   roll: { neg: "Left", pos: "Right" },
   pitch: { neg: "Forward", pos: "Back" },
   yaw: { neg: "Twist left", pos: "Twist right" },
+  throttle: { neg: "Lower half", pos: "Upper half" },
 };
 
 export const NSAMP = 257;
@@ -116,10 +122,12 @@ const clone = <T,>(v: T): T => structuredClone(v);
 
 /** The default everyone starts from: the tuned profile that already works. */
 export function defaultSide(name: AxisName): Side {
+  // the throttle starts straight: no deadzone in the middle of its travel
+  const lever = name === "throttle";
   return {
     mode: "scurve",
-    deadzone: name === "yaw" ? 3 : 2,
-    curve: 2,
+    deadzone: lever ? 0 : name === "yaw" ? 3 : 2,
+    curve: lever ? 0 : 2,
     saturation: 0,
     outMax: 100,
     points: [[0, 0], [25, 15], [50, 38], [75, 67], [100, 100]],

@@ -90,7 +90,19 @@ struct State {
     /// the knob's last reported position (0-3), kept while it turns
     bank: Option<usize>,
     last_emit: Option<Instant>,
+    // the Sol-R 6 Throttle, read the same way (hidden from Windows too once
+    // the script uses it)
+    thr_id: Option<u32>,
+    thr_ranges: BTreeMap<u16, (i64, i64)>,
+    thr: RawStick,
+    thr_pressed: Vec<bool>,
+    thr_emit: Option<Instant>,
 }
+
+/// The throttle's buttons as the game sees them: after the stick's 44 (the
+/// script maps TBTN1..6 and its hats to DX45..DX58), so a sound or a macro on
+/// "button 45" is the throttle's first button everywhere.
+pub const THROTTLE_FIRST: u16 = 44;
 static STATE: Mutex<State> = Mutex::new(State {
     api: None,
     device_id: None,
@@ -99,6 +111,11 @@ static STATE: Mutex<State> = Mutex::new(State {
     pressed: Vec::new(),
     bank: None,
     last_emit: None,
+    thr_id: None,
+    thr_ranges: BTreeMap::new(),
+    thr: RawStick { device: String::new(), axes: [0.0; 8], buttons: Vec::new(), hat: None },
+    thr_pressed: Vec::new(),
+    thr_emit: None,
 });
 static APP: OnceLock<AppHandle> = OnceLock::new();
 
@@ -250,6 +267,7 @@ unsafe fn connect(st: &mut State) -> Result<String, String> {
 
     // the flightstick: the filtered device with an X axis whose name says so
     let mut chosen: Option<(u32, String, Vec<Capability>)> = None;
+    let mut throttle: Option<(u32, String, Vec<Capability>)> = None;
     for id in ids {
         let mut np: Ptr = std::ptr::null_mut();
         let name = if (api.get_device_name)(id, &mut np) == 0 { take_string(api, np).unwrap_or_default() } else { String::new() };
@@ -263,7 +281,12 @@ unsafe fn connect(st: &mut State) -> Result<String, String> {
             vec![]
         };
         let has_x = caps.iter().any(|c| c.usage_page == PAGE_GENERIC && c.usage == USAGE_X);
-        let is_stick = name.to_lowercase().contains("flightstick") || name.contains("0422");
+        let lower = name.to_lowercase();
+        if lower.contains("throttle") || name.contains("0447") {
+            throttle = Some((id, name, caps));
+            continue;
+        }
+        let is_stick = lower.contains("flightstick") || name.contains("0422");
         if has_x && (is_stick || chosen.is_none()) {
             chosen = Some((id, name, caps));
             if is_stick {
@@ -284,7 +307,83 @@ unsafe fn connect(st: &mut State) -> Result<String, String> {
     (api.set_polling)(id, 1);
     st.device_id = Some(id);
     st.stick.device = if name.is_empty() { format!("device {id}") } else { name.clone() };
+
+    // the throttle, when there is one: optional, the stick works without it
+    if let Some((tid, tname, tcaps)) = throttle {
+        st.thr_ranges = tcaps
+            .iter()
+            .filter(|c| c.usage_page == PAGE_GENERIC && (USAGE_X..USAGE_X + 8).contains(&c.usage))
+            .map(|c| (c.usage, (c.min as i64, c.max as i64)))
+            .collect();
+        if (api.set_read_values_callback)(tid, Some(on_throttle), std::ptr::null_mut()) == 0 {
+            (api.set_polling)(tid, 1);
+            st.thr_id = Some(tid);
+            st.thr.device = if tname.is_empty() { format!("device {tid}") } else { tname };
+        }
+    }
     Ok(st.stick.device.clone())
+}
+
+/// The throttle's callback: the same record layout as the stick's.
+unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
+    if data.is_null() || n == 0 {
+        return 0;
+    }
+    let vals = std::slice::from_raw_parts(data as *const Value, (n as usize).min(512));
+    let Ok(mut st) = STATE.try_lock() else { return 0 };
+    let mut downs: Vec<u16> = vec![];
+    for v in vals {
+        match v.usage_page {
+            PAGE_GENERIC if (USAGE_X..USAGE_X + 8).contains(&v.usage) => {
+                let (min, max) = st.thr_ranges.get(&v.usage).copied().unwrap_or((0, 65535));
+                let span = (max - min).max(1) as f32;
+                let x = ((v.value as i64 - min) as f32 / span) * 2.0 - 1.0;
+                st.thr.axes[(v.usage - USAGE_X) as usize] = x.clamp(-1.0, 1.0);
+            }
+            PAGE_GENERIC if v.usage == USAGE_HAT => st.thr.hat = Some(v.value),
+            PAGE_BUTTON if v.usage >= 1 && v.usage <= 64 => {
+                let i = v.usage as usize;
+                if st.thr_pressed.len() <= i {
+                    st.thr_pressed.resize(i + 1, false);
+                }
+                let down = v.value != 0;
+                if down && !st.thr_pressed[i] {
+                    downs.push(THROTTLE_FIRST + v.usage);
+                }
+                st.thr_pressed[i] = down;
+            }
+            _ => {}
+        }
+    }
+    // the throttle's buttons play and type too, in the bank the stick's knob is on
+    if !downs.is_empty() {
+        let bank = st.bank;
+        for b in downs {
+            crate::sound::press(b, bank);
+            crate::macros::press(b, bank);
+        }
+    }
+    st.thr.buttons = st
+        .thr_pressed
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| **p)
+        .map(|(i, _)| THROTTLE_FIRST + i as u16)
+        .collect();
+    let now = Instant::now();
+    if st.thr_emit.map_or(true, |t| now.duration_since(t) >= Duration::from_millis(8)) {
+        st.thr_emit = Some(now);
+        if let Some(app) = APP.get() {
+            let _ = app.emit("solr:raw-throttle", st.thr.clone());
+        }
+    }
+    0
+}
+
+/// The throttle's last reading, if it is connected.
+pub fn snapshot_throttle() -> Option<RawStick> {
+    let st = STATE.lock().unwrap();
+    st.thr_id.map(|_| st.thr.clone())
 }
 
 pub fn snapshot() -> Option<RawStick> {
@@ -296,12 +395,17 @@ pub fn shutdown() {
     if let Ok(mut st) = STATE.lock() {
         if let (Some(api), Some(id)) = (st.api.as_ref(), st.device_id) {
             unsafe {
+                if let Some(tid) = st.thr_id {
+                    (api.set_polling)(tid, 0);
+                    (api.set_read_values_callback)(tid, None, std::ptr::null_mut());
+                }
                 (api.set_polling)(id, 0);
                 (api.set_read_values_callback)(id, None, std::ptr::null_mut());
                 (api.uninitialize)();
             }
         }
         st.device_id = None;
+        st.thr_id = None;
         st.api = None;
     }
 }

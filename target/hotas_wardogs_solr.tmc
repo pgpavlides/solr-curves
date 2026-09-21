@@ -1,8 +1,8 @@
 // =============================================================================
-//  WARDOGS  -  Thrustmaster Sol-R [R] Flightstick
+//  WARDOGS  -  Thrustmaster Sol-R [R] Flightstick + Sol-R 6 Throttle
 //  T.A.R.G.E.T. script, driven live by the Sol-R Curves app (solr-curves).
 //
-//  Roll, pitch and yaw are shaped by lookup tables that the app writes to
+//  Roll, pitch, yaw and the throttle are shaped by lookup tables that the app writes to
 //  C:/SolR/hotas_curves.txt. The script re-reads that file every 250 ms while it
 //  runs, so a change in the app reaches the game within a quarter second,
 //  without restarting the script or WARDOGS. After loading a table it writes
@@ -11,8 +11,11 @@
 //  No table file yet: the built-in default is used (S-curve +2, 2% centre
 //  deadzone on roll and pitch, 3% on yaw - the tuned profile).
 //
-//  The Sol-R 6 Throttle is left alone: the game reads it directly.
-//  The stick appears in the game as "Thrustmaster Combined".
+//  The Sol-R 6 Throttle (needs T.A.R.G.E.T. 3.0.25.603 or later) joins in:
+//  its lever through the fourth table onto the Z axis, its buttons and hats
+//  onto DX45..DX62 - clear of the stick's DX1..DX44 and its POV hat, which
+//  T.A.R.G.E.T.'s default map would otherwise hand the throttle too.
+//  Both appear in the game as ONE device, "Thrustmaster Combined".
 //  Start this script BEFORE WARDOGS.
 // =============================================================================
 include "target.tmh"
@@ -22,18 +25,24 @@ alias ACK   = "C:/SolR/hotas_curves.ack";
 alias RMODE = "rb";
 alias WMODE = "wb";
 
-// Table layout: 3 axes (roll, pitch, yaw) x 257 samples over stick -100%..+100%.
-// File: <gen> <771 values, -32767..32767> <gen> #<log line>. The repeated
+// Table layout: 4 axes (roll, pitch, yaw, throttle) x 257 samples over -100%..+100%.
+// File: <gen> <1028 values, -32767..32767> <gen> #<log line>. The repeated
 // <gen> proves the file was read whole, not halfway through a write. The log
 // line after '#' is written by the app (T.A.R.G.E.T. has no clock of its own):
 // date, time and what changed, printed as-is when the table loads.
 define NSAMP   257
-define NTAB    771
+define NTAB    1028
 define POLL_ID 20000			// AutoRepeat handler id, clear of target.tmh's
 
-int crv[771];					// live tables
-int nxt[771];					// staging while reading
+int crv[1028];					// live tables
+int nxt[1028];					// staging while reading
 int gen = -1;					// table number currently loaded (-1 = built-in)
+
+// Sol-R 6 Throttle buttons and hats -> DX45..DX62, after the stick's 44
+int SolR6Map[] = {TBTN1,DX45, TBTN2,DX46, TBTN3,DX47, TBTN4,DX48, TBTN5,DX49, TBTN6,DX50,
+                     THAT1U,DX51, THAT1R,DX52, THAT1D,DX53, THAT1L,DX54,
+                     THAT3U,DX55, THAT3R,DX56, THAT3D,DX57, THAT3L,DX58,
+                     THAT2U,DX59, THAT2R,DX60, THAT2D,DX61, THAT2L,DX62};
 int rv;							// NextInt() result
 int note[200];					// the app's log line for the table being loaded
 int notelen;
@@ -41,7 +50,8 @@ int notelen;
 int main()
 {
 	// Init() looks for every Thrustmaster device it knows and waits on each
-	// missing one. Skip them all except the Sol-R [R] Flightstick (Sol_SolR).
+	// missing one. Skip them all except the Sol-R [R] Flightstick (Sol_SolR)
+	// and the Sol-R 6 Throttle (Sol_Throttle).
 	Configure(&Throttle, MODE_EXCLUDED); Configure(&Joystick, MODE_EXCLUDED); Configure(&JoystickF18, MODE_EXCLUDED); Configure(&LMFD, MODE_EXCLUDED);
 	Configure(&RMFD, MODE_EXCLUDED); Configure(&HCougar, MODE_EXCLUDED); Configure(&T16000, MODE_EXCLUDED); Configure(&T16000L, MODE_EXCLUDED);
 	Configure(&TWCSThrottle, MODE_EXCLUDED); Configure(&TFRPRudder, MODE_EXCLUDED); Configure(&TFRPHARudder, MODE_EXCLUDED); Configure(&A320Pilot, MODE_EXCLUDED);
@@ -52,17 +62,23 @@ int main()
 	Configure(&AVA_SolR, MODE_EXCLUDED); Configure(&AVA_SolRL, MODE_EXCLUDED); Configure(&Sol_F16, MODE_EXCLUDED); Configure(&Sol_F16L, MODE_EXCLUDED);
 	Configure(&Sol_F18, MODE_EXCLUDED); Configure(&Sol_F18L, MODE_EXCLUDED); Configure(&Sol_SolRL, MODE_EXCLUDED); Configure(&FarmStickXboxRight, MODE_EXCLUDED);
 	Configure(&FarmStickXboxLeft, MODE_EXCLUDED);
+	// added by T.A.R.G.E.T. 3.0.26: not here either
+	Configure(&AVA_Airbus, MODE_EXCLUDED); Configure(&AVA_AirbusL, MODE_EXCLUDED); Configure(&Sol_Airbus, MODE_EXCLUDED); Configure(&Sol_AirbusL, MODE_EXCLUDED);
+	Configure(&FarmStickPSLeft, MODE_EXCLUDED); Configure(&FarmStickPSRight, MODE_EXCLUDED);
 
 	if(Init(&EventHandle)) return 1;
 
-	// Roll, pitch and yaw are NOT MapAxis'd: EventHandle drives them from the
-	// tables. The rest pass straight through, as in the GUI profile.
+	// Roll, pitch, yaw and the throttle lever are NOT MapAxis'd: EventHandle
+	// drives them from the tables. The rest pass straight through.
 	MapAxis(&Sol_SolR, MS_LR,    DX_XROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look left/right
 	MapAxis(&Sol_SolR, MS_UD,    DX_YROT_AXIS,     AXIS_NORMAL, MAP_ABSOLUTE);	// look up/down
-	MapAxis(&Sol_SolR, THROTTLE, DX_Z_AXIS,        AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
-	MapAxis(&Sol_SolR, SLIDER0,  DX_THROTTLE_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
-	MapAxis(&Sol_SolR, DIAL,     DX_SLIDER_AXIS,   AXIS_NORMAL, MAP_ABSOLUTE);	// unused in WARDOGS
-	// buttons + hat: target.tmh already maps them 1:1 (DX1..DX44, hat -> POV)
+	// the stick base's own little lever, SLIDER0 and DIAL go nowhere: their
+	// Combined axes belong to the throttle now
+	MapAxis(&Sol_Throttle, TROCKER, DX_SLIDER_AXIS,   AXIS_NORMAL, MAP_ABSOLUTE);	// throttle rudder twist
+	MapAxis(&Sol_Throttle, TANT,    DX_THROTTLE_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);	// throttle thumbwheel
+	// stick buttons + hat: target.tmh maps them 1:1 (DX1..DX44, hat -> POV).
+	// throttle: moved to DX45..DX62 (its hat becomes 4 buttons - one POV only)
+	MapList(&Sol_Throttle, &SolR6Map);
 
 	// built-in default, computed with T.A.R.G.E.T.'s own S-curve function
 	int i = 0;
@@ -73,6 +89,7 @@ int main()
 		crv[i]         = AMAX * fcurve(x, 0, 0.02, 0, 0, 2);	// roll
 		crv[NSAMP+i]   = AMAX * fcurve(x, 0, 0.02, 0, 0, 2);	// pitch
 		crv[2*NSAMP+i] = AMAX * fcurve(x, 0, 0.03, 0, 0, 2);	// yaw
+		crv[3*NSAMP+i] = AMAX * x;								// throttle: straight
 		i = i + 1;
 	}
 
@@ -102,6 +119,7 @@ int Refresh()
 	DXAxis(DX_X_AXIS,    Shape(0, Sol_SolR[JOYX]));
 	DXAxis(DX_Y_AXIS,    Shape(1, Sol_SolR[JOYY]));
 	DXAxis(DX_ZROT_AXIS, Shape(2, Sol_SolR[ROCKER]));
+	DXAxis(DX_Z_AXIS,    Shape(3, Sol_Throttle[TTHR]));
 }
 
 // Next integer from the file into rv. 0 at end of file.
@@ -231,6 +249,14 @@ int EventHandle(int type, alias o, int x)
 		if(x == ROCKER)
 		{
 			DXAxis(DX_ZROT_AXIS, Shape(2, o[x]));
+			return 0;
+		}
+	}
+	if(&o == &Sol_Throttle)
+	{
+		if(x == TTHR)
+		{
+			DXAxis(DX_Z_AXIS, Shape(3, o[x]));
 			return 0;
 		}
 	}
