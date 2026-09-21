@@ -18,6 +18,8 @@ import { KNOB, PADS, SOLR_LED_MAP, type VoiceConfig } from "./voice";
 
 interface Props {
   stick: PadLike | null;
+  /** the Sol-R 6 Throttle, when connected: its buttons count from 45 here */
+  throttle?: PadLike | null;
   /** the bank being shown (not necessarily the knob's) */
   bank: number | null;
   cfg: VoiceConfig;
@@ -33,9 +35,24 @@ interface Props {
   model's btn1..btn23 and the grip model's btn_1..btn_21.
 */
 const GRIP_FIRST = 23;
+/*
+  The Sol-R 6 Throttle (VID_044F&PID_0447_SolRThrottle.xaml): its buttons land
+  in the game after the stick's, where the script puts them - BTN1-6 -> 45-50,
+  HAT1 -> 51-54, HAT2 -> 55-58, the 8-way POV -> 59-62 (up, right, down, left;
+  a diagonal is two of them).
+*/
+const THROTTLE_FIRST = 44;
+const THR_HAT: Record<string, number> = { U: 0, R: 1, D: 2, L: 3 };
+const THR_POV: Record<string, number[]> = { U: [59], R: [60], D: [61], L: [62], UR: [59, 60], DR: [61, 60], DL: [61, 62], UL: [59, 62] };
 const partNumber = (name: string): number | null => {
   const base = /^base:btn(\d+)$/i.exec(name);
   if (base) return Number(base[1]);
+  const tb = /^thr:BTN(\d+)$/.exec(name);
+  if (tb) return THROTTLE_FIRST + Number(tb[1]);
+  const th = /^thr:HAT([12])_([URDL])$/.exec(name);
+  if (th) return 51 + (Number(th[1]) - 1) * 4 + THR_HAT[th[2]];
+  const tp = /^thr:POV_([URDL]{1,2})$/.exec(name);
+  if (tp) return THR_POV[tp[1]]?.[0] ?? null;
   const grip = /^btn_(\d+)$/i.exec(name);
   return grip ? Number(grip[1]) + GRIP_FIRST : null;
 };
@@ -51,12 +68,15 @@ const HAT_PART = ["HAT_UP", "HAT_RIGHT", "HAT_DOWN", "HAT_LEFT"];
 /** a button under the pointer, or under your thumb */
 const HOT = "#ffd23f";
 
+/** The throttle, to the left of the stick as it sits on the desk. */
+const THR_AT = { x: -26, y: 0, z: 2 };
+
 /** Where the grip sits on the base: the two models have their own origins,
     and this is where the grip's skirt meets the socket. Found by eye on the
     model itself. */
 const FIT = { x: 0.1, y: 11.9, z: -0.8 };
 
-export default function StickView({ stick, bank, cfg, selected = null, onSelect }: Props) {
+export default function StickView({ stick, throttle = null, bank, cfg, selected = null, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const parts = useRef<Map<string, THREE.Mesh[]>>(new Map());
   /*
@@ -74,8 +94,8 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
   const arrowsRef = useRef(arrows);
   arrowsRef.current = arrows;
 
-  const live = useRef({ stick, bank, cfg, selected, hovered });
-  live.current = { stick, bank, cfg, selected, hovered };
+  const live = useRef({ stick, throttle, bank, cfg, selected, hovered });
+  live.current = { stick, throttle, bank, cfg, selected, hovered };
 
   useEffect(() => {
     const el = host.current;
@@ -135,10 +155,19 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
       }, undefined, rej));
 
     const whole = new THREE.Group();
-    Promise.all([load("/solr_base.glb", "base:"), load("/solr.glb", "")])
-      .then(([base, grip]) => {
+    Promise.all([
+      load("/solr_base.glb", "base:"),
+      load("/solr.glb", ""),
+      // the throttle is optional: without its model the stick still shows
+      load("/solr_throttle.glb", "thr:").catch(() => null),
+    ])
+      .then(([base, grip, thr]) => {
         grip.position.set(FIT.x, FIT.y, FIT.z);
         whole.add(base, grip);
+        if (thr) {
+          thr.position.set(THR_AT.x, THR_AT.y, THR_AT.z);
+          whole.add(thr);
+        }
         const box = new THREE.Box3().setFromObject(whole);
         const size = box.getSize(new THREE.Vector3());
         whole.position.sub(box.getCenter(new THREE.Vector3()));
@@ -192,9 +221,13 @@ export default function StickView({ stick, bank, cfg, selected = null, onSelect 
     const colour = new THREE.Color();
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const { stick: s, bank: b, cfg: c, selected: sel, hovered: hov } = live.current;
+      const { stick: s, throttle: t, bank: b, cfg: c, selected: sel, hovered: hov } = live.current;
       // the knob keeps one of 20-23 held: it would sit there lit for ever
       const down = new Set((s?.buttons ?? []).flatMap((x, i) => (x.pressed && !KNOB.includes(i + 1) ? [i + 1] : [])));
+      // the throttle's own buttons 1-14 are 45-58 here, its POV hat 59-62
+      (t?.buttons ?? []).forEach((x, i) => { if (x.pressed) down.add(THROTTLE_FIRST + i + 1); });
+      const pov = t?.hat ?? -1;
+      if (pov >= 0) down.add(59 + (pov % 4));
       const hat = s?.hat ?? -1;
 
       for (const [name, meshes] of parts.current) {
