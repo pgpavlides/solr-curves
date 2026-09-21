@@ -54,7 +54,7 @@ export default function DevicesView() {
             <div key={d.serial} className="dv-card">
               <div className="dv-title">
                 <b>{d.oem_name ?? d.name ?? `Device ${d.serial}`}</b>
-                <span className={`tag ${hidden ? "warn" : ""}`}>{byScript ? "hidden by the script" : hidden ? "hidden from games" : "visible to games"}</span>
+                <span className={`tag ${hidden && !byScript ? "warn" : ""}`}>{byScript ? "✓ working through the script" : hidden ? "hidden from games" : "visible to games"}</span>
               </div>
               <dl>
                 <dt>Hardware ID</dt><dd>{d.hardware_id ?? "—"}</dd>
@@ -87,11 +87,11 @@ export default function DevicesView() {
               {byScript ? (
                 <div className="dv-hide">
                   <div>
-                    <b>Hidden from games by the running script</b>
+                    <b>Working: the game gets {what} through your curves</b>
                     <p className="hint">
-                      T.A.R.G.E.T. takes {what} over while the curve script runs: games can only bind Thrustmaster Combined,
-                      so nothing can bypass your curves. Sol-R Curves still reads your hand through T.A.R.G.E.T. It comes back
-                      to Windows when the script stops.
+                      While the script runs, T.A.R.G.E.T. passes {what} to the game as Thrustmaster Combined, with your curves
+                      on it. That's why the game doesn't list the {what === "the throttle" ? "throttle" : "stick"} by its own name any more -
+                      bind everything to Thrustmaster Combined. It shows up under its own name again when the script stops.
                     </p>
                   </div>
                 </div>
