@@ -92,6 +92,9 @@ export default function HornPage() {
       rendered.current = "";
     } catch (e) { setMsg(String(e)); }
   };
+  const [find, setFind] = useState("");
+  const shown = HORN_SONGS.map((s, i) => ({ s, i })).filter(({ s }) =>
+    `${s.name} ${s.from}`.toLowerCase().includes(find.trim().toLowerCase()));
   const pickBuiltin = (i: number) => {
     const s = HORN_SONGS[i];
     setMsg(null);
@@ -204,8 +207,10 @@ export default function HornPage() {
 
         <section className="vv-panel horn-song">
           <h2><span className="horn-step">2</span> The song</h2>
+          <input className="horn-find" placeholder={`Find a song (${HORN_SONGS.length})…`} value={find} onChange={(e) => setFind(e.target.value)} />
           <div className="horn-row horn-songs">
-            {HORN_SONGS.map((s, i) => (
+            {shown.length === 0 && <em className="muted">No song matches "{find}"</em>}
+            {shown.map(({ s, i }) => (
               <button key={s.name} className={`horn-songbtn ${songName === s.name ? "on" : ""}`} onClick={() => pickBuiltin(i)}>
                 <b>{s.name}</b><small>{s.from}</small>
               </button>

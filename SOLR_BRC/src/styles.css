@@ -792,3 +792,4 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .horn-songbtn b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .horn-songbtn small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .horn-roll { height: 190px; }
+.horn-find { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; max-width: 280px; }

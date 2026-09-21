@@ -141,6 +141,136 @@ export const HORN_SONGS: BuiltinSong[] = [
     name: "William Tell Overture", from: "Rossini", beat: 0.12, // sixteenths
     tune: "G4/1 G4/1 G4/2 G4/1 G4/1 G4/2 G4/1 G4/1 C5/2 D5/2 E5/4 G4/1 G4/1 G4/2 G4/1 G4/1 G4/2 G4/1 G4/1 C5/2 D5/2 E5/4",
   },
+
+  // ---- memes, car horns and jingles
+  {
+    name: "All Star", from: "Smash Mouth (Shrek)", beat: 0.2, // eighths
+    tune: `F#4/1 C#5/0.5 A#4/0.5 A#4/1 G#4/1 F#4/1 F#4/1 B4/2 A#4/1 A#4/1 G#4/1 G#4/1 F#4/2
+      F#4/1 F#4/1 C#5/1 A#4/1 A#4/1 G#4/1 G#4/1 F#4/1 F#4/1 D#4/2 C#4/3`,
+  },
+  {
+    name: "Astronomia (Coffin Dance)", from: "Tony Igy / Vicetone", beat: 0.16, // eighths
+    tune: `G3/2 G3/1 D4/1 C4/2 A#3/2 A3/2 A3/1 A3/1 C4/2 A#3/1 A3/1
+      G3/2 G3/1 A#4/1 A4/1 A#4/1 A4/1 A#4/1 G3/2 G3/1 A#4/1 A4/1 A#4/1 A4/1 A#4/1`,
+  },
+  {
+    name: "Baby Shark", from: "Pinkfong", beat: 0.2, // eighths
+    tune: `D4/2 E4/2 G4/1 G4/1 G4/1 G4/0.5 G4/1 G4/0.5 G4/1 D4/2 E4/2 G4/1 G4/1 G4/1 G4/0.5 G4/1 G4/0.5 G4/1
+      D4/2 E4/2 G4/1 G4/1 G4/1 G4/0.5 G4/1 G4/0.5 G4/1 D4/2 E4/2 G4/2 G4/2 F#4/4`,
+  },
+  {
+    name: "We Are Number One", from: "LazyTown", beat: 0.17, // eighths
+    tune: `F4/2 C5/1 B4/0.5 C5/0.5 B4/0.5 C5/0.5 B4/1 C5/1 G#4/2 F4/2 F4/1 G#4/1 C5/1 C#5/2 G#4/2 C#5/2 D#5/2
+      C5/1 C#5/0.5 C5/0.5 C#5/0.5 C5/2`,
+  },
+  {
+    name: "The Sound of Silence", from: "Simon & Garfunkel", beat: 0.3, // eighths
+    tune: "D4/1 D4/1 F4/1 F4/1 A4/1 A4/1 G4/5 -/1 C4/1 C4/1 E4/1 E4/1 G4/1 G4/1 F4/5",
+  },
+  {
+    name: "Mii Channel", from: "Nintendo Wii", beat: 0.2, // eighths
+    tune: `F#4/1 A4/1 C#5/1 -/1 A4/1 -/1 F#4/1 D4/1 D4/1 D4/1 -/3
+      C#4/1 D4/1 F#4/1 A4/1 C#5/1 -/1 A4/1 -/1 F#4/1 E5/3 D#5/1 D5/2`,
+  },
+  {
+    name: "Secret found!", from: "The Legend of Zelda", beat: 0.13, // sixteenths
+    tune: "G4/1 F#4/1 D#4/1 A3/1 G#3/1 E4/1 G#4/1 C5/5",
+  },
+  {
+    name: "1-Up", from: "Super Mario Bros.", beat: 0.1,
+    tune: "E3/1 G3/1 E4/1 C4/1 D4/1 G4/3",
+  },
+  {
+    name: "Victory Fanfare", from: "Final Fantasy", beat: 0.13, // triplet eighths
+    tune: "C5/1 C5/1 C5/1 C5/3 G#4/3 A#4/3 C5/2 A#4/1 C5/6",
+  },
+  {
+    name: "Pac-Man", from: "Namco", beat: 0.12, // sixteenths
+    tune: `B3/1 B4/1 F#4/1 D#4/1 B4/0.5 F#4/1.5 D#4/2 C4/1 C5/1 G4/1 E4/1 C5/0.5 G4/1.5 E4/2
+      B3/1 B4/1 F#4/1 D#4/1 B4/0.5 F#4/1.5 D#4/2 D#4/0.5 E4/0.5 F4/1 F4/0.5 F#4/0.5 G4/1 G4/0.5 G#4/0.5 A4/1 B4/2`,
+  },
+  {
+    name: "Sad Trombone", from: "Wah wah wah waaah", beat: 0.25,
+    tune: "G4/2 F#4/2 F4/2 E4/8",
+  },
+  {
+    name: "Jeopardy! Think Music", from: "Merv Griffin", beat: 0.22, // eighths
+    tune: "C4/2 F4/2 C4/2 F3/2 C4/2 F4/2 C4/4 C4/2 F4/2 C4/2 F4/2 A4/3 G4/1 F4/1 E4/1 D4/1 C#4/1",
+  },
+  {
+    name: "Here Comes the Bride", from: "Wagner", beat: 0.3, // quarters
+    tune: "C4/2 F4/1.5 F4/0.5 F4/4 C4/2 G4/1.5 E4/0.5 F4/4 C4/2 F4/1.5 A#4/0.5 A#4/2 A4/1.5 G4/0.5 F4/1.5 E4/0.5 F4/1.5 G4/0.5 F4/4",
+  },
+  {
+    name: "Funeral March", from: "Chopin", beat: 0.35, // quarters
+    tune: "A#3/2 A#3/1.5 A#3/0.5 A#3/2 C#4/1.5 C4/0.5 C4/1.5 A#3/0.5 A#3/1.5 A3/0.5 A#3/4",
+  },
+  {
+    name: "The Entertainer", from: "Scott Joplin", beat: 0.28, // eighths
+    tune: "A3/0.5 A#3/0.5 B3/0.5 G4/1 B3/0.5 G4/1 B3/0.5 G4/3 G4/0.5 A4/0.5 A#4/0.5 B4/0.5 G4/0.5 A4/0.5 B4/1 F#4/0.5 A4/1 G4/3",
+  },
+  {
+    name: "La Cucaracha", from: "Car horn classic", beat: 0.3, // eighths
+    tune: "C4/0.5 C4/0.5 C4/0.5 F4/1.5 A4/1 C4/0.5 C4/0.5 C4/0.5 F4/1.5 A4/2 -/1 F4/1 F4/0.5 E4/0.5 E4/0.5 D4/0.5 D4/0.5 C4/3",
+  },
+  {
+    name: "Dixie (General Lee horn)", from: "The Dukes of Hazzard", beat: 0.3, // eighths
+    tune: "G4/0.5 E4/0.5 C4/1 C4/1 C4/0.5 D4/0.5 E4/0.5 F4/0.5 G4/1 G4/1 G4/1 E4/2",
+  },
+  {
+    name: "The Godfather", from: "Nino Rota", beat: 0.3, // quarters
+    tune: "D4/1 G4/1 A#4/1 A4/1 G4/1 A#4/1 G4/1 A4/1 G4/1 D#4/1 F4/1 D4/4",
+  },
+  {
+    name: "Mortal Kombat", from: "The Immortals", beat: 0.14, // eighths
+    tune: `A3/1 A3/1 C4/1 A3/1 D4/1 A3/1 E4/1 D4/1 C4/1 C4/1 E4/1 C4/1 G4/1 C4/1 E4/1 C4/1
+      G3/1 G3/1 B3/1 G3/1 C4/1 G3/1 D4/1 C4/1 B3/1 B3/1 D4/1 B3/1 E4/1 B3/1 D4/1 B3/1`,
+  },
+  {
+    name: "At Doom's Gate (E1M1)", from: "DOOM", beat: 0.12, // eighths
+    tune: `E4/1 E4/1 E5/1 E4/1 E4/1 D5/1 E4/1 E4/1 C5/1 E4/1 E4/1 A#4/1 E4/1 E4/1 B4/1 C5/1
+      E4/1 E4/1 E5/1 E4/1 E4/1 D5/1 E4/1 E4/1 C5/1 E4/1 E4/1 A#4/3`,
+  },
+  {
+    name: "Careless Whisper", from: "George Michael", beat: 0.14, // sixteenths
+    tune: "D5/1 C5/1 G4/1 D#4/5 C5/1 A#4/1 F4/1 D4/5 A#4/1 A4/1 F4/1 D4/1 C4/2 D4/6",
+  },
+  {
+    name: "My Heart Will Go On", from: "Titanic (recorder meme)", beat: 0.25, // eighths
+    tune: "E4/1 E4/1 E4/1 E4/1 D#4/1 E4/2 E4/1 D#4/1 E4/1 F#4/1 G#4/1 F#4/3",
+  },
+  {
+    name: "Cantina Band", from: "Star Wars", beat: 0.25, // eighths
+    tune: "A4/1 D5/1 A4/1 D5/1 A4/0.5 D5/1 A4/0.5 -/0.5 G#4/0.5 A4/1 A4/0.5 G#4/0.5 A4/0.5 G4/0.5 -/0.5 F#4/0.5 G4/0.5 F#4/0.5 F4/1.5 D4/2.5",
+  },
+  {
+    name: "When the Saints (sus)", from: "Oh When the Saints", beat: 0.25, // eighths
+    tune: "C4/1 E4/1 F4/1 G4/5 C4/1 E4/1 F4/1 G4/5 C4/1 E4/1 F4/1 G4/2 E4/2 C4/2 E4/2 D4/6",
+  },
+  {
+    name: "The Lick", from: "Jazz meme", beat: 0.2, // eighths
+    tune: "D4/1 E4/1 F4/1 G4/1 E4/2 C4/1 D4/4",
+  },
+  {
+    name: "The X-Files", from: "Mark Snow", beat: 0.3, // eighths
+    tune: "A3/1 E4/1 D4/1 E4/1 G4/1 E4/5 A3/1 E4/1 D4/1 E4/1 A4/1 E4/5",
+  },
+  {
+    name: "Jaws", from: "John Williams", beat: 0.2,
+    tune: "E4/4 F4/4 -/2 E4/3 F4/3 -/1 E4/1 F4/1 E4/1 F4/1 E4/0.5 F4/0.5 E4/0.5 F4/0.5 E4/0.5 F4/0.5 E4/0.5 F4/0.5 E4/4",
+  },
+  {
+    name: "The Addams Family", from: "Vic Mizzy (snap snap)", beat: 0.18, // eighths
+    tune: "C4/1 D4/1 E4/1 F4/1 -/4 D4/1 E4/1 F#4/1 G4/1 -/4 D4/1 E4/1 F#4/1 G4/1 D4/1 E4/1 F#4/1 G4/1 C4/1 D4/1 E4/1 F4/4",
+  },
+  {
+    name: "The Twilight Zone", from: "Marius Constant", beat: 0.16, // eighths
+    tune: "F#4/1 G4/1 F#4/1 D#4/1 F#4/1 G4/1 F#4/1 D#4/1 F#4/1 G4/1 F#4/1 D#4/1 F#4/1 G4/1 F#4/1 D#4/1",
+  },
+  {
+    name: "Charge!", from: "Stadium fanfare", beat: 0.14, // triplet eighths
+    tune: "C4/1 F4/1 A4/1 C5/2 A4/1 C5/4",
+  },
 ];
 
 /** A built-in song as the page's song: one track, "Melody". */
