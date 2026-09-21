@@ -186,6 +186,21 @@ export async function saveStyles(styles: unknown[]): Promise<void> {
 /* ---- Voice control: the Sol-R's RGB LEDs and the bank settings (Tauri only) */
 /** [LED group (0-based), r, g, b] */
 export type LedCmd = [number, number, number, number];
+/* ---- Horn Music (horn.rs) */
+export interface HornInfo { has: boolean; seconds: number; base: number; detected: number | null; peaks: number[] }
+export interface HornNote { t: number; d: number; key: number; vel: number; track: number }
+export interface HornTrack { index: number; name: string; notes: number; low: number; high: number; drums: boolean }
+export interface HornSong { tracks: HornTrack[]; notes: HornNote[]; seconds: number }
+export const hornInfo = () => invoke<HornInfo>("horn_info");
+export const hornRecord = (seconds: number) => invoke<HornInfo>("horn_record", { seconds });
+export const hornLoadFile = (bytes: Uint8Array, ext: string) => invoke<HornInfo>("horn_load_file", { bytes: Array.from(bytes), ext });
+export const hornSetBase = (base: number) => invoke<HornInfo>("horn_set_base", { base });
+export const hornMidi = (bytes: Uint8Array) => invoke<HornSong>("horn_midi", { bytes: Array.from(bytes) });
+export const hornRender = (notes: HornNote[], transpose: number, speed: number) =>
+  invoke<{ seconds: number; notes: number }>("horn_render", { notes, transpose, speed });
+export const hornPlay = (game: boolean) => invoke<void>("horn_play", { game });
+export const hornHear = () => invoke<void>("horn_hear");
+
 /** Open an https page in the default browser (links in the window don't). */
 export async function openUrl(url: string): Promise<void> {
   if (!inTauri) { window.open(url, "_blank"); return; }
