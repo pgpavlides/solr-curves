@@ -540,6 +540,7 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-bank small { color: var(--muted); font: 11px var(--mono); }
 .mx-bank.on { border-color: var(--bank); background: color-mix(in srgb, var(--bank) 14%, var(--panel)); }
 .mx-bank.knob::after { content: "knob"; font: 10px var(--mono); color: var(--accent); }
+.mx-bank.live::after { content: "on"; font: 10px var(--mono); color: var(--accent); }
 .mx-edit-head { display: flex; align-items: flex-start; gap: 10px; }
 .mx-edit-head > .mx-title { flex: 1; min-width: 0; }
 .mx-edit-head h2 { margin: 0; }
@@ -701,3 +702,11 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .ram { bottom: 5px; }
 .dv-pic { height: 200px; flex: none; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 10px; background: radial-gradient(ellipse at 50% 60%, #22392d 0%, transparent 70%); }
 .dv-pic img { height: 180px; width: 100%; object-fit: contain; filter: drop-shadow(0 10px 18px #0009); user-select: none; }
+.led-thr { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.led-thr h3 { margin: 0; font-size: 14px; }
+.led-thr .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* one row always: the tabs give way before the Joystick | Throttle switch drops a line */
+.mx-banks { flex-wrap: nowrap; min-width: 0; }
+.mx-bank { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; }
+.mx-banks .mx-preview { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mx-banks .mx-hands { flex: none; }

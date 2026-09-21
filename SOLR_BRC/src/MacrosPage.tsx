@@ -3,22 +3,25 @@ import LedMapping from "./LedMapping";
 import MacroPicker from "./MacroPicker";
 import SoundPicker from "./SoundPicker";
 import StickView, { type HandView } from "./StickView";
-import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
+import { type SoundStatus, ledSet, macroCheck, onEvent, setThrottleBank, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
 import type { PadLike } from "./gamepad";
-import { KNOB, PADS, SOLR_LED_MAP, type Macro, type MacroPreset, type VoiceConfig, bankLeds, soundLabel } from "./voice";
+import { type Bank, KNOB, PADS, SOLR_LED_MAP, THROTTLE_BANK_BUTTONS, type Macro, type MacroPreset, type VoiceConfig, bankLeds, isThrottleButton, soundLabel } from "./voice";
 
 /*
   One page for the whole stick: the model on the left, what the selected
   button does on the right.
 
-  The knob (buttons 20-23) picks the bank, and a bank is the whole layout -
-  every button's sound or macro. Turning the knob swaps all of them at once.
+  The knob (buttons 20-23) picks the stick's bank, and a bank is the whole
+  layout - every button's sound or macro. Turning the knob swaps all of them
+  at once. The throttle has banks of its own, stepped by holding its 48 / 49.
 */
 
 interface Props {
   stick: PadLike | null;
   throttle?: PadLike | null;
   bank: number | null;
+  /** the throttle's bank, as the backend has it */
+  thrBank: number;
   cfg: VoiceConfig;
   update: (c: VoiceConfig) => void;
   setHold: (h: boolean) => void;
@@ -26,8 +29,7 @@ interface Props {
 }
 
 /** Everything this bank has on its buttons, in button order. */
-function assignments(cfg: VoiceConfig, bank: number) {
-  const b = cfg.banks[bank];
+function assignments(b: Bank | undefined) {
   const out: { button: number; kind: "sound" | "macro"; what: string; sub?: string }[] = [];
   for (const [btn, file] of Object.entries(b?.pads ?? {})) {
     if (file) out.push({ button: Number(btn), kind: "sound", what: soundLabel(file) });
@@ -38,23 +40,32 @@ function assignments(cfg: VoiceConfig, bank: number) {
   return out.sort((a, b2) => a.button - b2.button);
 }
 
-export default function MacrosPage({ stick, throttle = null, bank, cfg, update, setHold, ledError }: Props) {
+export default function MacrosPage({ stick, throttle = null, bank, thrBank, cfg, update, setHold, ledError }: Props) {
   const [tab, setTab] = useState<number | null>(null); // null = follow the knob
   // turn the knob and the page follows it
   useEffect(() => setTab(null), [bank]);
-  const b = tab ?? bank ?? 0;
-  const eb = cfg.banks[b];
   const [selected, setSelected] = useState<number | null>(null);
   // the joystick and the throttle each get the page to themselves
   const [hand, setHandState] = useState<HandView>(() => {
     try { return localStorage.getItem("solr:macrohand") === "throttle" ? "throttle" : "stick"; } catch { return "stick"; }
   });
+  /*
+    Each has its own banks: the stick's follow the knob (a tab only previews
+    another), the throttle's are the app's to switch - its tab IS the bank,
+    the same as holding 48 / 49.
+  */
+  const which: "banks" | "throttleBanks" = hand === "throttle" ? "throttleBanks" : "banks";
+  const banks = (which === "banks" ? cfg.banks : cfg.throttleBanks) ?? [];
+  const stickBank = tab ?? bank ?? 0;
+  const b = which === "banks" ? stickBank : thrBank;
+  const onBank = which === "banks" ? bank : thrBank;
+  const eb = banks[b];
   const setHand = (h: HandView) => {
     setHandState(h);
     try { localStorage.setItem("solr:macrohand", h); } catch { /* only a convenience */ }
   };
   // the throttle's buttons are 45 and up, as the game counts them
-  const handOf = (button: number): HandView => (button > 44 ? "throttle" : "stick");
+  const handOf = (button: number): HandView => (isThrottleButton(button) ? "throttle" : "stick");
   /** pick a button and show the device it's on */
   const pick = (button: number | null) => {
     setSelected(button);
@@ -65,8 +76,8 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
   const renameBank = (i: number, name: string) => {
     const clean = name.trim();
     setRenaming(null);
-    if (!clean || clean === cfg.banks[i]?.name) return;
-    update({ ...cfg, banks: cfg.banks.map((x, j) => (j === i ? { ...x, name: clean } : x)) });
+    if (!clean || clean === banks[i]?.name) return;
+    update({ ...cfg, [which]: banks.map((x, j) => (j === i ? { ...x, name: clean } : x)) });
   };
   const [files, setFiles] = useState<string[]>([]);
   const [status, setStatus] = useState<SoundStatus | null>(null);
@@ -131,6 +142,7 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
   */
   useEffect(() => {
     const preview = tab !== null && tab !== bank;
+    // (the throttle has no preview: its tabs switch the bank for real)
     setHold(preview);
     if (preview) ledSet(bankLeds(cfg, tab)).catch(() => {});
   }, [tab, bank, cfg, setHold]);
@@ -139,8 +151,8 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
     macroCheck(steps).then((n) => { setCount(n); setProblem(null); }).catch((e) => setProblem(String(e)));
   }, [steps]);
 
-  const setBank = (patch: Partial<VoiceConfig["banks"][number]>) =>
-    update({ ...cfg, banks: cfg.banks.map((x, i) => (i === b ? { ...x, ...patch } : x)) });
+  const setBank = (patch: Partial<Bank>) =>
+    update({ ...cfg, [which]: banks.map((x, i) => (i === b ? { ...x, ...patch } : x)) });
   // a button does one thing: choosing a sound drops its macro, and the other
   // way round, or the sound would win and the Macro button would look dead
   const setSound = (file: string) => {
@@ -183,15 +195,17 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
   };
 
   const isPad = selected !== null && PADS.includes(selected);
-  const all = assignments(cfg, b);
+  const all = assignments(eb);
   const list = all.filter((a) => handOf(a.button) === hand);
-  const countOn = (h: HandView) => all.filter((a) => handOf(a.button) === h).length;
+  // each device counts in its own bank: the stick's the page shows, the throttle's that is on
+  const countOn = (h: HandView) =>
+    assignments(h === "stick" ? cfg.banks[stickBank] : cfg.throttleBanks?.[thrBank]).filter((a) => handOf(a.button) === h).length;
 
   return (
     <div className="mx-page">
       <div className="mx-left">
         <div className="mx-banks">
-          {cfg.banks.map((x, i) =>
+          {banks.map((x, i) =>
             renaming === i ? (
               <span key={i} className="mx-bank on editing" style={{ ["--bank" as string]: x.color }}>
                 <span className="mx-dot" />
@@ -204,17 +218,20 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
                   }} />
               </span>
             ) : (
-              <button key={i} className={`mx-bank ${i === b ? "on" : ""} ${bank === i ? "knob" : ""}`}
-                style={{ ["--bank" as string]: x.color }} onClick={() => setTab(i)} onDoubleClick={() => setRenaming(i)}
-                title={`${bank === i ? "The knob is on this bank." : `Knob position ${i + 1} (button ${20 + i}) - shown on the stick, but the knob decides what the buttons do.`} Double-click to rename.`}>
+              <button key={i} className={`mx-bank ${i === b ? "on" : ""} ${onBank === i ? (which === "banks" ? "knob" : "live") : ""}`}
+                style={{ ["--bank" as string]: x.color }} onDoubleClick={() => setRenaming(i)}
+                onClick={() => (which === "banks" ? setTab(i) : setThrottleBank(i).catch(() => {}))}
+                title={`${which === "throttleBanks"
+                  ? `${thrBank === i ? "The throttle is on this bank." : "Click to put the throttle on this bank."} On the throttle: hold ${THROTTLE_BANK_BUTTONS[0]} or ${THROTTLE_BANK_BUTTONS[1]} for 3 s.`
+                  : bank === i ? "The knob is on this bank." : `Knob position ${i + 1} (button ${20 + i}) - shown on the stick, but the knob decides what the buttons do.`} Double-click to rename.`}>
                 <span className="mx-dot" />
                 {x.name}
-                <small>{assignments(cfg, i).length}</small>
+                <small>{assignments(x).length}</small>
                 <span className="mx-pen" onClick={(e) => { e.stopPropagation(); setRenaming(i); }} title="Rename">✎</span>
               </button>
             ),
           )}
-          {tab !== null && tab !== bank && (
+          {which === "banks" && tab !== null && tab !== bank && (
             <>
               <button className="ghost-btn" onClick={() => setTab(null)}>Back to the knob</button>
               <span className="muted mx-preview">showing {cfg.banks[b]?.name} · the knob still runs {cfg.banks[bank ?? 0]?.name}</span>
@@ -229,7 +246,7 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
             ))}
           </div>
         </div>
-        <StickView stick={stick} throttle={throttle} bank={b} cfg={cfg} selected={selected} onSelect={pick} view={hand} />
+        <StickView stick={stick} throttle={throttle} bank={stickBank} cfg={cfg} selected={selected} onSelect={pick} view={hand} />
       </div>
 
       <div className="mx-right">

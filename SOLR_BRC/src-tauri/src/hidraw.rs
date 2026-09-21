@@ -99,7 +99,19 @@ struct State {
     thr_emit: Option<Instant>,
     /// last time we looked for the throttle (it can join the filter later)
     thr_tried: Option<Instant>,
+    /// the bank buttons (48, 49): which press this is, and whether holding it
+    /// has already changed the bank (then letting go does nothing)
+    thr_hold: [u64; 2],
+    thr_switched: [bool; 2],
 }
+
+/*
+  The throttle's bank buttons, as its own feed numbers them: 4 and 5 are the
+  game's 48 and 49. Held for thrbank::HOLD they step the throttle bank back
+  (48) or forward (49); let go sooner and they are ordinary buttons - their
+  sound or macro goes off when you let go instead of when you press.
+*/
+const THR_BANK_BUTTONS: [u16; 2] = [4, 5];
 
 /// The throttle's buttons as the game sees them: after the stick's 44 (the
 /// script maps TBTN1..6 and its hats to DX45..DX58), so a sound or a macro on
@@ -119,6 +131,8 @@ static STATE: Mutex<State> = Mutex::new(State {
     thr_pressed: Vec::new(),
     thr_emit: None,
     thr_tried: None,
+    thr_hold: [0; 2],
+    thr_switched: [false; 2],
 });
 static APP: OnceLock<AppHandle> = OnceLock::new();
 
@@ -386,6 +400,7 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
     let vals = std::slice::from_raw_parts(data as *const Value, (n as usize).min(512));
     let Ok(mut st) = STATE.try_lock() else { return 0 };
     let mut downs: Vec<u16> = vec![];
+    let mut holds: Vec<(usize, u64)> = vec![];
     for v in vals {
         match v.usage_page {
             PAGE_GENERIC if (USAGE_X..USAGE_X + 8).contains(&v.usage) => {
@@ -401,7 +416,16 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
                     st.thr_pressed.resize(i + 1, false);
                 }
                 let down = v.value != 0;
-                if down && !st.thr_pressed[i] {
+                let was = st.thr_pressed[i];
+                if let Some(k) = THR_BANK_BUTTONS.iter().position(|&b| b == v.usage) {
+                    if down && !was {
+                        st.thr_hold[k] += 1;
+                        st.thr_switched[k] = false;
+                        holds.push((k, st.thr_hold[k]));
+                    } else if !down && was && !st.thr_switched[k] {
+                        downs.push(THROTTLE_FIRST + v.usage);
+                    }
+                } else if down && !was {
                     downs.push(THROTTLE_FIRST + v.usage);
                 }
                 st.thr_pressed[i] = down;
@@ -409,9 +433,27 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
             _ => {}
         }
     }
-    // the throttle's buttons play and type too, in the bank the stick's knob is on
+    // still held when the time is up (and not let go and pressed again): change bank
+    for (k, press) in holds {
+        std::thread::spawn(move || {
+            std::thread::sleep(crate::thrbank::HOLD);
+            let held = {
+                let mut st = STATE.lock().unwrap();
+                let usage = THR_BANK_BUTTONS[k] as usize;
+                let held = st.thr_hold[k] == press && st.thr_pressed.get(usage).copied().unwrap_or(false);
+                if held {
+                    st.thr_switched[k] = true;
+                }
+                held
+            };
+            if held {
+                crate::thrbank::step(if k == 0 { -1 } else { 1 });
+            }
+        });
+    }
+    // the throttle's buttons play and type in the throttle's own bank
     if !downs.is_empty() {
-        let bank = st.bank;
+        let bank = Some(crate::thrbank::bank());
         for b in downs {
             crate::sound::press(b, bank);
             crate::macros::press(b, bank);

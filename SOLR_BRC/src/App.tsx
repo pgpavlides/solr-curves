@@ -540,7 +540,7 @@ export default function App() {
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}
       {inTauri && page === "macros" && (
-        <MacrosPage stick={pads.stick} throttle={pads.throttle} bank={voice.bank} cfg={voice.cfg} update={voice.update} setHold={voice.setHold} ledError={voice.ledError} />
+        <MacrosPage stick={pads.stick} throttle={pads.throttle} bank={voice.bank} thrBank={voice.thrBank} cfg={voice.cfg} update={voice.update} setHold={voice.setHold} ledError={voice.ledError} />
       )}
       <main style={inTauri && page !== "curves" ? { display: "none" } : undefined}>
         <section className="left">

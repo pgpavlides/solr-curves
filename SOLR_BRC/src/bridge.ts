@@ -186,6 +186,19 @@ export async function saveStyles(styles: unknown[]): Promise<void> {
 /* ---- Voice control: the Sol-R's RGB LEDs and the bank settings (Tauri only) */
 /** [LED group (0-based), r, g, b] */
 export type LedCmd = [number, number, number, number];
+/* The throttle's own banks (thrbank.rs): which is on, and its LED. */
+export async function throttleBank(): Promise<number> {
+  if (!inTauri) return 0;
+  return invoke<number>("throttle_bank");
+}
+export async function setThrottleBank(bank: number): Promise<number> {
+  return invoke<number>("set_throttle_bank", { bank });
+}
+export async function throttleLedPause(on: boolean): Promise<void> {
+  if (!inTauri) return;
+  return invoke("throttle_led_pause", { on });
+}
+
 export async function ledSet(leds: LedCmd[]): Promise<void> {
   if (!inTauri) return;
   await invoke("led_set", { leds });

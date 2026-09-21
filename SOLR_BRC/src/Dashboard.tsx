@@ -36,8 +36,9 @@ const ICONS: Record<Page, ReactNode> = {
 
 export default function Dashboard({ onOpen, onHelp, sync, preset, stick, cfg, bank }: Props) {
   const b = bank !== null ? cfg.banks[bank] : null;
-  const macros = cfg.banks.reduce((n, x) => n + Object.values(x.macros ?? {}).filter((m) => m?.steps).length, 0);
-  const sounds = cfg.banks.reduce((n, x) => n + Object.values(x.pads ?? {}).filter(Boolean).length, 0);
+  const every = [...cfg.banks, ...(cfg.throttleBanks ?? [])];
+  const macros = every.reduce((n, x) => n + Object.values(x.macros ?? {}).filter((m) => m?.steps).length, 0);
+  const sounds = every.reduce((n, x) => n + Object.values(x.pads ?? {}).filter(Boolean).length, 0);
   const live = sync === "live";
 
   const cards: { page: Page; title: string; blurb: string; status: string; ok: boolean; accent: string }[] = [
