@@ -57,6 +57,12 @@ export default function App() {
   });
   useEffect(() => { try { localStorage.setItem("solr:curveview", curveView); } catch { /* private window */ } }, [curveView]);
   const showAll = curveView !== "one";
+  // All curves: which of the other axes are hidden (the one being edited always shows)
+  const [hidden, setHidden] = useState<AxisName[]>(() => {
+    try { return JSON.parse(localStorage.getItem("solr:hiddencurves") ?? "[]"); } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem("solr:hiddencurves", JSON.stringify(hidden)); } catch { /* private window */ } }, [hidden]);
+  const toggleHidden = (a: AxisName) => setHidden((h) => (h.includes(a) ? h.filter((x) => x !== a) : [...h, a]));
   const [selected, setSelected] = useState<number | null>(null);
   const [sync, setSync] = useState<Sync>("loading");
   const [gen, setGen] = useState(0);
@@ -550,6 +556,17 @@ export default function App() {
                 {showAll && <i className="tab-swatch" style={{ background: AXIS_COLOUR[a] }} />}
                 {AXIS_LABEL[a]}
                 <small>{tabInfo(a)}</small>
+                {curveView === "overlay" && (
+                  a === axis ? (
+                    <span className="tab-eye on locked" title="The curve you're editing always shows"><EyeIcon open /></span>
+                  ) : (
+                    <span role="switch" aria-checked={!hidden.includes(a)} className={`tab-eye ${hidden.includes(a) ? "" : "on"}`}
+                      title={hidden.includes(a) ? `Show ${AXIS_LABEL[a]} on the graph` : `Hide ${AXIS_LABEL[a]} from the graph`}
+                      onClick={(e) => { e.stopPropagation(); toggleHidden(a); }}>
+                      <EyeIcon open={!hidden.includes(a)} />
+                    </span>
+                  )
+                )}
               </button>
             ))}
           </nav>
@@ -611,7 +628,7 @@ export default function App() {
               onNotice={setFlash}
               onSelect={setSelected}
               onPoints={onPoints}
-              others={showAll ? AXES.filter((a) => a !== axis).map((a) => ({
+              others={showAll ? AXES.filter((a) => a !== axis && !hidden.includes(a)).map((a) => ({
                 name: a, c: st.axes[a], color: AXIS_COLOUR[a],
                 // each axis moves on its own curve, read from its own input
                 stickX: handOf(a),
@@ -878,5 +895,16 @@ function Num({ v, step, on, disabled }: { v: number; step: number; on: (v: numbe
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setDraft(null); }}
     />
+  );
+}
+
+/** Show / hide, for the All curves toggles. */
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {!open && <path d="M4 4l16 16" />}
+    </svg>
   );
 }

@@ -722,3 +722,9 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .hp-need-body em { font-style: normal; font-size: 12px; color: var(--accent); }
 .hp-need.bad .hp-need-body em { color: var(--bad); }
 .hp-need-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex: none; max-width: 45%; }
+/* All curves: show / hide one axis, top right of its tab */
+.tabs button { position: relative; }
+.tab-eye { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 28px; height: 24px; display: grid; place-items: center; border-radius: 7px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); cursor: pointer; }
+.tab-eye:hover { color: var(--ink); border-color: var(--muted); }
+.tab-eye.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.tab-eye.locked { cursor: default; opacity: 0.55; }
