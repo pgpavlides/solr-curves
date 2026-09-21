@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AXES, AXIS_LABEL, type AxisCurve, type AxisName, defaultAxis, migrate } from "./curve";
 
 /*
-  Named snapshots of all three axes. Saved to hotas_presets.json next to the
+  Named snapshots of all four axes. Saved to hotas_presets.json next to the
   curve files. A preset holds curve SHAPES: loading one never changes an
   axis's Invert, same rule as copy/paste, so a preset made on a setup where
   pitch is inverted cannot silently un-invert it here.
@@ -23,6 +23,34 @@ const linearAxis = (a: AxisName): AxisCurve => {
   return { ...d, pos: s, neg: structuredClone(s) };
 };
 
+/*
+  A curve from a VKB NJoy32 equalizer table (VKBDevCfg, Response curve): ten
+  values for stick 10%..100%, each the gain against a straight line at that
+  point - 128 is linear, so the output there is stick x value / 128. The
+  Curve Wizard joins the points with straight lines, and so does this.
+*/
+const vkbAxis = (values: number[]): AxisCurve => {
+  const points: [number, number][] = [[0, 0], ...values.map((v, i): [number, number] => {
+    const x = (i + 1) * 10;
+    return [x, Math.round(((x * v) / 128) * 10) / 10];
+  })];
+  const s = { ...defaultAxis("roll").pos, mode: "points" as const, deadzone: 0, curve: 0, saturation: 0, outMax: 100, points, smooth: false };
+  return { linked: true, pos: s, neg: structuredClone(s), invert: false };
+};
+
+/*
+  Sim Controls' WARDOGS helicopter setup ("WARDOGS HOTAS Setup Guide | Better
+  Controls & Sensitivity", youtube.com/watch?v=wtRRZ8nPfFM, 7:09): his VKB
+  Gladiator EVO table - axis 1 roll, axis 2 pitch, axis 3 the twist; his
+  throttle (a TWCS) has no curve, so ours stays straight.
+*/
+const SIM_CONTROL_TY: Record<AxisName, number[] | null> = {
+  roll: [74, 75, 75, 75, 75, 75, 81, 94, 110, 128],
+  pitch: [74, 75, 75, 75, 75, 75, 81, 94, 110, 128],
+  yaw: [68, 68, 68, 68, 68, 68, 68, 82, 103, 128],
+  throttle: null,
+};
+
 export const BUILTINS: Preset[] = [
   {
     name: "Default (tuned)",
@@ -35,6 +63,15 @@ export const BUILTINS: Preset[] = [
     savedAt: "",
     builtin: true,
     axes: { roll: linearAxis("roll"), pitch: linearAxis("pitch"), yaw: linearAxis("yaw"), throttle: linearAxis("throttle") },
+  },
+  {
+    name: "Sim_Control_TY_Settings",
+    savedAt: "",
+    builtin: true,
+    axes: Object.fromEntries(AXES.map((a) => {
+      const v = SIM_CONTROL_TY[a];
+      return [a, v ? vkbAxis(v) : linearAxis(a)];
+    })) as Axes,
   },
 ];
 
@@ -167,7 +204,7 @@ export default function Presets({ presets, axis, active, modified, onLoad, onSav
               </div>
             ))}
           </div>
-          <p className="hint">Presets store the curves of all three axes. Invert stays per axis. Loading can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+          <p className="hint">Presets store the curves of all four axes. Invert stays per axis. Loading can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
         </div>
       )}
     </div>
