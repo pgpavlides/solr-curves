@@ -612,3 +612,6 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-pen:hover { color: #fff; }
 .mx-bank.editing { padding: 3px 10px 3px 14px; }
 .mx-bankrename { width: 120px; background: var(--bg); border: 1px solid var(--bank); border-radius: 7px; padding: 3px 8px; color: inherit; font-size: 13.5px; outline: none; }
+.curve-other { fill: none; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.75; stroke-dasharray: 6 4; pointer-events: none; }
+.tab-all { margin-left: auto; }
+.tab-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
