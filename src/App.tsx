@@ -555,9 +555,9 @@ export default function App() {
             <div className="curve-views" role="tablist" title="How the curves are shown">
               <button className={curveView === "one" ? "on" : ""} onClick={() => setCurveView("one")}>One</button>
               <button className={curveView === "overlay" ? "on" : ""} onClick={() => setCurveView("overlay")}
-                title="All three on one graph, the others dashed behind">All curves</button>
+                title="All four on one graph, the others dashed behind">All curves</button>
               <button className={curveView === "split" ? "on" : ""} onClick={() => setCurveView("split")}
-                title="All three side by side, each on its own graph">Side by side</button>
+                title="All four, each on its own graph">Side by side</button>
             </div>
           </nav>
 
