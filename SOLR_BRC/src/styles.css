@@ -613,8 +613,26 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-bank.editing { padding: 3px 10px 3px 14px; }
 .mx-bankrename { width: 120px; background: var(--bg); border: 1px solid var(--bank); border-radius: 7px; padding: 3px 8px; color: inherit; font-size: 13.5px; outline: none; }
 .curve-other { fill: none; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.75; stroke-dasharray: 6 4; pointer-events: none; }
-.tab-all { margin-left: auto; }
+
 .tab-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
 .live-other line { stroke: var(--c); stroke-width: 1; opacity: 0.35; stroke-dasharray: 3 4; }
 .live-other .dot { fill: var(--c); stroke: #0f1412; stroke-width: 1.5; }
 .live-other .ring { fill: none; stroke: var(--c); stroke-width: 1.8; opacity: 0.8; }
+.curve-views { margin-left: auto; display: flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+.curve-views button { background: none; border: none; border-radius: 7px; padding: 5px 11px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.curve-views button.on { background: #172a1f; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.mini-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: center; }
+.mini { display: flex; flex-direction: column; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 12px; padding: 10px; cursor: pointer; color: inherit; text-align: left; min-width: 0; }
+.mini:hover { border-color: var(--c); }
+.mini.on { box-shadow: 0 0 0 1px var(--c); }
+.mini-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.mini-head i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.mini-head span { font: 11px var(--mono); margin-left: auto; }
+.mini-svg { width: 100%; height: auto; display: block; }
+.mini-bg { fill: #0c110f; }
+.mini-gl { stroke: #ffffff14; stroke-width: 1; }
+.mini-axis { stroke: #ffffff38; stroke-width: 1; }
+.mini-curve { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linejoin: round; }
+.mini-live-line { stroke: var(--c); stroke-opacity: 0.3; stroke-width: 1; }
+.mini-dot { fill: var(--c); stroke: #0f1412; stroke-width: 1.5; }
+.mini-ring { fill: none; stroke: var(--game); stroke-width: 2.2; }
