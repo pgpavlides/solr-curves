@@ -13,6 +13,7 @@ export type Page = "curves" | "macros" | "script" | "devices";
 
 interface Props {
   onOpen: (p: Page) => void;
+  onHelp: () => void;
   sync: Sync;
   preset: string | null;
   stick: PadLike | null;
@@ -33,7 +34,7 @@ const ICONS: Record<Page, ReactNode> = {
   devices: icon(<><circle cx="12" cy="7" r="3" /><path d="M12 10v6M7 20h10l-1.5-4h-7z" /></>),
 };
 
-export default function Dashboard({ onOpen, sync, preset, stick, cfg, bank }: Props) {
+export default function Dashboard({ onOpen, onHelp, sync, preset, stick, cfg, bank }: Props) {
   const b = bank !== null ? cfg.banks[bank] : null;
   const macros = cfg.banks.reduce((n, x) => n + Object.values(x.macros ?? {}).filter((m) => m?.steps).length, 0);
   const sounds = cfg.banks.reduce((n, x) => n + Object.values(x.pads ?? {}).filter(Boolean).length, 0);
@@ -42,7 +43,7 @@ export default function Dashboard({ onOpen, sync, preset, stick, cfg, bank }: Pr
   const cards: { page: Page; title: string; blurb: string; status: string; ok: boolean; accent: string }[] = [
     {
       page: "curves", title: "Curves", accent: "#39ff6a",
-      blurb: "Shape how roll, pitch and yaw answer your hand",
+      blurb: "Shape how roll, pitch, yaw and the throttle answer your hand",
       status: preset ? `Preset ${preset}` : "No preset loaded", ok: !!preset,
     },
     {
@@ -81,6 +82,9 @@ export default function Dashboard({ onOpen, sync, preset, stick, cfg, bank }: Pr
           </button>
         ))}
       </div>
+      <button className="dash-help" onClick={onHelp}>
+        <b>?</b> Setting up WARDOGS - which axis and button is which, in what order to start things
+      </button>
     </div>
   );
 }

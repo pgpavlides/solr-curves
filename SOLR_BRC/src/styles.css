@@ -658,3 +658,36 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .dash-status i { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex: none; }
 .dash-status.ok { color: var(--fg, #e6f0ea); }
 .dash-status.ok i { background: #39ff6a; box-shadow: 0 0 8px #39ff6a; }
+.dash-help { display: flex; align-items: center; gap: 10px; margin-top: -20px; padding: 9px 16px; background: none; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); cursor: pointer; }
+.dash-help:hover { color: var(--ink); border-color: var(--muted); }
+.dash-help b { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--panel-2); color: var(--accent); }
+
+/* ---- Help (HelpPage.tsx): one readable column that scrolls on its own */
+.help { flex: 1; min-height: 0; overflow: auto; }
+.help-inner { max-width: 880px; margin: 0 auto; padding: 8px 4px 40px; display: flex; flex-direction: column; gap: 16px; }
+.help h1 { margin: 6px 0 0; font-size: 26px; }
+.help .lead { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.help .lead b { color: var(--ink); }
+.help-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; }
+.help-card h2 { margin: 0 0 10px; font-size: 16px; }
+.help-card p { margin: 0 0 10px; }
+.help-card ol, .help-card ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.help-card .hint { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.help-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.help-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.help-table td { padding: 7px 10px; border-bottom: 1px solid var(--grid); }
+.help-table td:last-child { font-family: var(--mono); color: var(--accent); }
+.help-table tr:last-child td { border-bottom: none; }
+.hp-check { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+.hp-check:last-child { border-bottom: none; }
+.hp-check > i { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; background: #6b7280; }
+.hp-check.ok > i { background: #39ff6a; box-shadow: 0 0 8px #39ff6a; }
+.hp-check.bad > i { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+.hp-check > div { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.hp-check span { color: var(--muted); font-size: 13px; }
+.hp-check button { margin-top: 6px; }
+.hp-check em { font-size: 12.5px; color: var(--accent); font-style: normal; }
+.help-faq { margin: 0; }
+.help-faq dt { font-weight: 600; margin-top: 12px; }
+.help-faq dt:first-child { margin-top: 0; }
+.help-faq dd { margin: 3px 0 0; color: var(--muted); }
