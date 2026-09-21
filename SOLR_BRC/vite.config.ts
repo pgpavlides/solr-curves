@@ -22,7 +22,7 @@ const ACK = path.join(DIR, "hotas_curves.ack");
 const PRESETS = path.join(DIR, "hotas_presets.json");
 const STYLES = path.join(DIR, "hotas_curve_styles.json");
 
-const NTAB = 3 * 257;
+const NTAB = 4 * 257; // roll, pitch, yaw, throttle
 const AMAX = 32767;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

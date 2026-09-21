@@ -31,6 +31,8 @@ export interface PadLike {
 
 export interface Pads {
   stick: PadLike | null;    // the physical Sol-R [R] Flightstick
+  /** the Sol-R 6 Throttle (044f:0447), when it is connected */
+  throttle: PadLike | null;
   combined: PadLike | null; // Thrustmaster Combined, 044f:ffff
   /** where `stick` comes from */
   stickSource: "target" | "windows" | null;
@@ -45,11 +47,15 @@ interface RawStick {
 }
 
 const isStick = (g: Gamepad) => /044f/i.test(g.id) && /0422/i.test(g.id);
+const isThrottle = (g: Gamepad) => /044f/i.test(g.id) && /0447/i.test(g.id);
 const isCombined = (g: Gamepad) => (/044f/i.test(g.id) && /ffff/i.test(g.id)) || /combined/i.test(g.id);
 
-function fromRaw(r: RawStick): PadLike {
-  const n = Math.max(44, ...r.buttons.map((b) => b));
-  const down = new Set(r.buttons);
+/** `first`: the raw feed numbers the throttle's buttons from 45 (as the game
+    sees them); its PadLike counts from its own 1, like a Windows gamepad. */
+function fromRaw(r: RawStick, first = 0): PadLike {
+  const own = r.buttons.map((b) => (first === 0 && b > 44 ? b - 44 : b));
+  const n = Math.max(first === 0 && r.buttons.some((b) => b > 44) ? 14 : 44, ...own);
+  const down = new Set(own);
   return {
     id: `${r.device} (through T.A.R.G.E.T.)`,
     axes: r.axes,
@@ -60,9 +66,10 @@ function fromRaw(r: RawStick): PadLike {
 }
 
 export function usePads(): Pads {
-  const [pads, setPads] = useState<Pads>({ stick: null, combined: null, stickSource: null, frame: 0 });
+  const [pads, setPads] = useState<Pads>({ stick: null, throttle: null, combined: null, stickSource: null, frame: 0 });
   const raf = useRef(0);
   const raw = useRef<RawStick | null>(null);
+  const rawThr = useRef<RawStick | null>(null);
 
   // the raw feed: connect (and keep trying until the stick is found)
   useEffect(() => {
@@ -75,13 +82,15 @@ export function usePads(): Pads {
           connected = s.connected;
           // show the stick straight away, before it first moves
           if (connected) invoke<RawStick | null>("raw_stick_snapshot").then((r) => { if (r && !raw.current) raw.current = r; }).catch(() => {});
+          if (connected) invoke<RawStick | null>("raw_throttle_snapshot").then((r) => { if (r && !rawThr.current) rawThr.current = r; }).catch(() => {});
         })
         .catch(() => {});
     };
     tryStart();
     const t = setInterval(tryStart, 3000);
     const off = onEvent<RawStick>("solr:raw-stick", (r) => { raw.current = r; });
-    return () => { clearInterval(t); off(); };
+    const offThr = onEvent<RawStick>("solr:raw-throttle", (r) => { rawThr.current = r; });
+    return () => { clearInterval(t); off(); offThr(); };
   }, []);
 
   useEffect(() => {
@@ -89,16 +98,19 @@ export function usePads(): Pads {
     const tick = () => {
       const all = navigator.getGamepads?.() ?? [];
       let winStick: Gamepad | null = null;
+      let winThr: Gamepad | null = null;
       let combined: Gamepad | null = null;
       for (const g of all) {
         if (!g) continue;
         if (isStick(g)) winStick = g;
+        else if (isThrottle(g)) winThr = g;
         else if (isCombined(g)) combined = g;
       }
       const r = raw.current;
       frame++;
       setPads({
         stick: r ? fromRaw(r) : winStick,
+        throttle: rawThr.current ? fromRaw(rawThr.current, 0) : winThr,
         combined,
         stickSource: r ? "target" : winStick ? "windows" : null,
         frame,

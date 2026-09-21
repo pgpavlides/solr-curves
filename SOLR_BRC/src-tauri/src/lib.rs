@@ -27,7 +27,8 @@ use serde_json::Value;
 use std::{fs, path::PathBuf, thread, time::Duration};
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
-const NTAB: usize = 3 * 257;
+/// roll, pitch, yaw and the Sol-R 6 Throttle's lever, 257 samples each
+const NTAB: usize = 4 * 257;
 const AMAX: i32 = 32767;
 
 /*
@@ -209,7 +210,45 @@ async fn save_styles(styles: Value) -> Result<(), String> {
   and offers to move those bindings over.
 */
 const PHYSICAL: &str = "044F:0422:Sol-R [R] Flightstick";
+/// The Sol-R 6 Throttle, which the script now drives too: T.A.R.G.E.T. hides
+/// it from Windows, so bindings on it go dead unless they move to Combined.
+const THROTTLE_DEV: &str = "044F:0447:Sol-R 6 Throttle";
 const COMBINED: &str = "044F:FFFF:Thrustmaster Combined";
+
+/*
+  Where the throttle's inputs land in Combined (hotas_wardogs_solr.tmc):
+  buttons and hats move up by 44, after the stick's; its lever is Z (axis 2
+  either way), its twist RZ -> Combined's slider (axis 7), its thumbwheel ->
+  Combined's throttle axis (6). The game counts axes and buttons from 0.
+*/
+const THROTTLE_BUTTON_SHIFT: i64 = 44;
+fn throttle_axis_in_combined(raw: i64) -> Option<i64> {
+    match raw {
+        2 => Some(2), // TTHR, the lever -> DX_Z
+        5 => Some(7), // TROCKER, the twist -> DX_SLIDER
+        _ => None,    // the throttle's mini-stick etc. aren't passed on
+    }
+}
+
+/// Rewrite one settings line from the throttle to Combined, renumbering what
+/// it points at. None when the line can't be moved (an input not passed on).
+fn move_throttle_line(line: &str) -> Option<String> {
+    let key = format!("DeviceIdentifier=\"{THROTTLE_DEV}\",");
+    let at = line.find(&key)?;
+    let rest = &line[at + key.len()..];
+    let eq = rest.find('=')?;
+    let field = &rest[..eq];
+    let digits: String = rest[eq + 1..].chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+    let n: i64 = digits.parse().ok()?;
+    let to = if line.trim_start().starts_with("ActionBindings=") {
+        if n < 0 { return None; }
+        n + THROTTLE_BUTTON_SHIFT
+    } else {
+        throttle_axis_in_combined(n)?
+    };
+    let tail = &rest[eq + 1 + digits.len()..];
+    Some(format!("{}DeviceIdentifier=\"{COMBINED}\",{field}={to}{tail}", &line[..at]))
+}
 const GAME_EXE: &str = "WardogsClient-Win64-Shipping.exe";
 
 fn game_ini() -> Option<PathBuf> {
@@ -237,7 +276,7 @@ fn game_running() -> bool {
 /// Actions in a GameUserSettings.ini that read the physical stick.
 fn physical_actions(ini: &str) -> Vec<String> {
     ini.lines()
-        .filter(|l| l.contains(PHYSICAL))
+        .filter(|l| l.contains(PHYSICAL) || l.contains(THROTTLE_DEV))
         .map(|l| match l.find("Action=") {
             // ActionBindings=(Action=Fire,Binding=(...))
             Some(i) => l[i + 7..].split(|c| c == ',' || c == ')').next().unwrap_or("?").to_string(),
@@ -266,8 +305,9 @@ async fn game_bindings() -> Result<GameBindings, String> {
     .await
 }
 
-/// Move every physical-stick binding to Thrustmaster Combined. Axis and button
-/// numbers stay the same: the script passes both through 1:1.
+/// Move every binding on the physical stick or throttle to Thrustmaster
+/// Combined. The stick's numbers stay as they are (the script passes them
+/// 1:1); the throttle's are renumbered to where the script puts them.
 #[tauri::command]
 async fn fix_game_bindings() -> Result<usize, String> {
     blocking(fix_game_bindings_now).await?
@@ -279,13 +319,39 @@ fn fix_game_bindings_now() -> Result<usize, String> {
         return Err("Close WARDOGS first - it rewrites its settings when it exits".into());
     }
     let ini = fs::read_to_string(&p).map_err(|e| e.to_string())?;
-    let n = ini.matches(PHYSICAL).count();
+    let (fixed, n) = fix_bindings(&ini);
     if n == 0 {
         return Ok(0);
     }
     fs::copy(&p, p.with_file_name("GameUserSettings.before_solr_fix.ini")).map_err(|e| e.to_string())?;
-    fs::write(&p, ini.replace(PHYSICAL, COMBINED)).map_err(|e| e.to_string())?;
+    fs::write(&p, fixed).map_err(|e| e.to_string())?;
     Ok(n)
+}
+
+/// The settings with every stick and throttle binding moved to Combined, and
+/// how many moved. Lines keep their own line endings.
+fn fix_bindings(ini: &str) -> (String, usize) {
+    let mut n = 0;
+    let out: Vec<String> = ini
+        .split_inclusive('\n')
+        .map(|l| {
+            if l.contains(PHYSICAL) {
+                n += 1;
+                l.replace(PHYSICAL, COMBINED)
+            } else if l.contains(THROTTLE_DEV) {
+                match move_throttle_line(l) {
+                    Some(m) => {
+                        n += 1;
+                        m
+                    }
+                    None => l.to_string(),
+                }
+            } else {
+                l.to_string()
+            }
+        })
+        .collect();
+    (out.concat(), n)
 }
 
 /*
@@ -476,6 +542,12 @@ fn raw_stick_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot()
 }
 
+/// The Sol-R 6 Throttle's raw values (through T.A.R.G.E.T.'s filter), if connected.
+#[tauri::command]
+fn raw_throttle_snapshot() -> Option<hidraw::RawStick> {
+    hidraw::snapshot_throttle()
+}
+
 /// Voice control settings (`hotas_voice.json`): banks, LED colours, the LED map.
 #[tauri::command]
 fn voice_load() -> Value {
@@ -664,7 +736,8 @@ pub fn run() {
             macro_check,
             stick_suppress,
             sound_repair_cable,
-            raw_stick_snapshot
+            raw_stick_snapshot,
+            raw_throttle_snapshot
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
@@ -698,6 +771,34 @@ pub fn run() {
                 target::shutdown();
             }
         });
+}
+
+#[cfg(test)]
+mod bindings_tests {
+    use super::*;
+
+    #[test]
+    fn throttle_bindings_move_to_combined_renumbered() {
+        let ini = concat!(
+            "Throttle=(DeviceIdentifier=\"044F:0447:Sol-R 6 Throttle\",_aaaajcpgpllhacnlfdnkg=2,bInvert=True,Positive=(DeviceIdentifier=\"\",_aaaaljahlggohoapfcfef=-1))\r\n",
+            "ActionBindings=(Action=Horn,Binding=(DeviceIdentifier=\"044F:0447:Sol-R 6 Throttle\",_aaaaljahlggohoapfcfef=0))\r\n",
+            "ActionBindings=(Action=DeploySupplyCrate,Binding=(DeviceIdentifier=\"044F:0447:Sol-R 6 Throttle\",_aaaaljahlggohoapfcfef=1))\r\n",
+            "ActionBindings=(Action=Fire,Binding=(DeviceIdentifier=\"044F:0422:Sol-R [R] Flightstick\",_aaaaljahlggohoapfcfef=23))\r\n",
+            "Other=1\r\n",
+        );
+        let (out, n) = fix_bindings(ini);
+        assert_eq!(n, 4);
+        assert!(out.contains("Throttle=(DeviceIdentifier=\"044F:FFFF:Thrustmaster Combined\",_aaaajcpgpllhacnlfdnkg=2,bInvert=True"), "{out}");
+        assert!(out.contains("Action=Horn,Binding=(DeviceIdentifier=\"044F:FFFF:Thrustmaster Combined\",_aaaaljahlggohoapfcfef=44))"), "{out}");
+        assert!(out.contains("Action=DeploySupplyCrate,Binding=(DeviceIdentifier=\"044F:FFFF:Thrustmaster Combined\",_aaaaljahlggohoapfcfef=45))"));
+        assert!(out.contains("Action=Fire,Binding=(DeviceIdentifier=\"044F:FFFF:Thrustmaster Combined\",_aaaaljahlggohoapfcfef=23))"), "the stick keeps its numbers");
+        assert!(!out.contains("0447"));
+        assert!(out.ends_with("Other=1\r\n"), "the rest untouched, line endings kept");
+        // the mini-stick (axis 0) isn't passed on by the script: left alone
+        let (same, m) = fix_bindings("X=(DeviceIdentifier=\"044F:0447:Sol-R 6 Throttle\",_aaaajcpgpllhacnlfdnkg=0,b=1)\n");
+        assert_eq!(m, 0);
+        assert!(same.contains("0447"));
+    }
 }
 
 #[cfg(test)]
@@ -783,7 +884,8 @@ mod tests {
             r#"ActionBindings=(Action=Flares,Binding=(DeviceIdentifier="044F:0422:Sol-R [R] Flightstick",_y=25))"#,
         ]
         .join("\r\n");
-        assert_eq!(physical_actions(&ini), vec!["Roll", "Yaw", "Flares"]);
+        // the throttle counts now: the script drives it, so T.A.R.G.E.T. hides it
+        assert_eq!(physical_actions(&ini), vec!["Roll", "Yaw", "Throttle", "Flares"]);
     }
 
     fn bad_table_rejected() -> bool {

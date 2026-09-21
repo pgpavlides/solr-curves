@@ -14,7 +14,7 @@ import Styles, { type Style } from "./Styles";
 import { type GameBindings, emitEvent, fixGameBindings, gameBindings, inTauri, loadPresets, loadState, loadStyles, saveStyles, onEvent, readAck, savePresets, saveState, setOverlay } from "./bridge";
 import { type OverlayData, type OverlaySize, overlayWindowSize } from "./Overlay";
 import {
-  AXES, AXIS_LABEL, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
+  AXES, AXIS_LABEL, ON_THROTTLE, SIDE_LABEL, type AxisCurve, type AxisName, type Pt, type Side, type SideName,
   SHAPES, defaultAxis, evaluator, migrate, scurveToPoints, sideEvaluator, table,
 } from "./curve";
 
@@ -25,8 +25,9 @@ interface State {
 }
 
 const initial = (): State => ({
-  axes: { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw") },
-  input: { roll: 0, pitch: 1, yaw: 5 },
+  axes: { roll: defaultAxis("roll"), pitch: defaultAxis("pitch"), yaw: defaultAxis("yaw"), throttle: defaultAxis("throttle") },
+  // raw axis numbers: the stick's X, Y and twist (RZ); the throttle's lever is its Z
+  input: { roll: 0, pitch: 1, yaw: 5, throttle: 2 },
 });
 
 const MAX_POINTS = 10;
@@ -34,7 +35,7 @@ const MAX_POINTS = 10;
 
 
 /** each axis's colour when all the curves are drawn together */
-const AXIS_COLOUR: Record<AxisName, string> = { roll: "#39ff6a", pitch: "#2f9bff", yaw: "#ffb020" };
+const AXIS_COLOUR: Record<AxisName, string> = { roll: "#39ff6a", pitch: "#2f9bff", yaw: "#ffb020", throttle: "#ff5fb4" };
 
 export default function App() {
   const [st, setSt] = useState<State>(initial);
@@ -161,7 +162,8 @@ export default function App() {
     if (!loaded.current) return;
     const t = setTimeout(async () => {
       const g = Math.floor(Date.now() / 100) % 1_000_000_000;
-      const tbl = [...table(st.axes.roll), ...table(st.axes.pitch), ...table(st.axes.yaw)];
+      // in AXES order - roll, pitch, yaw, throttle - which is how the script reads them
+      const tbl = AXES.flatMap((a) => table(st.axes[a]));
       // what changed since the table T.A.R.G.E.T. last got, for its console log
       const note = pendingNote.current ?? logLine(lastSent.current, st.axes);
       setSync("saving");
@@ -273,9 +275,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
-  // ---- live values
+  // ---- live values: the throttle lever is read from the throttle, the rest from the stick
+  const handPad = (a: AxisName) => (ON_THROTTLE[a] ? pads.throttle : pads.stick);
+  const handOf = (a: AxisName) => handPad(a)?.axes[st.input[a]] ?? null;
   const idx = st.input[axis];
-  const stickX = pads.stick ? pads.stick.axes[idx] ?? null : null;
+  const stickX = handOf(axis);
   const combinedY = pads.combined ? pads.combined.axes[idx] ?? null : null;
   const f = useMemo(() => evaluator(c), [c]);
   const expected = stickX === null ? null : f(stickX);
@@ -584,7 +588,7 @@ export default function App() {
               <div className="mini-grid">
                 {AXES.map((a) => (
                   <MiniGraph key={a} title={AXIS_LABEL[a]} c={st.axes[a]} color={AXIS_COLOUR[a]} range={range}
-                    stickX={pads.stick ? pads.stick.axes[st.input[a]] ?? null : null}
+                    stickX={handOf(a)}
                     combinedY={pads.combined ? pads.combined.axes[st.input[a]] ?? null : null}
                     active={a === axis}
                     onOpen={() => { setAxis(a); setSelected(null); setCurveView("one"); }} />
@@ -606,7 +610,7 @@ export default function App() {
               others={showAll ? AXES.filter((a) => a !== axis).map((a) => ({
                 name: a, c: st.axes[a], color: AXIS_COLOUR[a],
                 // each axis moves on its own curve, read from its own input
-                stickX: pads.stick ? pads.stick.axes[st.input[a]] ?? null : null,
+                stickX: handOf(a),
                 combinedY: pads.combined ? pads.combined.axes[st.input[a]] ?? null : null,
               })) : []}
               color={showAll ? AXIS_COLOUR[axis] : undefined}
@@ -767,7 +771,8 @@ export default function App() {
               </label>
             ))}
           </div>
-          <PadBars title="Sol-R [R] Flightstick" sub={pads.stickSource === "target" ? "your hand · via T.A.R.G.E.T." : "your hand"} pad={pads.stick} input={st.input} current={axis} />
+          <PadBars title="Sol-R [R] Flightstick" sub={pads.stickSource === "target" ? "your hand · via T.A.R.G.E.T." : "your hand"} pad={pads.stick} input={st.input} current={axis} only={AXES.filter((a) => !ON_THROTTLE[a])} />
+          <PadBars title="Sol-R 6 Throttle" sub={pads.throttle ? "your hand" : "not connected"} pad={pads.throttle} input={st.input} current={axis} only={AXES.filter((a) => ON_THROTTLE[a])} />
           <PadBars title="Thrustmaster Combined" sub="what the game gets" pad={pads.combined} input={st.input} current={axis} />
         </section>
       </main>
@@ -784,10 +789,12 @@ function Readout({ label, v, warn }: { label: string; v: number | null; warn?: b
   );
 }
 
-function PadBars({ title, sub, pad, input, current }: {
+function PadBars({ title, sub, pad, input, current, only = AXES }: {
   title: string; sub: string; pad: PadLike | null; input: Record<AxisName, number>; current: AxisName;
+  /** the controls this device carries (the stick's, or the throttle's) */
+  only?: readonly AxisName[];
 }) {
-  const tag = (i: number) => AXES.filter((a) => input[a] === i);
+  const tag = (i: number) => only.filter((a) => input[a] === i);
   // Button numbers as Windows (and Thrustmaster's manuals) count them: the
   // Gamepad API's index 0 is button 1. The Sol-R's buttons carry no printed
   // numbers, so this is how you find "button 18" on the real stick.
