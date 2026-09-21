@@ -5,6 +5,7 @@ import { logLine, stamp } from "./describe";
 import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
 import DevicesView from "./DevicesView";
+import Dashboard, { type Page } from "./Dashboard";
 import MacrosPage from "./MacrosPage";
 import MiniGraph from "./MiniGraph";
 import { useVoiceBanks } from "./voice";
@@ -73,10 +74,8 @@ export default function App() {
   const voice = useVoiceBanks(inTauri ? pads.stick : null);
 
   // Curves (the editor) / Script (any T.A.R.G.E.T. script) / Devices (hardware)
-  const [page, setPage] = useState<"curves" | "macros" | "script" | "devices">(() => {
-    try { return (localStorage.getItem("solr:page") as "curves" | "macros" | "script" | "devices") ?? "curves"; } catch { return "curves"; }
-  });
-  useEffect(() => { try { localStorage.setItem("solr:page", page); } catch { /* not remembered */ } }, [page]);
+  // the app opens on the dashboard; the logo in the header brings you back to it
+  const [page, setPage] = useState<"home" | Page>("home");
 
   const c = st.axes[axis];
   // which side the controls edit. Linked: both, stored on pos and mirrored to neg
@@ -479,8 +478,9 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <div className="brand">
-          <span className="mark" />
+        <div className="brand" role="button" tabIndex={0} title="Dashboard"
+          onClick={() => setPage("home")} onKeyDown={(e) => e.key === "Enter" && setPage("home")}>
+          <img src="/logo.png" alt="" className="mark" />
           <div>
             <h1>Sol-R Curves</h1>
             <p>WARDOGS · Sol-R [R] Flightstick · live into T.A.R.G.E.T.</p>
@@ -526,6 +526,9 @@ export default function App() {
         </div>
       </header>
 
+      {inTauri && page === "home" && (
+        <Dashboard onOpen={setPage} sync={sync} preset={activePreset} stick={pads.stick} cfg={voice.cfg} bank={voice.bank} />
+      )}
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}
       {inTauri && page === "macros" && (
