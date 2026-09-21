@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import LedMapping from "./LedMapping";
 import MacroPicker from "./MacroPicker";
 import SoundPicker from "./SoundPicker";
-import StickView from "./StickView";
+import StickView, { type HandView } from "./StickView";
 import { type SoundStatus, ledSet, macroCheck, onEvent, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
 import type { PadLike } from "./gamepad";
 import { KNOB, PADS, SOLR_LED_MAP, type Macro, type MacroPreset, type VoiceConfig, bankLeds, soundLabel } from "./voice";
@@ -45,6 +45,21 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
   const b = tab ?? bank ?? 0;
   const eb = cfg.banks[b];
   const [selected, setSelected] = useState<number | null>(null);
+  // the joystick and the throttle each get the page to themselves
+  const [hand, setHandState] = useState<HandView>(() => {
+    try { return localStorage.getItem("solr:macrohand") === "throttle" ? "throttle" : "stick"; } catch { return "stick"; }
+  });
+  const setHand = (h: HandView) => {
+    setHandState(h);
+    try { localStorage.setItem("solr:macrohand", h); } catch { /* only a convenience */ }
+  };
+  // the throttle's buttons are 45 and up, as the game counts them
+  const handOf = (button: number): HandView => (button > 44 ? "throttle" : "stick");
+  /** pick a button and show the device it's on */
+  const pick = (button: number | null) => {
+    setSelected(button);
+    if (button !== null) setHand(handOf(button));
+  };
   // a bank tab being renamed in place
   const [renaming, setRenaming] = useState<number | null>(null);
   const renameBank = (i: number, name: string) => {
@@ -90,7 +105,8 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
     (throttle?.buttons ?? []).forEach((x, i) => { if (x.pressed) now.add(44 + i + 1); });
     const fresh = [...now].find((n) => !before.current.has(n));
     before.current = now;
-    if (fresh !== undefined) setSelected(fresh);
+    if (fresh !== undefined) pick(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stick, throttle]);
 
   const sound = selected === null ? "" : eb?.pads?.[selected] ?? "";
@@ -167,7 +183,9 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
   };
 
   const isPad = selected !== null && PADS.includes(selected);
-  const list = assignments(cfg, b);
+  const all = assignments(cfg, b);
+  const list = all.filter((a) => handOf(a.button) === hand);
+  const countOn = (h: HandView) => all.filter((a) => handOf(a.button) === h).length;
 
   return (
     <div className="mx-page">
@@ -202,8 +220,16 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
               <span className="muted mx-preview">showing {cfg.banks[b]?.name} · the knob still runs {cfg.banks[bank ?? 0]?.name}</span>
             </>
           )}
+          <div className="curve-views mx-hands">
+            {(["stick", "throttle"] as HandView[]).map((h) => (
+              <button key={h} className={hand === h ? "on" : ""}
+                onClick={() => { setHand(h); if (selected !== null && handOf(selected) !== h) setSelected(null); }}>
+                {h === "stick" ? "Joystick" : "Throttle"} <small>{countOn(h)}</small>
+              </button>
+            ))}
+          </div>
         </div>
-        <StickView stick={stick} throttle={throttle} bank={b} cfg={cfg} selected={selected} onSelect={setSelected} />
+        <StickView stick={stick} throttle={throttle} bank={b} cfg={cfg} selected={selected} onSelect={pick} view={hand} />
       </div>
 
       <div className="mx-right">
@@ -284,14 +310,14 @@ export default function MacrosPage({ stick, throttle = null, bank, cfg, update, 
 
         <section className="vv-panel mx-list">
           <div className="mx-list-head">
-            <h2>{eb?.name}</h2>
+            <h2>{eb?.name} · {hand === "stick" ? "Joystick" : "Throttle"}</h2>
             <span className="mx-pill">{list.length} buttons</span>
           </div>
           <div className="mx-rows">
-            {list.length === 0 && <p className="hint">Nothing on this bank's buttons yet.</p>}
+            {list.length === 0 && <p className="hint">Nothing on this bank's {hand === "stick" ? "joystick" : "throttle"} buttons yet.</p>}
             {list.map((a) => (
               <div key={`${a.kind}${a.button}`} className={`mx-row ${selected === a.button ? "on" : ""}`}>
-                <button className="mx-rowpick" onClick={() => setSelected(a.button)}>
+                <button className="mx-rowpick" onClick={() => pick(a.button)}>
                   <b>{a.button}</b>
                   <span className={`tag ${a.kind}`}>{a.kind}</span>
                   <span className="mx-what">
