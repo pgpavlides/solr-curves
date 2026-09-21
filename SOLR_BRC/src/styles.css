@@ -624,15 +624,16 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .curve-views { margin-left: auto; display: flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
 .curve-views button { background: none; border: none; border-radius: 7px; padding: 5px 11px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
 .curve-views button.on { background: #172a1f; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.mini-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: center; }
-.mini { display: flex; flex-direction: column; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 12px; padding: 10px; cursor: pointer; color: inherit; text-align: left; min-width: 0; }
+/* four axes, 2 x 2, always inside the graph area: each graph fits the height it gets, so nothing spills or shifts */
+.mini-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mini { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 12px; padding: 10px; cursor: pointer; color: inherit; text-align: left; min-width: 0; }
 .mini:hover { border-color: var(--c); }
 .mini.on { box-shadow: 0 0 0 1px var(--c); }
 .mini-head { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; }
 .mini-head i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
 .mini-nums { display: flex; justify-content: space-between; gap: 6px; font: 11px var(--mono); color: var(--muted); white-space: pre; overflow: hidden; font-variant-numeric: tabular-nums; }
 .mini-nums b { color: var(--c); font-weight: 600; }
-.mini-svg { width: 100%; height: auto; display: block; }
+.mini-svg { flex: 1; min-height: 0; width: 100%; height: 100%; display: block; }
 .mini-bg { fill: #0c110f; }
 .mini-gl { stroke: #ffffff14; stroke-width: 1; }
 .mini-axis { stroke: #ffffff38; stroke-width: 1; }
