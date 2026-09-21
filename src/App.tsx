@@ -6,6 +6,7 @@ import TargetPanel, { type Sync } from "./TargetPanel";
 import ScriptView from "./ScriptView";
 import DevicesView from "./DevicesView";
 import MacrosPage from "./MacrosPage";
+import MiniGraph from "./MiniGraph";
 import { useVoiceBanks } from "./voice";
 import Presets, { BUILTINS, type Preset, cleanPresets, sameCurves } from "./Presets";
 import Styles, { type Style } from "./Styles";
@@ -38,9 +39,20 @@ export default function App() {
   const [st, setSt] = useState<State>(initial);
   const [axis, setAxis] = useState<AxisName>("roll");
   const [range, setRange] = useState(100);
-  // the other axes drawn behind the one being edited, to compare them
-  const [showAll, setShowAll] = useState(() => { try { return localStorage.getItem("solr:allcurves") === "1"; } catch { return false; } });
-  useEffect(() => { try { localStorage.setItem("solr:allcurves", showAll ? "1" : "0"); } catch { /* private window */ } }, [showAll]);
+  /*
+    How the curves are shown: "one" - the axis being edited; "overlay" - the
+    other two drawn behind it; "split" - all three side by side, each small,
+    click one to edit it.
+  */
+  const [curveView, setCurveView] = useState<"one" | "overlay" | "split">(() => {
+    try {
+      const v = localStorage.getItem("solr:curveview");
+      if (v === "overlay" || v === "split") return v;
+      return localStorage.getItem("solr:allcurves") === "1" ? "overlay" : "one";
+    } catch { return "one"; }
+  });
+  useEffect(() => { try { localStorage.setItem("solr:curveview", curveView); } catch { /* private window */ } }, [curveView]);
+  const showAll = curveView !== "one";
   const [selected, setSelected] = useState<number | null>(null);
   const [sync, setSync] = useState<Sync>("loading");
   const [gen, setGen] = useState(0);
@@ -529,10 +541,13 @@ export default function App() {
                 <small>{tabInfo(a)}</small>
               </button>
             ))}
-            <button className={`tab-all ${showAll ? "on" : ""}`} onClick={() => setShowAll((v) => !v)}
-              title="Draw the other axes' curves behind this one, to compare them">
-              All curves
-            </button>
+            <div className="curve-views" role="tablist" title="How the curves are shown">
+              <button className={curveView === "one" ? "on" : ""} onClick={() => setCurveView("one")}>One</button>
+              <button className={curveView === "overlay" ? "on" : ""} onClick={() => setCurveView("overlay")}
+                title="All three on one graph, the others dashed behind">All curves</button>
+              <button className={curveView === "split" ? "on" : ""} onClick={() => setCurveView("split")}
+                title="All three side by side, each on its own graph">Side by side</button>
+            </div>
           </nav>
 
           <div className="sides">
@@ -562,6 +577,17 @@ export default function App() {
             {drift !== null && drift > 0.03 && sync === "live" && (
               <p className="graph-note warn">Game value is off the curve — check this control's input axis under Devices.</p>
             )}
+            {curveView === "split" ? (
+              <div className="mini-grid">
+                {AXES.map((a) => (
+                  <MiniGraph key={a} title={AXIS_LABEL[a]} c={st.axes[a]} color={AXIS_COLOUR[a]} range={range}
+                    stickX={pads.stick ? pads.stick.axes[st.input[a]] ?? null : null}
+                    combinedY={pads.combined ? pads.combined.axes[st.input[a]] ?? null : null}
+                    active={a === axis}
+                    onOpen={() => { setAxis(a); setSelected(null); setCurveView("one"); }} />
+                ))}
+              </div>
+            ) : (
             <Graph
               c={c}
               side={sv}
@@ -582,6 +608,7 @@ export default function App() {
               })) : []}
               color={showAll ? AXIS_COLOUR[axis] : undefined}
             />
+            )}
           </div>
 
           <div className="readout">
