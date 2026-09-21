@@ -568,6 +568,23 @@ fn throttle_led_pause(on: bool) {
     thrbank::pause(on);
 }
 
+/// Open a web page in the default browser (the Help page's download links).
+/// Only https: nothing else gets handed to the shell.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") || url.chars().any(|c| c.is_whitespace() || c == '"') {
+        return Err("not a web address".into());
+    }
+    let mut c = std::process::Command::new("rundll32");
+    c.args(["url.dll,FileProtocolHandler", &url]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    c.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 /// The RAM the app uses right now, WebView2 included.
 #[tauri::command]
 fn memory_usage() -> memory::Usage {
@@ -784,7 +801,8 @@ pub fn run() {
             memory_usage,
             throttle_bank,
             set_throttle_bank,
-            throttle_led_pause
+            throttle_led_pause,
+            open_url
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {

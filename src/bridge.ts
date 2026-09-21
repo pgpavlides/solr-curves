@@ -186,6 +186,12 @@ export async function saveStyles(styles: unknown[]): Promise<void> {
 /* ---- Voice control: the Sol-R's RGB LEDs and the bank settings (Tauri only) */
 /** [LED group (0-based), r, g, b] */
 export type LedCmd = [number, number, number, number];
+/** Open an https page in the default browser (links in the window don't). */
+export async function openUrl(url: string): Promise<void> {
+  if (!inTauri) { window.open(url, "_blank"); return; }
+  return invoke("open_url", { url });
+}
+
 /* The throttle's own banks (thrbank.rs): which is on, and its LED. */
 export async function throttleBank(): Promise<number> {
   if (!inTauri) return 0;

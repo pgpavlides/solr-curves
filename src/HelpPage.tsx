@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type GameBindings, fixGameBindings, gameBindings } from "./bridge";
+import { type GameBindings, type SoundStatus, type TargetStatus, fixGameBindings, gameBindings, openUrl, soundStatus, targetStatus } from "./bridge";
 import type { Pads } from "./gamepad";
 import type { Sync } from "./TargetPanel";
 import type { VoiceConfig } from "./voice";
@@ -37,6 +37,44 @@ const BUTTONS_TABLE: [string, string][] = [
   ["Throttle 8-way hat (up, right, down, left)", "59 - 62"],
 ];
 
+/*
+  Everything the app needs, with where to get it. Checked on the official
+  pages in September 2026 - the Thrustmaster pages always carry the newest
+  drivers and T.A.R.G.E.T., so they are linked rather than one .exe.
+*/
+interface Need {
+  name: string;
+  what: string;
+  version?: string;
+  links: [string, string][];
+  /** true / false when the app can tell, null when it can't */
+  have: boolean | null;
+  haveText?: string;
+}
+
+const SOLR_STICK_PAGE = "https://support.thrustmaster.com/en/product/sol-r-1-flightstick-en/";
+const SOLR_THROTTLE_PAGE = "https://support.thrustmaster.com/en/product/sol-r-6-throttle-en/";
+
+function Install({ n }: { n: Need }) {
+  return (
+    <div className={`hp-need ${n.have === null ? "" : n.have ? "ok" : "bad"}`}>
+      <i />
+      <div className="hp-need-body">
+        <b>{n.name}{n.version && <small>{n.version}</small>}</b>
+        <span>{n.what}</span>
+        {n.haveText && <em>{n.haveText}</em>}
+      </div>
+      <div className="hp-need-links">
+        {n.links.map(([label, url]) => (
+          <button key={url} className={n.have === false ? "add-btn" : "ghost-btn"} title={url} onClick={() => openUrl(url).catch(() => {})}>
+            {label} ↗
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Check({ ok, label, detail, children }: { ok: boolean | null; label: string; detail: string; children?: React.ReactNode }) {
   return (
     <div className={`hp-check ${ok === null ? "" : ok ? "ok" : "bad"}`}>
@@ -53,6 +91,12 @@ function Check({ ok, label, detail, children }: { ok: boolean | null; label: str
 export default function HelpPage({ sync, pads, cfg }: Props) {
   const [game, setGame] = useState<GameBindings | null>(null);
   const [fixing, setFixing] = useState<string | null>(null);
+  const [target, setTarget] = useState<TargetStatus | null>(null);
+  const [sound, setSound] = useState<SoundStatus | null>(null);
+  useEffect(() => {
+    targetStatus().then(setTarget).catch(() => {});
+    soundStatus().then(setSound).catch(() => {});
+  }, []);
   const load = () => gameBindings().then(setGame).catch(() => setGame(null));
   useEffect(() => {
     load();
@@ -63,6 +107,43 @@ export default function HelpPage({ sync, pads, cfg }: Props) {
   const live = sync === "live";
   const onPhysical = game?.physical ?? [];
 
+  const needs: Need[] = [
+    {
+      name: "Thrustmaster drivers", version: "package 2026_TFHT_2",
+      what: "The Sol-R's own drivers and firmware. Install first, with the stick and throttle plugged in; it also updates their firmware.",
+      links: [["Sol-R 1 Flightstick", SOLR_STICK_PAGE], ["Sol-R 6 Throttle", SOLR_THROTTLE_PAGE]],
+      have: pads.stick || pads.throttle ? true : null,
+      haveText: pads.stick || pads.throttle ? "Installed - the devices answer" : undefined,
+    },
+    {
+      name: "T.A.R.G.E.T.", version: "3.0.26.303 (3.0.25.603 or later for the throttle)",
+      what: "Thrustmaster's scripting software: it runs the curve script and makes Thrustmaster Combined. Under Software on the same Thrustmaster pages.",
+      links: [["Download page", SOLR_STICK_PAGE]],
+      have: target ? target.available : null,
+      haveText: target ? (target.available ? "Installed" : "Not installed") : undefined,
+    },
+    {
+      name: "VB-CABLE Virtual Audio Device", version: "free",
+      what: "The virtual microphone the sounds play into. Unzip, run VBCABLE_Setup_x64.exe as administrator, then restart Windows.",
+      links: [["vb-audio.com", "https://vb-audio.com/Cable/"]],
+      have: sound ? !!sound.cable : null,
+      haveText: sound ? (sound.cable ? `Installed - ${sound.cable}` : "Not found") : undefined,
+    },
+    {
+      name: "Microsoft Edge WebView2 Runtime",
+      what: "Draws this window. Windows 11 already has it - only needed on a Windows 10 PC where the app won't open.",
+      links: [["Microsoft", "https://developer.microsoft.com/en-us/microsoft-edge/webview2"]],
+      have: true, haveText: "Installed - you're looking at it",
+    },
+    {
+      name: "WARDOGS",
+      what: "The game, on Steam.",
+      links: [["Steam", "https://store.steampowered.com/app/1867240/WARDOGS/"]],
+      have: game ? game.found : null,
+      haveText: game ? (game.found ? "Installed - its settings were found" : "Settings not found - start it once") : undefined,
+    },
+  ];
+
   return (
     <div className="help">
       <div className="help-inner">
@@ -72,6 +153,12 @@ export default function HelpPage({ sync, pads, cfg }: Props) {
           curves, and hands the game <b>one device: Thrustmaster Combined</b>. Everything in WARDOGS has to be bound to
           that device - never to "Sol-R [R] Flightstick" or "Sol-R 6 Throttle".
         </p>
+
+        <section className="help-card">
+          <h2>What to install</h2>
+          <p className="hint" style={{ marginTop: 0 }}>In this order. The buttons open the official download pages in your browser.</p>
+          {needs.map((n) => <Install key={n.name} n={n} />)}
+        </section>
 
         <section className="help-card">
           <h2>Your setup right now</h2>
