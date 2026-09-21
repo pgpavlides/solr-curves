@@ -615,3 +615,6 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .curve-other { fill: none; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.75; stroke-dasharray: 6 4; pointer-events: none; }
 .tab-all { margin-left: auto; }
 .tab-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.live-other line { stroke: var(--c); stroke-width: 1; opacity: 0.35; stroke-dasharray: 3 4; }
+.live-other .dot { fill: var(--c); stroke: #0f1412; stroke-width: 1.5; }
+.live-other .ring { fill: none; stroke: var(--c); stroke-width: 1.8; opacity: 0.8; }
