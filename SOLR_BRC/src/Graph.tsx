@@ -32,9 +32,13 @@ interface Props {
   onPoints: (pts: Pt[], commit: boolean, side?: SideName) => void;
   onSide: (side: SideName, select: number | null) => void;
   onNotice: (msg: string) => void;
+  /** the other axes' curves, drawn thin behind this one for comparison */
+  others?: { name: string; c: AxisCurve; color: string }[];
+  /** this curve's own colour, when it is drawn among the others */
+  color?: string;
 }
 
-export default function Graph({ c, side, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints, onSide, onNotice }: Props) {
+export default function Graph({ c, side, range, stickX, combinedY, selected, maxPoints, onSelect, onPoints, onSide, onNotice, others = [], color }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ i: number; start: Pt; px: number; py: number } | null>(null);
   const [hover, setHover] = useState<Pt | null>(null);
@@ -57,6 +61,20 @@ export default function Graph({ c, side, range, stickX, combinedY, selected, max
     return d;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f, R]);
+
+  // the same line for every other axis shown alongside
+  const otherPaths = useMemo(() => others.map((o) => {
+    const g = evaluator(o.c);
+    const n = 300;
+    let d = "";
+    for (let i = 0; i <= n; i++) {
+      const x = -R + (2 * R * i) / n;
+      const y = g(x / 100) * 100;
+      d += `${i ? "L" : "M"}${sx(x).toFixed(2)},${sy(Math.max(-R * 1.2, Math.min(R * 1.2, y))).toFixed(2)}`;
+    }
+    return { ...o, d };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [others, R]);
 
   const grid = useMemo(() => {
     const step = R >= 100 ? 10 : R >= 50 ? 5 : R >= 25 ? 2.5 : 1;
@@ -205,7 +223,10 @@ export default function Graph({ c, side, range, stickX, combinedY, selected, max
       <line x1={sx(-R)} y1={sy(-R)} x2={sx(R)} y2={sy(R)} className="linear" />
       <clipPath id="clip"><rect x={PAD} y={PAD} width={PLOT} height={PLOT} /></clipPath>
       <g clipPath="url(#clip)">
-        <path d={path} className="curve" />
+        {otherPaths.map((o) => (
+          <path key={o.name} d={o.d} className="curve-other" style={{ stroke: o.color }} />
+        ))}
+        <path d={path} className="curve" style={color ? { stroke: color } : undefined} />
         {liveX !== null && inView(liveX) && (
           <>
             <line x1={sx(liveX)} x2={sx(liveX)} y1={PAD} y2={PAD + PLOT} className="live-line" />

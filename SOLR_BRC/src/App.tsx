@@ -30,10 +30,17 @@ const initial = (): State => ({
 const MAX_POINTS = 10;
 
 
+
+/** each axis's colour when all the curves are drawn together */
+const AXIS_COLOUR: Record<AxisName, string> = { roll: "#39ff6a", pitch: "#2f9bff", yaw: "#ffb020" };
+
 export default function App() {
   const [st, setSt] = useState<State>(initial);
   const [axis, setAxis] = useState<AxisName>("roll");
   const [range, setRange] = useState(100);
+  // the other axes drawn behind the one being edited, to compare them
+  const [showAll, setShowAll] = useState(() => { try { return localStorage.getItem("solr:allcurves") === "1"; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem("solr:allcurves", showAll ? "1" : "0"); } catch { /* private window */ } }, [showAll]);
   const [selected, setSelected] = useState<number | null>(null);
   const [sync, setSync] = useState<Sync>("loading");
   const [gen, setGen] = useState(0);
@@ -517,10 +524,15 @@ export default function App() {
           <nav className="tabs">
             {AXES.map((a) => (
               <button key={a} className={a === axis ? "on" : ""} onClick={() => { setAxis(a); setSelected(null); }}>
+                {showAll && <i className="tab-swatch" style={{ background: AXIS_COLOUR[a] }} />}
                 {AXIS_LABEL[a]}
                 <small>{tabInfo(a)}</small>
               </button>
             ))}
+            <button className={`tab-all ${showAll ? "on" : ""}`} onClick={() => setShowAll((v) => !v)}
+              title="Draw the other axes' curves behind this one, to compare them">
+              All curves
+            </button>
           </nav>
 
           <div className="sides">
@@ -562,6 +574,8 @@ export default function App() {
               onNotice={setFlash}
               onSelect={setSelected}
               onPoints={onPoints}
+              others={showAll ? AXES.filter((a) => a !== axis).map((a) => ({ name: a, c: st.axes[a], color: AXIS_COLOUR[a] })) : []}
+              color={showAll ? AXIS_COLOUR[axis] : undefined}
             />
           </div>
 
