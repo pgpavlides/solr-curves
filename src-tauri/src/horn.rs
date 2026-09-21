@@ -1,19 +1,24 @@
 //! Horn Music: songs played on the helicopter's horn, into voice chat.
 //!
-//! The instrument is one recording of the horn. "Record" captures what the PC
-//! is playing (WASAPI loopback on the default output) for a few seconds while
-//! you honk in WARDOGS; the recording is folded to mono, trimmed to the honk,
-//! normalised, and its pitch found - that note is the horn's own.
+//! The instrument is a set of honks, short to long - the real WARDOGS horn,
+//! cut from an OBS recording, ships built in (assets/horn). Each note uses
+//! the shortest honk that lasts as long as the note, so a quick note is a real
+//! quick honk (its own attack and tail) and not a long one chopped off; notes
+//! longer than every honk loop the middle of the longest, with a crossfade.
+//!
+//! Your own set: "Record" captures what the PC plays (WASAPI loopback on the
+//! default output) while you honk several times in the game, or pick a file;
+//! either way it is split into its honks, each trimmed and normalised, and
+//! the horn's pitch found (the median over the honks).
 //!
 //! A MIDI file becomes a list of notes (tempo changes honoured; channel 10,
 //! the drums, marked so it can be left out). Rendering plays every note on the
-//! horn: the recording resampled by 2^(semitones / 12), its middle looped
-//! (with a crossfade) for notes longer than the honk, a short fade in and out.
-//! The whole song is mixed offline into one WAV, which sound.rs then plays
-//! like a pad - into the cable with the talk key held, and to you.
+//! horn - the honk resampled by 2^(semitones / 12) - mixed offline into one
+//! WAV, which sound.rs plays like a pad: into the cable with the talk key
+//! held, and to you.
 //!
-//! Files, all in C:\SolR\horn: horn.wav (the instrument), horn.json (its
-//! note), song.wav (the last render).
+//! Files, all in C:\SolR\horn: samples\honk_N.wav (the instrument),
+//! horn.json (its pitch), song.wav (the last render).
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::{Deserialize, Serialize};
@@ -21,13 +26,28 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+/// The WARDOGS heli horn, eight honks from 0.16 s to 1.66 s (plus their tails),
+/// cut from a recording of the game.
+const DEFAULT_HONKS: [&[u8]; 8] = [
+    include_bytes!("../assets/horn/honk_1.wav"),
+    include_bytes!("../assets/horn/honk_2.wav"),
+    include_bytes!("../assets/horn/honk_3.wav"),
+    include_bytes!("../assets/horn/honk_4.wav"),
+    include_bytes!("../assets/horn/honk_5.wav"),
+    include_bytes!("../assets/horn/honk_6.wav"),
+    include_bytes!("../assets/horn/honk_7.wav"),
+    include_bytes!("../assets/horn/honk_8.wav"),
+];
+
 fn folder() -> PathBuf {
     let d = crate::dir().join("horn");
     let _ = std::fs::create_dir_all(&d);
     d
 }
-fn horn_path() -> PathBuf {
-    folder().join("horn.wav")
+fn samples_dir() -> PathBuf {
+    let d = folder().join("samples");
+    let _ = std::fs::create_dir_all(&d);
+    d
 }
 fn song_path() -> PathBuf {
     folder().join("song.wav")
@@ -42,13 +62,16 @@ struct Settings {
     base: f32,
     /// what the pitch finder heard, kept for reference
     detected: Option<f32>,
+    /// the set is your own recording, not the built-in horn
+    #[serde(default)]
+    custom: bool,
 }
 
 fn settings() -> Settings {
     std::fs::read_to_string(settings_path())
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or(Settings { base: 60.0, detected: None })
+        .unwrap_or(Settings { base: 60.0, detected: None, custom: false })
 }
 fn save_settings(s: Settings) {
     let _ = std::fs::write(settings_path(), serde_json::to_string_pretty(&s).unwrap_or_default());
@@ -56,34 +79,66 @@ fn save_settings(s: Settings) {
 
 // ---------------------------------------------------------------- the horn
 
+#[derive(Serialize)]
+pub struct HonkInfo {
+    pub seconds: f32,
+    /// its waveform, 48 bars of peak level 0..1
+    pub peaks: Vec<f32>,
+}
+
 /// The instrument as the page shows it.
 #[derive(Serialize)]
 pub struct HornInfo {
     pub has: bool,
-    pub seconds: f32,
     pub base: f32,
     pub detected: Option<f32>,
-    /// the waveform, 240 bars of peak level 0..1
-    pub peaks: Vec<f32>,
+    /// your own recording rather than the built-in horn
+    pub custom: bool,
+    /// the honks, shortest first
+    pub honks: Vec<HonkInfo>,
 }
 
-/// The horn recording, mono, and its rate.
-fn load_horn() -> Option<(Vec<f32>, u32)> {
-    let clip = crate::audio::decode::decode_file(&horn_path()).ok()?;
-    Some((to_mono(&clip.samples, clip.channels), clip.rate))
+/// One honk: mono samples and their rate.
+struct Honk {
+    m: Vec<f32>,
+    rate: u32,
+    path: PathBuf,
+}
+
+fn honk_files() -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> = std::fs::read_dir(samples_dir())
+        .map(|d| d.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "wav")).collect())
+        .unwrap_or_default();
+    v.sort();
+    v
+}
+
+/// The honks, shortest first - the built-in horn if there is no set yet.
+fn load_honks() -> Vec<Honk> {
+    if honk_files().is_empty() {
+        let _ = restore_defaults();
+    }
+    let mut v: Vec<Honk> = honk_files()
+        .into_iter()
+        .filter_map(|path| {
+            let c = crate::audio::decode::decode_file(&path).ok()?;
+            Some(Honk { m: to_mono(&c.samples, c.channels), rate: c.rate, path })
+        })
+        .filter(|h| !h.m.is_empty())
+        .collect();
+    v.sort_by_key(|h| h.m.len());
+    v
 }
 
 pub fn info() -> HornInfo {
+    let honks = load_honks();
     let s = settings();
-    match load_horn() {
-        None => HornInfo { has: false, seconds: 0.0, base: s.base, detected: s.detected, peaks: vec![] },
-        Some((m, rate)) => HornInfo {
-            has: true,
-            seconds: m.len() as f32 / rate.max(1) as f32,
-            base: s.base,
-            detected: s.detected,
-            peaks: peaks(&m, 240),
-        },
+    HornInfo {
+        has: !honks.is_empty(),
+        base: s.base,
+        detected: s.detected,
+        custom: s.custom,
+        honks: honks.iter().map(|h| HonkInfo { seconds: h.m.len() as f32 / h.rate.max(1) as f32, peaks: peaks(&h.m, 48) }).collect(),
     }
 }
 
@@ -92,6 +147,43 @@ pub fn set_base(base: f32) -> HornInfo {
     s.base = base.clamp(12.0, 120.0);
     save_settings(s);
     info()
+}
+
+fn clear_samples() {
+    for p in honk_files() {
+        let _ = std::fs::remove_file(p);
+    }
+}
+
+/// The pitch of a set: the median of what each honk long enough to judge says.
+fn set_pitch(honks: &[(Vec<f32>, u32)]) -> Option<f32> {
+    let mut ps: Vec<f32> = honks
+        .iter()
+        .filter(|(m, r)| m.len() as f32 / *r as f32 >= 0.15)
+        .filter_map(|(m, r)| detect_pitch(m, *r))
+        .collect();
+    if ps.is_empty() {
+        return None;
+    }
+    ps.sort_by(|a, b| a.total_cmp(b));
+    Some(ps[ps.len() / 2])
+}
+
+/// Back to the built-in WARDOGS horn.
+pub fn restore_defaults() -> Result<HornInfo, String> {
+    clear_samples();
+    let dir = samples_dir();
+    let mut set = vec![];
+    for (i, bytes) in DEFAULT_HONKS.iter().enumerate() {
+        let p = dir.join(format!("honk_{:02}.wav", i + 1));
+        std::fs::write(&p, bytes).map_err(|e| e.to_string())?;
+        if let Ok(c) = crate::audio::decode::decode_file(&p) {
+            set.push((to_mono(&c.samples, c.channels), c.rate));
+        }
+    }
+    let detected = set_pitch(&set);
+    save_settings(Settings { base: detected.unwrap_or(60.0), detected, custom: false });
+    Ok(info())
 }
 
 fn to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
@@ -106,23 +198,11 @@ fn peaks(m: &[f32], bars: usize) -> Vec<f32> {
     let per = (m.len() as f32 / bars as f32).max(1.0);
     (0..bars)
         .map(|i| {
-            let a = (i as f32 * per) as usize;
-            let b = (((i + 1) as f32 * per) as usize).min(m.len()).max(a + 1).min(m.len());
-            m[a.min(m.len() - 1)..b].iter().fold(0.0f32, |p, s| p.max(s.abs()))
+            let a = ((i as f32 * per) as usize).min(m.len() - 1);
+            let b = (((i + 1) as f32 * per) as usize).clamp(a + 1, m.len());
+            m[a..b].iter().fold(0.0f32, |p, s| p.max(s.abs()))
         })
         .collect()
-}
-
-/// Keep only the honk: from just before the sound starts to a little after it
-/// stops, judged against the loudest point.
-fn trim(m: &[f32], rate: u32) -> Vec<f32> {
-    let peak = m.iter().fold(0.0f32, |p, s| p.max(s.abs()));
-    let thr = (peak * 0.08).max(0.01);
-    let first = m.iter().position(|s| s.abs() > thr).unwrap_or(0);
-    let last = m.iter().rposition(|s| s.abs() > thr).unwrap_or(m.len().saturating_sub(1));
-    let a = first.saturating_sub((rate as f32 * 0.01) as usize);
-    let b = (last + (rate as f32 * 0.06) as usize).min(m.len());
-    m[a..b.max(a)].to_vec()
 }
 
 fn normalise(m: &mut [f32], to: f32) {
@@ -131,6 +211,60 @@ fn normalise(m: &mut [f32], to: f32) {
         let k = to / peak;
         m.iter_mut().for_each(|s| *s *= k);
     }
+}
+
+/// Every honk in a recording: where the level rises above an eighth of the
+/// loudest point, until it has been quiet for 60 ms. Blips under 80 ms are
+/// clicks, not honks. Each keeps a little lead-in and its tail, faded.
+fn split_honks(m: &[f32], rate: u32) -> Vec<Vec<f32>> {
+    let hop = (rate as usize / 100).max(1); // 10 ms
+    let rms: Vec<f32> = m.chunks(hop).map(|c| (c.iter().map(|s| s * s).sum::<f32>() / c.len() as f32).sqrt()).collect();
+    let top = rms.iter().fold(0.0f32, |a, b| a.max(*b));
+    if top < 1e-4 {
+        return vec![];
+    }
+    let thr = top * 0.12;
+    let mut spans = vec![];
+    let (mut on, mut quiet) = (None::<usize>, 0);
+    for (i, v) in rms.iter().enumerate() {
+        if *v > thr {
+            on.get_or_insert(i);
+            quiet = 0;
+        } else if let Some(a) = on {
+            quiet += 1;
+            if quiet >= 6 {
+                spans.push((a, i + 1 - quiet));
+                on = None;
+                quiet = 0;
+            }
+        }
+    }
+    if let Some(a) = on {
+        spans.push((a, rms.len()));
+    }
+    let r = rate as f32;
+    let starts: Vec<usize> = spans.iter().map(|s| s.0 * hop).collect();
+    spans
+        .iter()
+        .enumerate()
+        .filter(|(_, (a, b))| (b - a) * hop >= (r * 0.08) as usize)
+        .map(|(k, (a, b))| {
+            let s = (a * hop).saturating_sub((r * 0.015) as usize);
+            let next = starts.get(k + 1).map_or(m.len(), |n| n.saturating_sub((r * 0.02) as usize));
+            let e = (b * hop + (r * 0.10) as usize).min(next).min(m.len());
+            let mut x = m[s..e.max(s)].to_vec();
+            let (fi, fo) = ((r * 0.005) as usize, (r * 0.04) as usize);
+            for i in 0..fi.min(x.len()) {
+                x[i] *= i as f32 / fi as f32;
+            }
+            let n = x.len();
+            for i in 0..fo.min(n) {
+                x[n - 1 - i] *= i as f32 / fo as f32;
+            }
+            normalise(&mut x, 0.9);
+            x
+        })
+        .collect()
 }
 
 /// The horn's pitch, as a (fractional) MIDI note: YIN over a steady stretch
@@ -174,17 +308,21 @@ fn detect_pitch(m: &[f32], rate: u32) -> Option<f32> {
     (f.is_finite() && f > 20.0).then(|| 69.0 + 12.0 * (f / 440.0).log2())
 }
 
-/// A raw recording (or a picked file) becomes the instrument.
+/// A recording (or a picked file) becomes the instrument: its honks, split.
 fn make_instrument(mono: Vec<f32>, rate: u32) -> Result<HornInfo, String> {
-    let mut m = trim(&mono, rate);
-    if m.len() < (rate as f32 * 0.05) as usize {
-        return Err("Nothing loud enough was heard - honk while it records (and keep other sound down).".into());
+    let honks = split_honks(&mono, rate);
+    if honks.is_empty() {
+        return Err("No honk was heard - honk while it records (and keep other sound down).".into());
     }
-    normalise(&mut m, 0.9);
-    write_wav(&horn_path(), &m, rate)?;
-    let detected = detect_pitch(&m, rate);
+    clear_samples();
+    let dir = samples_dir();
+    for (i, h) in honks.iter().enumerate() {
+        write_wav(&dir.join(format!("honk_{:02}.wav", i + 1)), h, rate)?;
+    }
+    let set: Vec<(Vec<f32>, u32)> = honks.into_iter().map(|h| (h, rate)).collect();
+    let detected = set_pitch(&set);
     // the exact pitch, not the nearest note: a horn between two notes still plays in tune
-    save_settings(Settings { base: detected.unwrap_or(60.0), detected });
+    save_settings(Settings { base: detected.unwrap_or(60.0), detected, custom: true });
     Ok(info())
 }
 
@@ -216,7 +354,7 @@ pub fn record(seconds: f32) -> Result<HornInfo, String> {
     }
     .map_err(|e| format!("Couldn't start recording: {e}"))?;
     stream.play().map_err(|e| e.to_string())?;
-    std::thread::sleep(Duration::from_secs_f32(seconds.clamp(1.0, 10.0)));
+    std::thread::sleep(Duration::from_secs_f32(seconds.clamp(1.0, 20.0)));
     drop(stream);
     let raw = std::mem::take(&mut *got.lock().unwrap());
     let mono = to_mono(&raw, channels);
@@ -224,13 +362,14 @@ pub fn record(seconds: f32) -> Result<HornInfo, String> {
     make_instrument(mono, rate)
 }
 
-/// Use a sound file instead of a recording.
+/// Use a sound file (or a video: its sound) instead of a recording.
 pub fn load_file(bytes: Vec<u8>, ext: String) -> Result<HornInfo, String> {
     let ext: String = ext.chars().filter(|c| c.is_ascii_alphanumeric()).take(5).collect();
     let tmp = folder().join(format!("horn_pick.{ext}"));
     std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
-    let clip = crate::audio::decode::decode_file(&tmp).map_err(|e| format!("Can't read that file: {e:#}"))?;
+    let clip = crate::audio::decode::decode_file(&tmp).map_err(|e| format!("Can't read that file: {e:#}"));
     let _ = std::fs::remove_file(&tmp);
+    let clip = clip?;
     make_instrument(to_mono(&clip.samples, clip.channels), clip.rate)
 }
 
@@ -364,7 +503,7 @@ pub struct Rendered {
     pub notes: usize,
 }
 
-/// Linear interpolation into the recording.
+/// Linear interpolation into a honk.
 fn at(s: &[f32], p: f64) -> f32 {
     let i = p.floor() as usize;
     if i + 1 >= s.len() {
@@ -374,30 +513,58 @@ fn at(s: &[f32], p: f64) -> f32 {
     s[i] * (1.0 - f) + s[i + 1] * f
 }
 
-/// Every note on the horn, mixed into one track.
-pub fn render_notes(horn: &[f32], rate: u32, base: f32, notes: &[Note], transpose: i32, speed: f32) -> Vec<f32> {
+/// The opening honk: an ordinary honk, then this much quiet before the tune.
+const INTRO_GAP: f64 = 0.6;
+const INTRO_HONK: f64 = 0.5;
+
+/// Every note on the horn, mixed into one track. `honks` shortest first, all
+/// at `rate`. With `intro`, the song opens with one ordinary honk - the horn at
+/// its own pitch, the honk nearest half a second - and a pause, so it starts
+/// out sounding like somebody just honking.
+pub fn render_notes(honks: &[Vec<f32>], rate: u32, base: f32, notes: &[Note], transpose: i32, speed: f32, intro: bool) -> Vec<f32> {
     let r = rate as f64;
     let speed = speed.clamp(0.25, 4.0) as f64;
-    let n = horn.len();
-    // the steady middle of the honk loops for notes longer than the recording
-    let (ls, le) = ((n as f64 * 0.3), (n as f64 * 0.8));
-    let loop_len = le - ls;
-    let can_loop = loop_len > r * 0.05;
-    let xf = (r * 0.02).min(loop_len / 4.0);
+    let opener = if intro {
+        honks.iter().min_by(|a, b| {
+            let d = |h: &Vec<f32>| (h.len() as f64 / r - INTRO_HONK).abs();
+            d(a).total_cmp(&d(b))
+        })
+    } else {
+        None
+    };
+    // the tune starts after the opener and its pause (in output seconds)
+    let lead = opener.map_or(0.0, |h| h.len() as f64 / r + INTRO_GAP);
     let release = 0.05;
     let attack = (r * 0.005).max(1.0);
-
-    let end = notes.iter().fold(0.0f64, |m, x| m.max((x.t as f64 + (x.d as f64).max(0.08)) / speed)) + release + 0.2;
+    let end = lead + notes.iter().fold(0.0f64, |m, x| m.max((x.t as f64 + (x.d as f64).max(0.08)) / speed)) + 2.0;
     let mut out = vec![0.0f32; ((end.min(600.0)) * r) as usize + 1];
+    if honks.is_empty() {
+        return out;
+    }
+    if let Some(h) = opener {
+        for (o, s) in out.iter_mut().zip(h.iter()) {
+            *o += s;
+        }
+    }
     for note in notes {
-        let start = (note.t as f64 / speed * r) as usize;
+        let start = ((lead + note.t as f64 / speed) * r) as usize;
         if start >= out.len() {
             continue;
         }
-        let held = ((note.d as f64).max(0.08) / speed * r) as usize;
-        let total = held + (release * r) as usize;
         let ratio = 2f64.powf((note.key as f64 + transpose as f64 - base as f64) / 12.0);
+        let held = ((note.d as f64).max(0.08) / speed * r) as usize;
+        // the shortest honk that lasts the note (at this pitch it plays 1/ratio as long)
+        let honk_out = |h: &Vec<f32>| (h.len() as f64 / ratio) as usize;
+        let pick = honks.iter().position(|h| honk_out(h) >= held).unwrap_or(honks.len() - 1);
+        let horn = &honks[pick];
+        let n = horn.len();
+        // only a note longer than the longest honk loops (its steady middle)
+        let (ls, le) = (n as f64 * 0.3, n as f64 * 0.8);
+        let loop_len = le - ls;
+        let can_loop = honk_out(horn) < held && loop_len > r * 0.05;
+        let xf = (r * 0.02).min(loop_len / 4.0);
         let gain = 0.35 + 0.65 * note.vel as f32 / 127.0;
+        let total = held + (release * r) as usize;
         let mut p = 0.0f64;
         for i in 0..total {
             let o = start + i;
@@ -419,17 +586,21 @@ pub fn render_notes(horn: &[f32], rate: u32, base: f32, notes: &[Note], transpos
             }
         }
     }
+    // no trailing silence past the last sound
+    let last = out.iter().rposition(|s| s.abs() > 1e-4).unwrap_or(0);
+    out.truncate((last + (r * 0.1) as usize).min(out.len()));
     normalise(&mut out, 0.89);
     out
 }
 
-pub fn render(notes: Vec<Note>, transpose: i32, speed: f32) -> Result<Rendered, String> {
-    let (horn, rate) = load_horn().ok_or("Record the horn first.")?;
+pub fn render(notes: Vec<Note>, transpose: i32, speed: f32, intro: bool) -> Result<Rendered, String> {
+    let honks = load_honks();
+    let rate = honks.first().map(|h| h.rate).ok_or("There is no horn - record it or restore the default.")?;
     if notes.is_empty() {
         return Err("No notes to play - pick at least one track.".into());
     }
-    let base = settings().base;
-    let out = render_notes(&horn, rate, base, &notes, transpose, speed);
+    let set: Vec<Vec<f32>> = honks.into_iter().filter(|h| h.rate == rate).map(|h| h.m).collect();
+    let out = render_notes(&set, rate, settings().base, &notes, transpose, speed, intro);
     write_wav(&song_path(), &out, rate)?;
     Ok(Rendered { seconds: out.len() as f32 / rate as f32, notes: notes.len() })
 }
@@ -444,13 +615,11 @@ pub fn play(game: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Just the horn, on you only.
-pub fn hear_horn() -> Result<(), String> {
-    let p = horn_path();
-    if !p.exists() {
-        return Err("Record the horn first.".into());
-    }
-    crate::sound::play_file(p, false);
+/// One honk of the set (shortest = 0), on you only.
+pub fn hear_honk(index: usize) -> Result<(), String> {
+    let honks = load_honks();
+    let h = honks.get(index).or(honks.last()).ok_or("There is no horn.")?;
+    crate::sound::play_file(h.path.clone(), false);
     Ok(())
 }
 
@@ -484,6 +653,9 @@ mod tests {
     fn tone(freq: f32, rate: u32, secs: f32) -> Vec<f32> {
         (0..(rate as f32 * secs) as usize).map(|i| (i as f32 / rate as f32 * freq * std::f32::consts::TAU).sin() * 0.5).collect()
     }
+    fn loud(x: &[f32]) -> f32 {
+        x.iter().fold(0.0f32, |m, s| m.max(s.abs()))
+    }
 
     #[test]
     fn finds_the_pitch_of_a_tone() {
@@ -495,37 +667,97 @@ mod tests {
     }
 
     #[test]
-    fn trims_the_silence_around_a_honk() {
+    fn splits_a_recording_into_its_honks() {
         let rate = 48000;
-        let mut m = vec![0.0; rate as usize];
-        m.extend(tone(300.0, rate, 0.5));
-        m.extend(vec![0.0; rate as usize]);
-        let t = trim(&m, rate);
-        let secs = t.len() as f32 / rate as f32;
-        assert!(secs > 0.5 && secs < 0.6, "{secs}");
+        let gap = |s: f32| vec![0.0f32; (rate as f32 * s) as usize];
+        let mut m = gap(0.5);
+        m.extend(tone(300.0, rate, 0.2));
+        m.extend(gap(0.6));
+        m.extend(tone(300.0, rate, 0.03)); // a click, not a honk
+        m.extend(gap(0.6));
+        m.extend(tone(300.0, rate, 1.0));
+        m.extend(gap(0.5));
+        let honks = split_honks(&m, rate);
+        assert_eq!(honks.len(), 2, "the click is dropped");
+        let secs: Vec<f32> = honks.iter().map(|h| h.len() as f32 / rate as f32).collect();
+        assert!(secs[0] > 0.2 && secs[0] < 0.35, "{secs:?}");
+        assert!(secs[1] > 1.0 && secs[1] < 1.15, "{secs:?}");
     }
 
     #[test]
-    fn an_octave_up_plays_twice_the_pitch() {
+    fn an_octave_up_plays_in_tune() {
         let rate = 48000;
-        let horn = tone(200.0, rate, 1.0); // base: whatever MIDI 200 Hz is
-        let base = 69.0 + 12.0 * (200.0f32 / 440.0).log2();
+        let horn = tone(200.0, rate, 1.0);
+        let base = 69.0 + 12.0 * (200.0f32 / 440.0).log2(); // 200 Hz, between notes
         let notes = [Note { t: 0.0, d: 0.5, key: (base.round() as u8) + 12, vel: 127, track: 0 }];
-        let out = render_notes(&horn, rate, base, &notes, 0, 1.0);
+        let out = render_notes(&[horn], rate, base, &notes, 0, 1.0, false);
         let heard = detect_pitch(&out[..(rate as usize / 2)], rate).unwrap();
-        // in tune: the note asked for, not the horn's pitch plus an octave
+        // the note asked for, not the horn's pitch plus an octave
         assert!((heard - (base.round() + 12.0)).abs() < 0.1, "heard {heard}");
     }
 
     #[test]
-    fn long_notes_keep_sounding_past_the_recording() {
+    fn a_short_note_uses_the_short_honk() {
+        let rate = 48000;
+        // a short honk at 300 Hz and a long one an octave lower, same "base"
+        // so the pick shows in the pitch that comes out
+        let short = tone(300.0, rate, 0.25);
+        let long = tone(150.0, rate, 1.5);
+        let base = 60.0;
+        let short_note = [Note { t: 0.0, d: 0.15, key: 60, vel: 127, track: 0 }];
+        let out = render_notes(&[short.clone(), long.clone()], rate, base, &short_note, 0, 1.0, false);
+        let f = detect_pitch(&out[..(rate as f32 * 0.14) as usize], rate).unwrap();
+        assert!((f - (69.0 + 12.0 * (300.0f32 / 440.0).log2())).abs() < 0.2, "short note played the short honk: {f}");
+        let long_note = [Note { t: 0.0, d: 1.0, key: 60, vel: 127, track: 0 }];
+        let out = render_notes(&[short, long], rate, base, &long_note, 0, 1.0, false);
+        let f = detect_pitch(&out[(rate as f32 * 0.4) as usize..(rate as f32 * 0.7) as usize], rate).unwrap();
+        assert!((f - (69.0 + 12.0 * (150.0f32 / 440.0).log2())).abs() < 0.2, "long note played the long honk: {f}");
+    }
+
+    #[test]
+    fn the_song_opens_with_a_plain_honk_then_the_tune() {
+        let rate = 48000;
+        let honk = tone(200.0, rate, 0.5);
+        let base = 69.0 + 12.0 * (200.0f32 / 440.0).log2();
+        let notes = [Note { t: 0.0, d: 0.5, key: (base.round() as u8) + 7, vel: 127, track: 0 }];
+        let out = render_notes(&[honk], rate, base, &notes, 0, 1.0, true);
+        let s = |a: f32, b: f32| &out[(a * rate as f32) as usize..(b * rate as f32) as usize];
+        // first the horn as it is ...
+        let first = detect_pitch(s(0.0, 0.45), rate).unwrap();
+        assert!((first - base).abs() < 0.1, "opener at the horn's own pitch: {first}");
+        // ... then quiet ...
+        assert!(loud(s(0.55, 1.05)) < 0.01, "a pause after it");
+        // ... then the tune, a fifth up
+        let tune = detect_pitch(s(1.15, 1.55), rate).unwrap();
+        assert!((tune - (base.round() + 7.0)).abs() < 0.1, "then the melody: {tune}");
+    }
+
+    #[test]
+    fn long_notes_keep_sounding_past_the_longest_honk() {
         let rate = 48000;
         let horn = tone(200.0, rate, 0.4);
         let notes = [Note { t: 0.0, d: 2.0, key: 60, vel: 127, track: 0 }];
-        let out = render_notes(&horn, rate, 60.0, &notes, 0, 1.0);
-        // still loud a second and a half in, well past the 0.4 s recording
-        let late = &out[(rate as f32 * 1.5) as usize..(rate as f32 * 1.6) as usize];
-        assert!(late.iter().fold(0.0f32, |m, s| m.max(s.abs())) > 0.3);
+        let out = render_notes(&[horn], rate, 60.0, &notes, 0, 1.0, false);
+        // still loud a second and a half in, well past the 0.4 s honk
+        assert!(loud(&out[(rate as f32 * 1.5) as usize..(rate as f32 * 1.6) as usize]) > 0.3);
+    }
+
+    #[test]
+    fn the_built_in_horn_decodes_and_is_in_tune_with_itself() {
+        let dir = std::env::temp_dir().join("solr_horn_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let mut set = vec![];
+        for (i, b) in DEFAULT_HONKS.iter().enumerate() {
+            let p = dir.join(format!("h{i}.wav"));
+            std::fs::write(&p, b).unwrap();
+            let c = crate::audio::decode::decode_file(&p).unwrap();
+            set.push((to_mono(&c.samples, c.channels), c.rate));
+        }
+        let lens: Vec<f32> = set.iter().map(|(m, r)| m.len() as f32 / *r as f32).collect();
+        assert!(lens.windows(2).all(|w| w[0] <= w[1]), "shortest first: {lens:?}");
+        let p = set_pitch(&set).unwrap();
+        // the WARDOGS horn: E4 and a bit over half a semitone
+        assert!((p - 64.56).abs() < 0.1, "{p}");
     }
 
     #[test]

@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type HornInfo, type HornNote, type HornSong,
-  hornHear, hornInfo, hornLoadFile, hornMidi, hornPlay, hornRecord, hornRender, hornSetBase, onEvent, soundStop,
+  hornHear, hornInfo, hornLoadFile, hornMidi, hornPlay, hornRecord, hornRender, hornRestore, hornSetBase, onEvent, soundStop,
 } from "./bridge";
+import { HORN_SONGS, builtinSong } from "./hornSongs";
 
 /*
   Horn Music: any MIDI file, played on the helicopter's horn into voice chat.
 
-  1. The instrument: record the horn off the PC's own sound while honking in
-     the game (or pick a file). Its pitch is found, so the song plays in tune.
+  1. The instrument: a set of honks, short to long - the real WARDOGS horn is
+     built in. Record your own off the PC's sound (honk a few times) or pick a
+     file; it is split into honks and its pitch found, so songs play in tune.
+     Each note uses the honk closest to its length.
   2. The song: a MIDI file, its tracks (drums left out), transpose and speed.
   3. Play: rendered to one clip, then out through VB-CABLE with the talk key
      held for the whole song, like a soundboard pad - or to you only.
@@ -25,7 +28,7 @@ const TRACK_COLOURS = ["#39ff6a", "#2f9bff", "#ffb020", "#ff5fb4", "#b36bff", "#
 
 export default function HornPage() {
   const [horn, setHorn] = useState<HornInfo | null>(null);
-  const [secs, setSecs] = useState(4);
+  const [secs, setSecs] = useState(10);
   const [recording, setRecording] = useState<number | null>(null); // seconds left
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -34,6 +37,8 @@ export default function HornPage() {
   const [on, setOn] = useState<Set<number>>(new Set());
   const [transpose, setTranspose] = useState(0);
   const [speed, setSpeed] = useState(100);
+  // every song opens with an ordinary honk, so nobody sees it coming
+  const [intro, setIntro] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ from: number; secs: number } | null>(null);
   const [now, setNow] = useState(0);
@@ -64,6 +69,10 @@ export default function HornPage() {
     } catch (e) { setMsg(String(e)); }
   };
   const tune = async (base: number) => { setHorn(await hornSetBase(base)); rendered.current = ""; };
+  const restore = async () => {
+    setMsg(null);
+    try { setHorn(await hornRestore()); rendered.current = ""; } catch (e) { setMsg(String(e)); }
+  };
 
   // ---- 2. the song
   const openMidi = async (f: File | undefined) => {
@@ -79,6 +88,16 @@ export default function HornPage() {
       rendered.current = "";
     } catch (e) { setMsg(String(e)); }
   };
+  const pickBuiltin = (i: number) => {
+    const s = HORN_SONGS[i];
+    setMsg(null);
+    setSong(builtinSong(s));
+    setSongName(s.name);
+    setOn(new Set([0]));
+    setTranspose(0);
+    setSpeed(100);
+    rendered.current = "";
+  };
   const notes: HornNote[] = useMemo(() => (song?.notes ?? []).filter((n) => on.has(n.track)), [song, on]);
   const toggle = (i: number) => setOn((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
@@ -86,12 +105,12 @@ export default function HornPage() {
   const play = async (game: boolean) => {
     if (!horn?.has || !notes.length) return;
     setMsg(null);
-    const key = JSON.stringify([songName, [...on].sort(), transpose, speed, horn.base, horn.seconds]);
+    const key = JSON.stringify([songName, [...on].sort(), transpose, speed, intro, horn.base, horn.custom, horn.honks.map((h) => h.seconds)]);
     try {
       let length = playing?.secs ?? 0;
       if (rendered.current !== key) {
         setBusy("Tuning the horn…");
-        const r = await hornRender(notes, transpose, speed / 100);
+        const r = await hornRender(notes, transpose, speed / 100, intro);
         rendered.current = key;
         length = r.seconds;
       }
@@ -132,25 +151,21 @@ export default function HornPage() {
       <div className="horn-grid">
         <section className="vv-panel horn-inst">
           <h2><span className="horn-step">1</span> The horn</h2>
-          <p className="hint">
-            Get in a helicopter, press Record, then honk (one long honk is best). It records what your PC plays, so keep
-            music and voice chat quiet for those seconds.
-          </p>
-          <div className="horn-row">
-            <button className={`horn-rec ${recording !== null ? "on" : ""}`} disabled={recording !== null} onClick={record}>
-              <i />{recording !== null ? (recording > 0 ? `Honk now! ${recording}` : "Finishing…") : "Record"}
-            </button>
-            <select value={secs} onChange={(e) => setSecs(Number(e.target.value))} disabled={recording !== null}>
-              {[3, 4, 6, 8].map((s) => <option key={s} value={s}>{s} seconds</option>)}
-            </select>
-            <label className="ghost-btn horn-file">
-              Use a file…
-              <input type="file" accept="audio/*,.wav,.mp3,.ogg,.flac" onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
-            </label>
+          {horn?.has && (
+            <p className="horn-which">
+              {horn.custom ? "Your own recording" : "The WARDOGS heli horn, built in"} · {horn.honks.length} honk{horn.honks.length === 1 ? "" : "s"}
+              {horn.custom && <button className="ghost-btn" onClick={restore}>Back to the built-in horn</button>}
+            </p>
+          )}
+          <div className="horn-honks">
+            {horn?.has ? horn.honks.map((h, i) => (
+              <button key={i} className="horn-honk" title="Hear this honk" onClick={() => hornHear(i).catch((e) => setMsg(String(e)))}>
+                <span className="horn-honk-wave">{h.peaks.map((p, j) => <i key={j} style={{ height: `${Math.max(3, p * 100)}%` }} />)}</span>
+                <small>{h.seconds.toFixed(2)} s</small>
+              </button>
+            )) : <em>No horn yet</em>}
           </div>
-          <div className="horn-wave">
-            {horn?.has ? horn.peaks.map((p, i) => <span key={i} style={{ height: `${Math.max(2, p * 100)}%` }} />) : <em>No horn recorded yet</em>}
-          </div>
+          <p className="hint">Each note uses the honk closest to its length; click one to hear it.</p>
           {horn?.has && (
             <div className="horn-row">
               <span className="horn-pitch" title="The note the horn sounds at: songs are shifted from here">
@@ -162,14 +177,38 @@ export default function HornPage() {
               {horn.detected !== null && Math.abs(horn.detected - horn.base) > 0.01 && (
                 <button className="ghost-btn" onClick={() => tune(horn.detected!)}>Reset</button>
               )}
-              <span className="muted">{horn.seconds.toFixed(1)} s</span>
-              <button className="ghost-btn" onClick={() => hornHear().catch((e) => setMsg(String(e)))}>▶ Hear it</button>
             </div>
           )}
+          <details className="horn-own">
+            <summary>Record your own horn</summary>
+            <p className="hint">
+              In a helicopter, press Record and honk several times, short to long, with a pause between. It records what
+              your PC plays, so keep music and voice chat quiet. Or pick a recording - a video works too (its sound).
+            </p>
+            <div className="horn-row">
+              <button className={`horn-rec ${recording !== null ? "on" : ""}`} disabled={recording !== null} onClick={record}>
+                <i />{recording !== null ? (recording > 0 ? `Honk now! ${recording}` : "Finishing…") : "Record"}
+              </button>
+              <select value={secs} onChange={(e) => setSecs(Number(e.target.value))} disabled={recording !== null}>
+                {[5, 10, 15, 20].map((s) => <option key={s} value={s}>{s} seconds</option>)}
+              </select>
+              <label className="ghost-btn horn-file">
+                Use a file…
+                <input type="file" accept="audio/*,video/mp4,.wav,.mp3,.ogg,.flac,.m4a,.mp4" onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+            </div>
+          </details>
         </section>
 
         <section className="vv-panel horn-song">
           <h2><span className="horn-step">2</span> The song</h2>
+          <div className="horn-row horn-songs">
+            {HORN_SONGS.map((s, i) => (
+              <button key={s.name} className={`horn-songbtn ${songName === s.name ? "on" : ""}`} onClick={() => pickBuiltin(i)}>
+                <b>{s.name}</b><small>{s.from}</small>
+              </button>
+            ))}
+          </div>
           <div className="horn-row">
             <label className="add-btn horn-file big">
               Import MIDI…
@@ -221,13 +260,16 @@ export default function HornPage() {
             </button>
             <button className="ghost-btn" disabled={!horn?.has || !notes.length || !!busy} onClick={() => play(false)}>🎧 Only me</button>
             <button className="ghost-btn" onClick={stop}>■ Stop</button>
+            <label className="check" title="One ordinary honk and a pause first, so it starts out sounding like someone just honking">
+              <input type="checkbox" checked={intro} onChange={(e) => setIntro(e.target.checked)} /> Start with a normal honk
+            </label>
             {busy && <span className="muted">{busy}</span>}
             {playing && <span className="horn-now">{clock(now)} / {clock(playing.secs)}</span>}
           </div>
           <p className="hint">
             Into the game it holds your push-to-talk (Caps Lock) for the whole song, through VB-CABLE - the same way as
             the soundboard. The stop button on the stick stops it too.
-            {!horn?.has && " Record the horn first."}
+            {!horn?.has && " There is no horn yet."}
             {horn?.has && !song && " Now import a MIDI file."}
           </p>
           {msg && <p className="hint warn">{msg}</p>}
