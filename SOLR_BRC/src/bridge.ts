@@ -202,6 +202,8 @@ export const hornRender = (notes: HornNote[], transpose: number, speed: number) 
 export const hornPlay = (game: boolean) => invoke<void>("horn_play", { game });
 export const hornHear = (index: number) => invoke<void>("horn_hear", { index });
 export const hornRestore = () => invoke<HornInfo>("horn_restore");
+/** every built-in song rendered to its own sound file (only when something changed); their full paths */
+export const hornExportSongs = (songs: { name: string; notes: HornNote[] }[]) => invoke<string[]>("horn_export_songs", { songs });
 
 /** Open an https page in the default browser (links in the window don't). */
 export async function openUrl(url: string): Promise<void> {

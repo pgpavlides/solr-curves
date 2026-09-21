@@ -3,6 +3,7 @@ import LedMapping from "./LedMapping";
 import MacroPicker from "./MacroPicker";
 import SoundPicker from "./SoundPicker";
 import StickView, { type HandView } from "./StickView";
+import { exportHornSongs } from "./hornSongs";
 import { type SoundStatus, ledSet, macroCheck, onEvent, setThrottleBank, soundFiles, soundReconnect, soundRepairCable, soundStatus, soundStop, stickSuppress } from "./bridge";
 import type { PadLike } from "./gamepad";
 import { type Bank, KNOB, PADS, SOLR_LED_MAP, THROTTLE_BANK_BUTTONS, type Macro, type MacroPreset, type VoiceConfig, bankLeds, isThrottleButton, soundLabel } from "./voice";
@@ -120,8 +121,10 @@ export default function MacrosPage({ stick, throttle = null, bank, thrBank, cfg,
   const kind: "none" | "sound" | "macro" = macro ? "macro" : sound ? "sound" : "none";
 
   const loadFiles = () => {
-    if (!eb?.folder) { setFiles([]); return; }
-    soundFiles(eb.folder).then(setFiles).catch(() => setFiles([]));
+    // the bank's folder, then the horn songs (Horn page) - any button can play one
+    const horn = exportHornSongs().catch(() => [] as string[]);
+    const folder = eb?.folder ? soundFiles(eb.folder).catch(() => [] as string[]) : Promise.resolve([] as string[]);
+    Promise.all([folder, horn]).then(([f, h]) => setFiles([...f, ...h]));
   };
   useEffect(loadFiles, [eb?.folder]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

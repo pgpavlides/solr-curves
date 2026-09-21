@@ -609,6 +609,10 @@ fn horn_hear(index: usize) -> Result<(), String> {
     horn::hear_honk(index)
 }
 #[tauri::command]
+async fn horn_export_songs(songs: Vec<horn::SongOut>) -> Result<Vec<String>, String> {
+    blocking(move || horn::export_songs(songs)).await?
+}
+#[tauri::command]
 async fn horn_restore() -> Result<horn::HornInfo, String> {
     blocking(horn::restore_defaults).await?
 }
@@ -872,7 +876,8 @@ pub fn run() {
             horn_render,
             horn_play,
             horn_hear,
-            horn_restore
+            horn_restore,
+            horn_export_songs
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {

@@ -50,6 +50,8 @@ enum Job {
     /// Load a file ready for PlayFile (a horn song, right after it renders),
     /// so pressing Play starts it at once.
     Preload(PathBuf),
+    /// These files changed on disk (horn songs, re-rendered): load them again.
+    Forget(Vec<PathBuf>),
     Stop,
     /// Open the devices again (after installing VB-CABLE, replugging, ...).
     Reopen,
@@ -423,6 +425,12 @@ pub fn start(app: &AppHandle, config: Value) {
                 Job::Preview(p) => w.preview(p),
                 Job::PlayFile { path, game } => w.play_file(path, game),
                 Job::Preload(path) => w.ready = w.load(&path).ok().map(|c| (path, c)),
+                Job::Forget(paths) => {
+                    w.clips.retain(|p, _| !paths.contains(p));
+                    let c = w.config.clone();
+                    w.apply_config(c);
+                    w.publish();
+                }
                 Job::Stop => w.stop(),
                 Job::Quit(done) => {
                     w.release_ptt();
@@ -469,6 +477,9 @@ pub fn play_file(path: PathBuf, game: bool) {
 pub fn preload(path: PathBuf) {
     send(Job::Preload(path));
 }
+pub fn forget(paths: Vec<PathBuf>) {
+    send(Job::Forget(paths));
+}
 /// On exit: never leave Caps Lock held down.
 pub fn shutdown() {
     let (tx, rx) = mpsc::channel();
@@ -505,6 +516,16 @@ pub fn files(folder: &Path) -> Result<Vec<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_horn_song_on_a_button_is_found_by_its_full_path() {
+        // the bank's folder is the soundboard's; the song lives elsewhere
+        let c = serde_json::json!({ "banks": [
+            { "folder": "E:/WARDOGS_SOUNDBOARD", "pads": { "5": "C:/SolR/horn/songs/horn_Jaws.wav", "6": "heli_hello.mp3" } }
+        ] });
+        assert_eq!(assigned(&c, 0, 5), Some(PathBuf::from("C:/SolR/horn/songs/horn_Jaws.wav")));
+        assert_eq!(assigned(&c, 0, 6), Some(PathBuf::from("E:/WARDOGS_SOUNDBOARD").join("heli_hello.mp3")));
+    }
 
     #[test]
     fn a_bank_assigns_a_file_per_button() {
