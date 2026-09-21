@@ -44,6 +44,14 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
   const b = tab ?? bank ?? 0;
   const eb = cfg.banks[b];
   const [selected, setSelected] = useState<number | null>(null);
+  // a bank tab being renamed in place
+  const [renaming, setRenaming] = useState<number | null>(null);
+  const renameBank = (i: number, name: string) => {
+    const clean = name.trim();
+    setRenaming(null);
+    if (!clean || clean === cfg.banks[i]?.name) return;
+    update({ ...cfg, banks: cfg.banks.map((x, j) => (j === i ? { ...x, name: clean } : x)) });
+  };
   const [files, setFiles] = useState<string[]>([]);
   const [status, setStatus] = useState<SoundStatus | null>(null);
   const [steps, setSteps] = useState("");
@@ -162,15 +170,29 @@ export default function MacrosPage({ stick, bank, cfg, update, setHold, ledError
     <div className="mx-page">
       <div className="mx-left">
         <div className="mx-banks">
-          {cfg.banks.map((x, i) => (
-            <button key={i} className={`mx-bank ${i === b ? "on" : ""} ${bank === i ? "knob" : ""}`}
-              style={{ ["--bank" as string]: x.color }} onClick={() => setTab(i)}
-              title={bank === i ? "The knob is on this bank" : `Knob position ${i + 1} (button ${20 + i}) - shown on the stick, but the knob decides what the buttons do`}>
-              <span className="mx-dot" />
-              {x.name}
-              <small>{assignments(cfg, i).length}</small>
-            </button>
-          ))}
+          {cfg.banks.map((x, i) =>
+            renaming === i ? (
+              <span key={i} className="mx-bank on editing" style={{ ["--bank" as string]: x.color }}>
+                <span className="mx-dot" />
+                <input autoFocus className="mx-bankrename" defaultValue={x.name} maxLength={20}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={(e) => renameBank(i, e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") setRenaming(null);
+                  }} />
+              </span>
+            ) : (
+              <button key={i} className={`mx-bank ${i === b ? "on" : ""} ${bank === i ? "knob" : ""}`}
+                style={{ ["--bank" as string]: x.color }} onClick={() => setTab(i)} onDoubleClick={() => setRenaming(i)}
+                title={`${bank === i ? "The knob is on this bank." : `Knob position ${i + 1} (button ${20 + i}) - shown on the stick, but the knob decides what the buttons do.`} Double-click to rename.`}>
+                <span className="mx-dot" />
+                {x.name}
+                <small>{assignments(cfg, i).length}</small>
+                <span className="mx-pen" onClick={(e) => { e.stopPropagation(); setRenaming(i); }} title="Rename">✎</span>
+              </button>
+            ),
+          )}
           {tab !== null && tab !== bank && (
             <>
               <button className="ghost-btn" onClick={() => setTab(null)}>Back to the knob</button>
