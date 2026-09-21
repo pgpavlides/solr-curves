@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { type LedCmd, ledSet, voiceLoad, voiceSave } from "./bridge";
+import { type LedCmd, ledSet, onEvent, throttleBank, throttleLedPause, voiceLoad, voiceSave } from "./bridge";
 import type { PadLike } from "./gamepad";
 
 /*
@@ -19,7 +19,10 @@ import type { PadLike } from "./gamepad";
   mapping tool (19 Sep 2026): the eight pads are groups 0-7, in their own
   order. `map` in the settings can still override it per button.
 
-  Every other LED on the stick takes the bank colour too.
+  Every other LED on the stick takes the bank colour too - except one: the
+  throttle has banks of its own (throttleBanks, for its buttons 45 and up),
+  switched by holding its button 48 or 49 for three seconds, and the LED
+  group in `throttleLed` blinks in the throttle bank's colour (thrbank.rs).
 */
 
 /** Pad button -> LED group, measured on the stick. */
@@ -42,8 +45,19 @@ export interface Bank {
 }
 
 export const WARDOGS_SOUNDS = "E:/WARDOGS_SOUNDBOARD";
+/** The throttle's buttons are 45 and up, as the game counts them. */
+export const THROTTLE_FIRST = 44;
+export const isThrottleButton = (button: number) => button > THROTTLE_FIRST;
+/** hold one of these on the throttle for 3 s: bank back / forward */
+export const THROTTLE_BANK_BUTTONS = [48, 49];
+
 export interface VoiceConfig {
+  /** the stick's banks: the knob picks one, for buttons 1-44 */
   banks: Bank[];
+  /** the throttle's banks, for its buttons 45 and up; 48 / 49 held switch them */
+  throttleBanks?: Bank[];
+  /** the LED group that blinks in the throttle bank's colour (unset = none) */
+  throttleLed?: number;
   /** button number -> LED group (0-based) */
   map: Record<number, number>;
   /** hold Caps Lock (the game's push-to-talk) while a sound plays; default on */
@@ -87,6 +101,12 @@ export const defaultVoice = (): VoiceConfig => ({
     { name: "Bank 2", color: "#2f9bff", folder: WARDOGS_SOUNDS },
     { name: "Bank 3", color: "#ffb020", folder: WARDOGS_SOUNDS },
     { name: "Bank 4", color: "#ff3fb4", folder: WARDOGS_SOUNDS },
+  ],
+  throttleBanks: [
+    { name: "Throttle 1", color: "#ff3b3b", folder: WARDOGS_SOUNDS },
+    { name: "Throttle 2", color: "#00e5ff", folder: WARDOGS_SOUNDS },
+    { name: "Throttle 3", color: "#b36bff", folder: WARDOGS_SOUNDS },
+    { name: "Throttle 4", color: "#ffffff", folder: WARDOGS_SOUNDS },
   ],
   map: { ...SOLR_LED_MAP },
   stopButton: 11,
@@ -136,7 +156,8 @@ export function bankLeds(cfg: VoiceConfig, bank: number): LedCmd[] {
       out[cfg.map[btn] ?? SOLR_LED_MAP[btn]] = [cfg.map[btn] ?? SOLR_LED_MAP[btn], 0, 0, 0];
     }
   }
-  return out;
+  // the throttle's LED blinks its own bank's colour (thrbank.rs): leave it be
+  return out.filter(([g]) => g !== cfg.throttleLed);
 }
 
 /**
@@ -170,7 +191,30 @@ export function useVoiceBanks(stick: PadLike | null) {
         if (!(x && Array.isArray(x.banks) && x.map)) return;
         // saved banks over the defaults, so a bank saved before it had sounds gets the default ones
         const d = defaultVoice();
-        const next: VoiceConfig = { ...d, ...x, banks: d.banks.map((b, i) => ({ ...b, ...x.banks[i] })), map: { ...SOLR_LED_MAP, ...x.map } };
+        const next: VoiceConfig = {
+          ...d, ...x,
+          banks: d.banks.map((b, i) => ({ ...b, ...x.banks[i] })),
+          throttleBanks: (d.throttleBanks ?? []).map((b, i) => ({ ...b, ...(x.throttleBanks?.[i] ?? {}) })),
+          map: { ...SOLR_LED_MAP, ...x.map },
+        };
+        /*
+          Before the throttle had banks of its own, its buttons were set up in
+          the stick's banks. The first time, they move over: bank N's throttle
+          buttons go to throttle bank N.
+        */
+        if (!x.throttleBanks) {
+          next.throttleBanks = next.throttleBanks!.map((tb, i) => {
+            const sb = next.banks[i];
+            const pick = <T,>(r?: Record<number, T>) =>
+              Object.fromEntries(Object.entries(r ?? {}).filter(([k]) => isThrottleButton(Number(k)))) as Record<number, T>;
+            return { ...tb, pads: { ...pick(sb?.pads), ...(tb.pads ?? {}) }, macros: { ...pick(sb?.macros), ...(tb.macros ?? {}) } };
+          });
+          next.banks = next.banks.map((b) => {
+            const keep = <T,>(r?: Record<number, T>) =>
+              Object.fromEntries(Object.entries(r ?? {}).filter(([k]) => !isThrottleButton(Number(k)))) as Record<number, T>;
+            return { ...b, pads: keep(b.pads), macros: keep(b.macros) };
+          });
+        }
         // the knob picks the whole layout now: older named sets become the
         // banks, in the order they were saved (Helicopter -> bank 1, ...)
         const sets: MacroSet[] = x.macroSets ? Object.values(x.macroSets) : x.macros ? [x.macros] : [];
@@ -185,13 +229,15 @@ export function useVoiceBanks(stick: PadLike | null) {
           before that rule can have both on one button: the sound stays, since
           the stray macros came from switching the kind back and forth.
         */
-        next.banks = next.banks.map((b) => {
+        const oneEach = (b: Bank) => {
           const macros = { ...(b.macros ?? {}) };
           for (const btn of Object.keys(b.pads ?? {})) {
             if (b.pads?.[Number(btn)]) delete macros[Number(btn)];
           }
           return { ...b, macros };
-        });
+        };
+        next.banks = next.banks.map(oneEach);
+        next.throttleBanks = next.throttleBanks!.map(oneEach);
         setCfg(next);
         // the sound thread plays what the file says: bring it up to date
         if (JSON.stringify(next) !== JSON.stringify(x)) voiceSave(next).catch(() => {});
@@ -205,11 +251,18 @@ export function useVoiceBanks(stick: PadLike | null) {
     voiceSave(next).catch(() => {});
   };
 
+  // the throttle's bank lives in the backend: 48 / 49 held switch it even with the window hidden
+  const [thrBank, setThrBank] = useState(0);
+  useEffect(() => {
+    throttleBank().then(setThrBank).catch(() => {});
+    return onEvent<number>("solr:throttle-bank", setThrBank);
+  }, []);
+
   // push the bank colour to the pads when anything relevant changes
   useEffect(() => {
     if (!loaded || hold || bank === null) return;
     const color = cfg.banks[bank]?.color ?? "#ffffff";
-    const key = JSON.stringify([bank, color, cfg.map, cfg.banks[bank]?.pads]);
+    const key = JSON.stringify([bank, color, cfg.map, cfg.banks[bank]?.pads, cfg.throttleLed]);
     if (key === lastSent.current) return;
     lastSent.current = key;
     ledSet(bankLeds(cfg, bank)).then(() => setLedError(null)).catch((e) => setLedError(String(e)));
@@ -217,6 +270,8 @@ export function useVoiceBanks(stick: PadLike | null) {
 
   // resend after the mapping tool hands the LEDs back
   useEffect(() => { if (hold) lastSent.current = ""; }, [hold]);
+  // and keep the throttle's LED from blinking over the tool
+  useEffect(() => { throttleLedPause(hold).catch(() => {}); }, [hold]);
 
-  return { cfg, update, bank, hold, setHold, ledError };
+  return { cfg, update, bank, thrBank, hold, setHold, ledError };
 }

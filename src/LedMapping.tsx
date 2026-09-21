@@ -24,6 +24,12 @@ const SCAN_MS = 1500;
 export default function LedMapping({ stick, bank, cfg, update, setHold }: Props) {
   const [mapping, setMapping] = useState<{ group: number; found: Record<number, number>; auto: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /*
+    The throttle's bank shows on one LED of the stick, blinking. It lights no
+    button, so it can't be found by pressing one: step through the LEDs and
+    say which one it is.
+  */
+  const [thrFind, setThrFind] = useState<number | null>(null);
   const pressedBefore = useRef<Set<number>>(new Set());
 
   const pressed = new Set(
@@ -59,6 +65,26 @@ export default function LedMapping({ stick, bank, cfg, update, setHold }: Props)
     await lightOnly(null);
     setHold(false);
     back();
+  };
+
+  const findThrottleLed = async (group: number | null) => {
+    if (group === null) {
+      setThrFind(null);
+      await lightOnly(null);
+      setHold(false);
+      back();
+      return;
+    }
+    const g = ((group % MAX_GROUP) + MAX_GROUP) % MAX_GROUP;
+    setHold(true);
+    setThrFind(g);
+    await lightOnly(g);
+  };
+  const firstUnmapped = () => {
+    const pads = new Set(PADS.map((b) => cfg.map[b] ?? SOLR_LED_MAP[b]));
+    let g = 0;
+    while (pads.has(g)) g++;
+    return g;
   };
 
   useEffect(() => {
@@ -129,6 +155,38 @@ export default function LedMapping({ stick, bank, cfg, update, setHold }: Props)
           ))}
         </tbody>
       </table>
+      <div className="led-thr">
+        <h3>Throttle bank LED</h3>
+        <p className="hint">
+          The throttle has banks of its own (hold its 48 or 49 for 3 seconds to change). One LED on the stick blinks
+          in the throttle bank's colour - pick which.
+        </p>
+        {thrFind !== null ? (
+          <div className="vv-mapping">
+            <div className="vv-map-now">
+              <span className="muted">LED group</span>
+              <b>{thrFind}</b>
+              <span className="muted">is lit white - is it the one you want blinking?</span>
+            </div>
+            <div className="row">
+              <button className="ghost-btn" onClick={() => findThrottleLed(thrFind - 1)}>Back</button>
+              <button className="ghost-btn" onClick={() => findThrottleLed(thrFind + 1)}>Next</button>
+              <button className="add-btn" onClick={() => { update({ ...cfg, throttleLed: thrFind }); findThrottleLed(null); setNote(`The throttle bank blinks on LED group ${thrFind}.`); }}>This one</button>
+              <button className="ghost-btn" onClick={() => findThrottleLed(null)}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="row">
+            <span>LED group</span>
+            <input className="num" type="number" min={0} max={MAX_GROUP - 1} value={cfg.throttleLed ?? ""} placeholder="none"
+              onChange={(e) => update({ ...cfg, throttleLed: e.target.value === "" ? undefined : Number(e.target.value) })} />
+            <button className="add-btn" onClick={() => findThrottleLed(cfg.throttleLed ?? firstUnmapped())}>Find it on the stick</button>
+            {cfg.throttleLed !== undefined && (
+              <button className="ghost-btn" onClick={() => update({ ...cfg, throttleLed: undefined })}>No LED</button>
+            )}
+          </div>
+        )}
+      </div>
       {note && <p className="dv-note">{note}</p>}
     </div>
   );

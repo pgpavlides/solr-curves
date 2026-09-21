@@ -136,6 +136,16 @@ export default function HelpPage({ sync, pads, cfg }: Props) {
         </section>
 
         <section className="help-card">
+          <h2>Throttle banks</h2>
+          <ul>
+            <li>The throttle has <b>its own banks</b>, separate from the stick's knob. Its buttons (45 and up) do what the throttle bank says; the stick's buttons follow the knob.</li>
+            <li><b>Hold throttle button 48 for 3 seconds</b> for the previous bank, <b>49</b> for the next. A short press is still an ordinary button - bind it in the game or give it a macro (the macro goes off when you let go).</li>
+            <li>One LED on the stick <b>blinks in the throttle bank's colour</b>. Pick which on the Macros page, under Sound and stick settings → LED mapping.</li>
+            <li>On the Macros page, switch to <b>Throttle</b>: its tabs are the throttle's banks, and clicking one puts the throttle on it.</li>
+          </ul>
+        </section>
+
+        <section className="help-card">
           <h2>4 · Voice and push-to-talk</h2>
           <ul>
             <li>In WARDOGS, set voice chat to <b>push-to-talk on Caps Lock</b> and the microphone to <b>CABLE Output (VB-Audio Virtual Cable)</b>.</li>

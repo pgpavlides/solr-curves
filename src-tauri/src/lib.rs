@@ -20,6 +20,7 @@ mod memory;
 mod ptt;
 mod sound;
 mod target;
+mod thrbank;
 mod tmsc;
 mod vbcable;
 
@@ -549,6 +550,24 @@ fn raw_throttle_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot_throttle()
 }
 
+/// Which throttle bank is on (0-based).
+#[tauri::command]
+fn throttle_bank() -> usize {
+    thrbank::bank()
+}
+
+/// Put the throttle on another bank, as holding 48 / 49 does.
+#[tauri::command]
+fn set_throttle_bank(bank: usize) -> usize {
+    thrbank::set_bank(bank)
+}
+
+/// Stop blinking the throttle bank LED while the LED mapping tool drives the LEDs.
+#[tauri::command]
+fn throttle_led_pause(on: bool) {
+    thrbank::pause(on);
+}
+
 /// The RAM the app uses right now, WebView2 included.
 #[tauri::command]
 fn memory_usage() -> memory::Usage {
@@ -573,6 +592,7 @@ async fn voice_save(voice: Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&voice).map_err(|e| e.to_string())?;
     atomic_write("hotas_voice.json", json.as_bytes())?;
     macros::set_config(&voice);
+    thrbank::set_config(&voice);
     sound::set_config(voice);
     Ok(())
 }
@@ -667,6 +687,7 @@ async fn device_set_hid_enabled(app: AppHandle, serial: u32, enabled: bool) -> R
 /// Let go of everything outside the app before it goes: the raw feed, Caps
 /// Lock and the sounds, and the T.A.R.G.E.T. script (the stick plain again).
 fn release_all() {
+    thrbank::shutdown();
     hidraw::shutdown();
     sound::shutdown();
     target::shutdown();
@@ -760,7 +781,10 @@ pub fn run() {
             sound_repair_cable,
             raw_stick_snapshot,
             raw_throttle_snapshot,
-            memory_usage
+            memory_usage,
+            throttle_bank,
+            set_throttle_bank,
+            throttle_led_pause
         ])
         // the overlay has no close button: it goes when the editor goes
         .on_window_event(|window, event| {
@@ -780,6 +804,7 @@ pub fn run() {
         .setup(|app| {
             let voice = voice_load();
             macros::set_config(&voice);
+            thrbank::start(app.handle(), &voice);
             sound::start(app.handle(), voice);
             tray(app)?;
             Ok(())

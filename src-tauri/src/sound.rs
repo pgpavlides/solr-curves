@@ -120,7 +120,7 @@ struct Worker {
 
 /// Which file a bank puts on a button: banks[bank].folder + banks[bank].pads["<button>"].
 fn assigned(config: &Value, bank: usize, button: u16) -> Option<PathBuf> {
-    let b = config.get("banks")?.get(bank)?;
+    let b = config.get(crate::macros::banks_for(button))?.get(bank)?;
     let folder = b.get("folder")?.as_str()?;
     let file = b.get("pads")?.get(button.to_string())?.as_str()?;
     (!folder.is_empty() && !file.is_empty()).then(|| Path::new(folder).join(file))
@@ -128,8 +128,12 @@ fn assigned(config: &Value, bank: usize, button: u16) -> Option<PathBuf> {
 
 fn all_assigned(config: &Value) -> Vec<PathBuf> {
     let mut out = vec![];
-    if let Some(banks) = config.get("banks").and_then(|b| b.as_array()) {
-        for (i, _) in banks.iter().enumerate() {
+    let most = ["banks", "throttleBanks"]
+        .iter()
+        .filter_map(|k| config.get(*k).and_then(|b| b.as_array()).map(|b| b.len()))
+        .max();
+    if let Some(n) = most {
+        for i in 0..n {
             for button in 1..=128 {
                 if let Some(p) = assigned(config, i, button) {
                     if !out.contains(&p) {

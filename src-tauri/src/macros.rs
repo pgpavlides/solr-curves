@@ -294,12 +294,18 @@ pub fn set_config(voice: &Value) {
     *CONFIG.lock().unwrap() = voice.clone();
 }
 
+/// Which list of banks a button's setup is in: the stick's buttons follow the
+/// knob ("banks"), the throttle's (45 and up) have their own ("throttleBanks").
+pub fn banks_for(button: u16) -> &'static str {
+    if button > crate::hidraw::THROTTLE_FIRST { "throttleBanks" } else { "banks" }
+}
+
 /// What this button does in this bank: the bank's own macros, else an older
 /// file's set, else the oldest single "macros" object.
 fn macro_for(cfg: &Value, button: u16, bank: Option<usize>) -> Option<Value> {
     let key = button.to_string();
     if let Some(b) = bank {
-        if let Some(m) = cfg.get("banks").and_then(|v| v.get(b)).and_then(|b| b.get("macros")).and_then(|m| m.get(&key)) {
+        if let Some(m) = cfg.get(banks_for(button)).and_then(|v| v.get(b)).and_then(|b| b.get("macros")).and_then(|m| m.get(&key)) {
             return Some(m.clone());
         }
     }
