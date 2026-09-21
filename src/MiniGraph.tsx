@@ -42,7 +42,9 @@ export default function MiniGraph({ title, c, color, range, stickX, combinedY, a
   const liveY = stickX === null ? null : f(stickX) * 100;
   const gameY = combinedY === null ? null : combinedY * 100;
   const inView = (v: number) => v >= -R && v <= R;
-  const pct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? " " : ""}${v.toFixed(1)}%`);
+  // always the same width ("-100.0%" at most), so moving the stick never
+  // makes the header - or the card - change size
+  const pct = (v: number | null) => (v === null ? "—" : `${v.toFixed(1)}%`).padStart(7, " ");
 
   return (
     <button className={`mini ${active ? "on" : ""}`} style={{ ["--c" as string]: color }} onClick={onOpen}
@@ -50,9 +52,11 @@ export default function MiniGraph({ title, c, color, range, stickX, combinedY, a
       <div className="mini-head">
         <i />
         <b>{title}</b>
-        <span className="muted">
-          hand {pct(liveX)} · curve {pct(liveY)} · game {pct(gameY)}
-        </span>
+      </div>
+      <div className="mini-nums">
+        <span>hand <b>{pct(liveX)}</b></span>
+        <span>curve <b>{pct(liveY)}</b></span>
+        <span>game <b>{pct(gameY)}</b></span>
       </div>
       <svg viewBox={`0 0 ${S} ${S}`} className="mini-svg">
         <rect x={PAD} y={PAD} width={PLOT} height={PLOT} className="mini-bg" />

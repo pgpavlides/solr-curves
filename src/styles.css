@@ -625,9 +625,10 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mini { display: flex; flex-direction: column; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 12px; padding: 10px; cursor: pointer; color: inherit; text-align: left; min-width: 0; }
 .mini:hover { border-color: var(--c); }
 .mini.on { box-shadow: 0 0 0 1px var(--c); }
-.mini-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.mini-head { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; }
 .mini-head i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
-.mini-head span { font: 11px var(--mono); margin-left: auto; }
+.mini-nums { display: flex; justify-content: space-between; gap: 6px; font: 11px var(--mono); color: var(--muted); white-space: pre; overflow: hidden; font-variant-numeric: tabular-nums; }
+.mini-nums b { color: var(--c); font-weight: 600; }
 .mini-svg { width: 100%; height: auto; display: block; }
 .mini-bg { fill: #0c110f; }
 .mini-gl { stroke: #ffffff14; stroke-width: 1; }
