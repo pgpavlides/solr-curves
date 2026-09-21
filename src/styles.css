@@ -607,3 +607,8 @@ html.overlay-root, html.overlay-root body, html.overlay-root #root { background:
 .mx-drop { border: none; background: none; color: var(--muted); font-size: 17px; line-height: 1; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
 .mx-drop:hover { color: var(--bad); background: #2a1616; }
 .mx-drop.big { font-size: 20px; padding: 6px 12px; }
+.mx-pen { opacity: 0; font-size: 12px; color: var(--muted); margin-left: 2px; transition: opacity 0.12s; }
+.mx-bank:hover .mx-pen { opacity: 1; }
+.mx-pen:hover { color: #fff; }
+.mx-bank.editing { padding: 3px 10px 3px 14px; }
+.mx-bankrename { width: 120px; background: var(--bg); border: 1px solid var(--bank); border-radius: 7px; padding: 3px 8px; color: inherit; font-size: 13.5px; outline: none; }
