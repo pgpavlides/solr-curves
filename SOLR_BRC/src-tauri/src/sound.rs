@@ -47,6 +47,9 @@ enum Job {
     /// Play one file loaded fresh (a rendered horn song): into the game with
     /// the talk key held like a pad, or with `game` false on the monitor only.
     PlayFile { path: PathBuf, game: bool },
+    /// Load a file ready for PlayFile (a horn song, right after it renders),
+    /// so pressing Play starts it at once.
+    Preload(PathBuf),
     Stop,
     /// Open the devices again (after installing VB-CABLE, replugging, ...).
     Reopen,
@@ -66,6 +69,16 @@ pub struct SoundStatus {
     pub errors: Vec<String>,
     /// No cable, but its driver is still in Windows: the Repair button can fix it.
     pub cable_repairable: bool,
+}
+
+/// A horn song has started playing (or couldn't).
+#[derive(Clone, Serialize)]
+struct HornStarted {
+    error: Option<String>,
+    /// its length, as it plays
+    seconds: f32,
+    /// how long loading it took before it could start
+    load_ms: u64,
 }
 
 /// What the frontend is told each time a pad fires.
@@ -120,6 +133,8 @@ struct Worker {
     ptt: crate::ptt::Ptt,
     /// When the talk key goes up (the end of the last clip + tail).
     ptt_until: Option<Instant>,
+    /// A file loaded ahead of playing it (the horn song, as rendered).
+    ready: Option<(PathBuf, Clip)>,
 }
 
 /// Which file a bank puts on a button: banks[bank].folder + banks[bank].pads["<button>"].
@@ -294,17 +309,36 @@ impl Worker {
     }
 
     /// A file that isn't one of the banks' (the horn song): loaded each time,
-    /// since it changes every render.
+    /// since it changes every render. Says when it really started - loading
+    /// and fitting it to the devices takes a moment, and the page's timeline
+    /// should start with the sound, not with the click.
     fn play_file(&mut self, path: PathBuf, game: bool) {
-        let result = match self.load(&path) {
-            Err(e) => Some(e),
-            Ok(c) if game => self.play_clip(&c),
-            Ok(c) => match (&self.monitor, &c.monitor) {
-                (Some(m), Some(buf)) => m.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
-                _ => Some("no monitor device to play it on".into()),
-            },
+        let asked = Instant::now();
+        // the song preloaded when it rendered - kept, it may be played again
+        let loaded = match &self.ready {
+            Some((p, c)) if *p == path => Ok(c.clone()),
+            _ => self.load(&path),
         };
-        let _ = self.app.emit("solr:horn-playing", result);
+        let load_ms = asked.elapsed().as_millis() as u64;
+        let (error, seconds) = match loaded {
+            Err(e) => (Some(e), 0.0),
+            Ok(c) => {
+                let seconds = c.monitor.as_ref().or(c.cable.as_ref()).map_or(0.0, |b| {
+                    let rate = if c.monitor.is_some() { self.monitor.as_ref().map(|e| e.rate) } else { self.cable.as_ref().map(|e| e.rate) };
+                    b.frames() as f32 / rate.unwrap_or(48000).max(1) as f32
+                });
+                let err = if game {
+                    self.play_clip(&c)
+                } else {
+                    match (&self.monitor, &c.monitor) {
+                        (Some(m), Some(buf)) => m.play(buf.clone(), 1.0).err().map(|e| format!("{e:#}")),
+                        _ => Some("no monitor device to play it on".into()),
+                    }
+                };
+                (err, seconds)
+            }
+        };
+        let _ = self.app.emit("solr:horn-playing", HornStarted { error, seconds, load_ms });
     }
 
     fn preview(&mut self, path: PathBuf) {
@@ -359,6 +393,7 @@ pub fn start(app: &AppHandle, config: Value) {
             file_errors: vec![],
             ptt: Default::default(),
             ptt_until: None,
+            ready: None,
         };
         w.open_devices();
         w.apply_config(config);
@@ -387,6 +422,7 @@ pub fn start(app: &AppHandle, config: Value) {
                 }
                 Job::Preview(p) => w.preview(p),
                 Job::PlayFile { path, game } => w.play_file(path, game),
+                Job::Preload(path) => w.ready = w.load(&path).ok().map(|c| (path, c)),
                 Job::Stop => w.stop(),
                 Job::Quit(done) => {
                     w.release_ptt();
@@ -396,6 +432,7 @@ pub fn start(app: &AppHandle, config: Value) {
                 Job::Reopen => {
                     w.open_devices();
                     w.clips.clear(); // prepared for the old devices' rates
+                    w.ready = None;
                     let c = w.config.clone();
                     w.apply_config(c);
                     w.publish();
@@ -428,6 +465,9 @@ pub fn stop() {
 }
 pub fn play_file(path: PathBuf, game: bool) {
     send(Job::PlayFile { path, game });
+}
+pub fn preload(path: PathBuf) {
+    send(Job::Preload(path));
 }
 /// On exit: never leave Caps Lock held down.
 pub fn shutdown() {

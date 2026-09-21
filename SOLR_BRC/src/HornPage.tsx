@@ -43,7 +43,13 @@ export default function HornPage() {
   const rendered = useRef<string>("");
 
   useEffect(() => { hornInfo().then(setHorn).catch(() => {}); }, []);
-  useEffect(() => onEvent<string | null>("solr:horn-playing", (e) => { if (e) { setMsg(e); setPlaying(null); } }), []);
+  // the timeline starts when the sound does - the backend says so once the
+  // song is loaded and actually playing, not when the button was clicked
+  useEffect(() => onEvent<{ error: string | null; seconds: number; load_ms: number }>("solr:horn-playing", (e) => {
+    setBusy(null);
+    if (e.error) { setMsg(e.error); setPlaying(null); return; }
+    setPlaying({ from: performance.now(), secs: e.seconds });
+  }), []);
 
   // ---- 1. the instrument
   const record = async () => {
@@ -105,16 +111,14 @@ export default function HornPage() {
     setMsg(null);
     const key = JSON.stringify([songName, [...on].sort(), transpose, speed, horn.base, horn.custom, horn.honks.map((h) => h.seconds)]);
     try {
-      let length = playing?.secs ?? 0;
+      setPlaying(null);
       if (rendered.current !== key) {
         setBusy("Tuning the horn…");
-        const r = await hornRender(notes, transpose, speed / 100);
+        await hornRender(notes, transpose, speed / 100);
         rendered.current = key;
-        length = r.seconds;
       }
-      setBusy(null);
+      setBusy("Starting…");
       await hornPlay(game);
-      setPlaying({ from: performance.now() + (game ? 120 : 0), secs: length });
     } catch (e) { setMsg(String(e)); setBusy(null); }
   };
   const stop = () => { soundStop().catch(() => {}); setPlaying(null); };

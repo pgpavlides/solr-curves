@@ -581,6 +581,8 @@ pub fn render(notes: Vec<Note>, transpose: i32, speed: f32) -> Result<Rendered, 
     let set: Vec<Vec<f32>> = honks.into_iter().filter(|h| h.rate == rate).map(|h| h.m).collect();
     let out = render_notes(&set, rate, settings().base, &notes, transpose, speed);
     write_wav(&song_path(), &out, rate)?;
+    // loaded and fitted to the devices now, so Play starts the moment it's pressed
+    crate::sound::preload(song_path());
     Ok(Rendered { seconds: out.len() as f32 / rate as f32, notes: notes.len() })
 }
 
