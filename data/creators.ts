@@ -492,6 +492,24 @@ export const creators: Creator[] = [
       },
     ],
   },
+  {
+    name: "Designated Pilot",
+    channelUrl: "https://www.youtube.com/@DesignatedPilotWD",
+    tag: "Short",
+    note:
+      "Under a minute from the pilot's seat, flown for the passengers in the back rather than for the objective.",
+    videos: [
+      {
+        id: "CGqRYKpNdDA",
+        title: "Scaring the SH*T out of Heli Passengers in WARDOGS #wardogs #squadgameplay #armareforger #pilot #fps",
+        length: "0:52",
+        published: "19 September 2026",
+        covers: "Gameplay, not instruction",
+        transcribed: false,
+        why: "A 52-second Short with no captions: there is nothing to write up, only to watch.",
+      },
+    ],
+  },
 ];
 
 export const creatorCount = creators.length;
