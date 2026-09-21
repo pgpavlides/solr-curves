@@ -29,6 +29,13 @@ import type { PadLike } from "./gamepad";
 export const SOLR_LED_MAP: Record<number, number> = { 5: 0, 6: 1, 7: 2, 8: 3, 16: 5, 17: 4, 18: 7, 19: 6 };
 /** Groups the whole stick is painted with (the pads are 0-7; the rest are others). */
 export const ALL_GROUPS = 64;
+/**
+  Group 30 is all eight pads at once - another address for the same LEDs, and
+  whichever write comes last wins (found on the stick, 21 Sep 2026). Painted
+  with the rest of the stick it relit every pad, sound or not. So it is never
+  sent, and the pads' own groups always go last.
+*/
+export const PADS_ALL_GROUP = 30;
 
 export const KNOB = [20, 21, 22, 23];
 export const PADS = [5, 6, 7, 8, 16, 17, 18, 19];
@@ -158,7 +165,10 @@ export function bankLeds(cfg: VoiceConfig, bank: number): LedCmd[] {
     }
   }
   // the throttle's LED blinks its own bank's colour (thrbank.rs): leave it be
-  return out.filter(([g]) => g !== cfg.throttleLed);
+  const padGroups = new Set(PADS.map((btn) => cfg.map[btn] ?? SOLR_LED_MAP[btn]));
+  const keep = out.filter(([g]) => g !== cfg.throttleLed && g !== PADS_ALL_GROUP);
+  // the pads last, so nothing written after them can change them
+  return [...keep.filter(([g]) => !padGroups.has(g)), ...keep.filter(([g]) => padGroups.has(g))];
 }
 
 /**
