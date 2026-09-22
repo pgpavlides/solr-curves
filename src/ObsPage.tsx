@@ -167,8 +167,8 @@ export default function ObsPage() {
             <h2>Preview <small>{AXIS_LABEL[preview]} · move the stick to see the dot</small></h2>
             <div className="obs-stage">
               {port > 0 && (
-                <iframe key={nonce} title="overlay preview" src={url(preview)}
-                  style={{ width: style.w, height: style.h }} />
+                <iframe key={nonce} title="overlay preview" src={url(preview)} allowTransparency
+                  style={{ width: style.w, height: style.h, background: "transparent", colorScheme: "normal" }} />
               )}
             </div>
             <p className="hint">The checkerboard is only here - in OBS that part is see-through.</p>
