@@ -17,7 +17,9 @@ Each panel draws that axis's curve, the live dot (where your hand is, and what t
 
 **In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change.
 
-**Fitting the stream.** The app reads OBS's own canvas from its current profile and **Fit the width** sizes the one you have selected to span it, edge to edge: on a 1080 × 1920 vertical canvas that is 360 per axis for `/row`, with no gap between panels and no margin inside them. The hint above the button always shows the size to type into OBS.
+**Fitting the stream.** The app reads OBS's own canvas from its current profile and **Fit the width** sizes the one you have selected to span it, edge to edge: on a 1080 × 1920 vertical canvas that is 360 per axis for `/row`, with no gap between panels and no margin inside them, and the source height set to match so each panel is square. The hint above the button always shows the size to type into OBS - for `/row` there, **1080 × 360**.
+
+The graphs are square by default (a square drawn in the middle of each panel), so a move left means the same distance as a move up. Untick **Square graph** to let them stretch to whatever shape the source is.
 
 **The look lives in the app.** The **OBS** tab has every option as a control, a colour picker per axis, a live preview on a checkerboard and Copy buttons. What you set there is saved to `C:\SolR\obs_style.json` and pushed to every open overlay at once, so OBS picks it up while it is running - no reloading a source, no editing a URL.
 
@@ -49,6 +51,7 @@ Set these in the app's OBS tab. They are also query parameters (`…/roll?dotsiz
 | `round` | rounded corners, with a background | `0` | 0–60 |
 | `fade` | fade out when the axis has been still for 2 s | `0` | 0 / 1 |
 | `gap` | space between panels, on `/row` and `/all` | `10` | 0–120 |
+| `square` | draw a square graph in the middle of each panel rather than stretching it | `1` | 0 / 1 |
 | `axes` | which axes a page shows, e.g. `roll,yaw` | the route's own | any of the four |
 
 For a vertical (phone) stream, bigger is better: text around 30, grid thickness 4, dot size 34, line 5.
