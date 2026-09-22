@@ -85,7 +85,12 @@ export default function ObsPage() {
     return () => clearTimeout(t);
   }, [style, colours]);
 
-  const set = <K extends keyof Style>(k: K, v: Style[K]) => setStyle((s) => ({ ...s, [k]: v }));
+  const set = <K extends keyof Style>(k: K, v: Style[K]) => setStyle((s) => {
+    const next = { ...s, [k]: v };
+    // square panels: the height IS the width, so the size can't come out wrong
+    if (next.square && (k === "w" || k === "square")) next.h = next.w;
+    return next;
+  });
 
   /** the plain link: the look is saved in the app, not carried in the URL */
   const url = useMemo(() => (path: string) => `http://127.0.0.1:${port}/${path}`, [port]);
@@ -169,7 +174,13 @@ export default function ObsPage() {
             <h2>The look</h2>
             <div className="obs-opts">
               <label>Width<input className="num" type="number" min={120} max={1920} value={style.w} onChange={(e) => set("w", Number(e.target.value))} /></label>
-              <label>Height<input className="num" type="number" min={120} max={1080} value={style.h} onChange={(e) => set("h", Number(e.target.value))} /></label>
+              <label>
+                Height
+                <input className="num" type="number" min={120} max={1080} value={style.h} disabled={style.square}
+                  title={style.square ? "Square panels: the height follows the width" : undefined}
+                  onChange={(e) => set("h", Number(e.target.value))} />
+                {style.square && <small className="muted">square</small>}
+              </label>
               <label>Line<input type="range" min={1} max={12} step={0.5} value={style.line} onChange={(e) => set("line", Number(e.target.value))} /><b>{style.line}</b></label>
               <label>Glow<input type="range" min={0} max={40} value={style.glow} onChange={(e) => set("glow", Number(e.target.value))} /><b>{style.glow}</b></label>
               <label>Margin<input type="range" min={0} max={60} value={style.pad} onChange={(e) => set("pad", Number(e.target.value))} /><b>{style.pad}</b></label>
