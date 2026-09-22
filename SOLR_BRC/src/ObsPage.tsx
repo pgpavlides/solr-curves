@@ -146,7 +146,7 @@ export default function ObsPage() {
               <label className="check"><input type="checkbox" checked={style.ideal} onChange={(e) => set("ideal", e.target.checked)} /> Straight 1:1 line</label>
               <label className="check"><input type="checkbox" checked={style.dot} onChange={(e) => set("dot", e.target.checked)} /> Live dot</label>
               <label>Dot colour<input type="color" value={style.dotcolor} onChange={(e) => set("dotcolor", e.target.value)} /></label>
-              <label>Dot size<input type="range" min={2} max={20} value={style.dotsize} onChange={(e) => set("dotsize", Number(e.target.value))} /><b>{style.dotsize}</b></label>
+              <label>Dot size<input type="range" min={2} max={60} value={style.dotsize} onChange={(e) => set("dotsize", Number(e.target.value))} /><b>{style.dotsize}</b></label>
               <label className="check"><input type="checkbox" checked={style.guide} onChange={(e) => set("guide", e.target.checked)} /> Lines through the dot</label>
               <label className="check"><input type="checkbox" checked={style.label} onChange={(e) => set("label", e.target.checked)} /> Name</label>
               <label className="check"><input type="checkbox" checked={style.nums} onChange={(e) => set("nums", e.target.checked)} /> Numbers</label>
