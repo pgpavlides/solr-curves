@@ -1,32 +1,32 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8" />
-<title>Sol-R __AXIS__</title>
+<title>Sol-R overlay</title>
 <!--
-  One axis, for an OBS Browser Source: its curve, where your hand is on it,
-  and what the game gets. Served by the app (src-tauri/src/obs.rs).
+  One OBS Browser Source: a single axis (/roll) or several side by side
+  (/row = roll, pitch, yaw; /all = those and the throttle). Each panel draws
+  that axis's curve, where your hand is on it, and what the game gets.
 
-  The look is set in the app and arrives over the same stream as the values,
-  so a change there shows here at once - OBS needs nothing but the plain link.
-  A query parameter (?dotsize=40) still wins, for a one-off.
+  Served by the app (src-tauri/src/obs.rs). The look is set in the app and
+  arrives over the same stream as the values, so a change there shows here at
+  once - OBS needs nothing but the plain link. A query parameter (?dotsize=40)
+  still wins, for a one-off, and ?axes=roll,yaw picks what a row holds.
 -->
 <style>
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
   body { font: 13px "Segoe UI", system-ui, sans-serif; color: #e6eee5; }
-  #wrap { position: relative; width: 100vw; height: 100vh; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  #head { position: absolute; left: 10px; top: 8px; display: flex; gap: 10px; align-items: baseline; text-shadow: 0 1px 3px #000a; }
-  #name { font-weight: 700; letter-spacing: 0.02em; }
-  #nums { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; opacity: 0.85; white-space: pre; }
+  #row { display: flex; width: 100vw; height: 100vh; }
+  .panel { position: relative; flex: 1 1 0; min-width: 0; }
+  .panel canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .head { position: absolute; left: 10px; top: 8px; display: flex; gap: 10px; align-items: baseline; text-shadow: 0 1px 3px #000a; }
+  .name { font-weight: 700; letter-spacing: 0.02em; }
+  .nums { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; opacity: 0.85; white-space: pre; }
   .off { display: none; }
 </style>
 <body>
-<div id="wrap">
-  <canvas id="c"></canvas>
-  <div id="head"><span id="name"></span><span id="nums"></span></div>
-</div>
+<div id="row"></div>
 <script>
-const AXIS = "__AXIS__";
+const ALL = ["roll", "pitch", "yaw", "throttle"];
 const LABELS = { roll: "Roll", pitch: "Pitch", yaw: "Yaw", throttle: "Throttle" };
 const DEFAULT_COLOUR = { roll: "39ff6a", pitch: "2f9bff", yaw: "ffb020", throttle: "ff5fb4" };
 
@@ -41,8 +41,11 @@ const num = (v, fallback, lo, hi) => {
 };
 const on = (v, fallback) => (v === null || v === undefined ? fallback : v !== "0" && v !== "false");
 
+// which axes this source shows: what the link asks for, else what the route says
+const asked = (q.get("axes") ?? "").split(",").map((s) => s.trim()).filter((s) => ALL.includes(s));
+const AXES = asked.length ? asked : __AXES__;
+
 const S = {
-  colour: hex(q.get("color"), "#" + DEFAULT_COLOUR[AXIS]),
   bg: q.get("bg") === null || q.get("bg") === "" || q.get("bg") === "transparent" ? null : hex(q.get("bg"), null),
   line: num(q.get("line"), 3, 1, 12),
   grid: on(q.get("grid"), true),
@@ -52,7 +55,7 @@ const S = {
   dot: on(q.get("dot"), true),
   dotColour: hex(q.get("dotcolor"), "#ffffff"),
   dotSize: num(q.get("dotsize"), 7, 2, 80),
-  guide: on(q.get("guide"), true),   // the faint line through the dot
+  guide: on(q.get("guide"), true),   // the faint lines through the dot
   ideal: on(q.get("ideal"), true),   // the straight 1:1 line behind the curve
   label: on(q.get("label"), true),
   nums: on(q.get("nums"), true),
@@ -61,16 +64,53 @@ const S = {
   glow: num(q.get("glow"), 8, 0, 40),
   fade: on(q.get("fade"), false),    // hide while the axis is at rest
   text: num(q.get("text"), 13, 8, 64),           // the name and the numbers, top left
+  gap: num(q.get("gap"), 10, 0, 120),            // between panels, when there are several
 };
+const colourOf = {};
+for (const a of ALL) colourOf[a] = hex(q.get("color"), "#" + DEFAULT_COLOUR[a]);
 
 // what the link asked for: those keep their value whatever the app says
 const PINNED = new Set([...q.keys()].map((k) => k.toLowerCase()));
+
+// one panel per axis, side by side
+const rowEl = document.getElementById("row");
+const panels = AXES.map((axis) => {
+  const el = document.createElement("div");
+  el.className = "panel";
+  el.innerHTML = '<canvas></canvas><div class="head"><span class="name"></span><span class="nums"></span></div>';
+  rowEl.appendChild(el);
+  const p = {
+    axis,
+    canvas: el.querySelector("canvas"),
+    g: el.querySelector("canvas").getContext("2d"),
+    head: el.querySelector(".head"),
+    name: el.querySelector(".name"),
+    nums: el.querySelector(".nums"),
+    curve: null,
+    live: { x: 0, y: 0, live: false },
+    idle: 0,
+  };
+  p.name.textContent = LABELS[axis] ?? axis;
+  return p;
+});
+
+function paintHeads() {
+  rowEl.style.gap = S.gap + "px";
+  for (const p of panels) {
+    p.name.style.color = colourOf[p.axis];
+    p.name.style.fontSize = S.text + "px";
+    p.nums.style.fontSize = (S.text * 0.9).toFixed(1) + "px";
+    p.head.style.gap = (S.text * 0.75).toFixed(1) + "px";
+    p.name.classList.toggle("off", !S.label);
+    p.nums.classList.toggle("off", !S.nums);
+  }
+}
 
 /** The look as the app saved it: the same names as the query parameters. */
 function applyStyle(s) {
   if (!s || typeof s !== "object") return;
   const take = (key, apply) => { if (!PINNED.has(key) && s[key] !== undefined && s[key] !== null) apply(s[key]); };
-  take("color", (v) => { S.colour = hex(typeof v === "object" ? v[AXIS] : v, S.colour); });
+  take("color", (v) => { for (const a of ALL) colourOf[a] = hex(typeof v === "object" ? v[a] : v, colourOf[a]); });
   take("bg", (v) => { S.bg = v === "" || v === "transparent" ? null : hex(v, null); });
   take("line", (v) => { S.line = num(v, S.line, 1, 12); });
   take("glow", (v) => { S.glow = num(v, S.glow, 0, 40); });
@@ -89,47 +129,32 @@ function applyStyle(s) {
   take("nums", (v) => { S.nums = !!v; });
   take("fade", (v) => { S.fade = !!v; });
   take("text", (v) => { S.text = num(v, S.text, 8, 64); });
-  paintHead();
+  take("gap", (v) => { S.gap = num(v, S.gap, 0, 120); });
+  paintHeads();
 }
-
-const canvas = document.getElementById("c");
-const g = canvas.getContext("2d");
-const nameEl = document.getElementById("name");
-const numsEl = document.getElementById("nums");
-nameEl.textContent = LABELS[AXIS] ?? AXIS;
-function paintHead() {
-  nameEl.style.color = S.colour;
-  nameEl.style.fontSize = S.text + "px";
-  numsEl.style.fontSize = (S.text * 0.9).toFixed(1) + "px";
-  document.getElementById("head").style.gap = (S.text * 0.75).toFixed(1) + "px";
-  nameEl.classList.toggle("off", !S.label);
-  numsEl.classList.toggle("off", !S.nums);
-}
-paintHead();
-
-let curve = null;          // 257 points, -1..1
-let live = { x: 0, y: 0, live: false };
-let idle = 0;
+paintHeads();
 
 function size() {
   const r = devicePixelRatio || 1;
-  canvas.width = Math.round(canvas.clientWidth * r);
-  canvas.height = Math.round(canvas.clientHeight * r);
+  for (const p of panels) {
+    p.canvas.width = Math.round(p.canvas.clientWidth * r);
+    p.canvas.height = Math.round(p.canvas.clientHeight * r);
+  }
 }
 addEventListener("resize", size);
 size();
 
-function draw() {
-  requestAnimationFrame(draw);
-  const w = canvas.width, h = canvas.height, r = devicePixelRatio || 1;
+function drawPanel(p) {
+  const g = p.g, w = p.canvas.width, h = p.canvas.height, r = devicePixelRatio || 1;
   g.clearRect(0, 0, w, h);
   // at rest for two seconds: fade away, so it isn't in the way on stream
-  const moving = Math.abs(live.x) > 0.02;
-  idle = moving ? 0 : idle + 1;
-  const alpha = S.fade ? Math.max(0, 1 - Math.max(0, idle - 60) / 60) : 1;
+  const moving = Math.abs(p.live.x) > 0.02;
+  p.idle = moving ? 0 : p.idle + 1;
+  const alpha = S.fade ? Math.max(0, 1 - Math.max(0, p.idle - 60) / 60) : 1;
   if (alpha <= 0) return;
   g.globalAlpha = alpha;
 
+  const colour = colourOf[p.axis];
   const pad = S.pad * r;
   const x0 = pad, y0 = pad, x1 = w - pad, y1 = h - pad;
   const X = (v) => x0 + ((v + 1) / 2) * (x1 - x0);
@@ -161,60 +186,66 @@ function draw() {
     g.globalAlpha = alpha;
   }
 
-  if (curve) {
-    g.strokeStyle = S.colour;
+  if (p.curve) {
+    g.strokeStyle = colour;
     g.lineWidth = S.line * r;
     g.lineJoin = "round";
     g.lineCap = "round";
-    g.shadowColor = S.colour;
+    g.shadowColor = colour;
     g.shadowBlur = S.glow * r;
     g.beginPath();
-    curve.forEach((y, i) => {
-      const x = (i / (curve.length - 1)) * 2 - 1;
+    p.curve.forEach((y, i) => {
+      const x = (i / (p.curve.length - 1)) * 2 - 1;
       i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y));
     });
     g.stroke();
     g.shadowBlur = 0;
   }
 
-  if (S.dot && live.live) {
+  if (S.dot && p.live.live) {
     if (S.guide) {
       // the lines through the dot are the same family as the grid: same thickness
       g.strokeStyle = S.dotColour;
       g.globalAlpha = alpha * 0.35;
       g.lineWidth = S.gridLine * r;
-      g.beginPath(); g.moveTo(X(live.x), y0); g.lineTo(X(live.x), y1); g.stroke();
-      g.beginPath(); g.moveTo(x0, Y(live.y)); g.lineTo(x1, Y(live.y)); g.stroke();
+      g.beginPath(); g.moveTo(X(p.live.x), y0); g.lineTo(X(p.live.x), y1); g.stroke();
+      g.beginPath(); g.moveTo(x0, Y(p.live.y)); g.lineTo(x1, Y(p.live.y)); g.stroke();
       g.globalAlpha = alpha;
     }
     g.fillStyle = S.dotColour;
     g.shadowColor = S.dotColour;
     g.shadowBlur = S.glow * r;
     g.beginPath();
-    g.arc(X(live.x), Y(live.y), S.dotSize * r, 0, Math.PI * 2);
+    g.arc(X(p.live.x), Y(p.live.y), S.dotSize * r, 0, Math.PI * 2);
     g.fill();
     g.shadowBlur = 0;
   }
 
   if (S.nums) {
     const pct = (v) => (v * 100).toFixed(0).padStart(4, " ") + "%";
-    numsEl.textContent = live.live ? `${pct(live.x)} → ${pct(live.y)}` : "no stick";
+    p.nums.textContent = p.live.live ? `${pct(p.live.x)} → ${pct(p.live.y)}` : "no stick";
   }
   g.globalAlpha = 1;
 }
+
+function draw() {
+  requestAnimationFrame(draw);
+  for (const p of panels) drawPanel(p);
+}
 draw();
 
-// the app pushes the curve when it changes and the position 30 times a second
+// the app pushes the look and the curve when they change, and where each axis
+// is 30 times a second
 function listen() {
   const es = new EventSource("/live");
   es.addEventListener("style", (e) => applyStyle(JSON.parse(e.data)));
   es.addEventListener("curve", (e) => {
     const all = JSON.parse(e.data);
-    if (all[AXIS]) curve = all[AXIS];
+    for (const p of panels) if (all[p.axis]) p.curve = all[p.axis];
   });
   es.onmessage = (e) => {
     const all = JSON.parse(e.data);
-    if (all[AXIS]) live = all[AXIS];
+    for (const p of panels) if (all[p.axis]) p.live = all[p.axis];
   };
   es.onerror = () => { es.close(); setTimeout(listen, 1000); };
 }
