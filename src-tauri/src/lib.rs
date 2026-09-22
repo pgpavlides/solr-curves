@@ -18,6 +18,7 @@ mod horn;
 mod led;
 mod macros;
 mod memory;
+mod obs;
 mod ptt;
 mod sound;
 mod target;
@@ -552,6 +553,12 @@ fn raw_throttle_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot_throttle()
 }
 
+/// The OBS overlays: the port they are served on (0 = not running).
+#[tauri::command]
+fn obs_port() -> u16 {
+    obs::port()
+}
+
 /// Which throttle bank is on (0-based).
 #[tauri::command]
 fn throttle_bank() -> usize {
@@ -868,6 +875,7 @@ pub fn run() {
             set_throttle_bank,
             throttle_led_pause,
             open_url,
+            obs_port,
             horn_info,
             horn_record,
             horn_load_file,
@@ -894,6 +902,7 @@ pub fn run() {
             let voice = voice_load();
             macros::set_config(&voice);
             thrbank::start(app.handle(), &voice);
+            obs::start();
             tray::start(app.handle());
             sound::start(app.handle(), voice);
             tray(app)?;
