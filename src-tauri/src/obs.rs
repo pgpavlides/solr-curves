@@ -11,9 +11,14 @@
 //!
 //!   GET /                 the four links, for a quick look in a browser
 //!   GET /<axis>?options   the overlay page itself
-//!   GET /live             server-sent events: where each axis is, 30 times a
-//!                         second, as the stick reports it and as the curve
-//!                         answers (the same table the game gets)
+//!   GET /live             server-sent events: the look, the curve, and where
+//!                         each axis is 30 times a second - as the stick
+//!                         reports it and as the curve answers (the same
+//!                         table the game gets)
+//!
+//! The look is set in the app, not in the link: it is saved to obs_style.json
+//! and pushed to every open overlay the moment it changes, so OBS never has to
+//! be touched again. A query parameter still wins over it, for a one-off.
 //!
 //! The curve comes from C:\SolR\hotas_curves.txt (what the script reads) and
 //! which input each axis uses from hotas_curves.json, both re-read when they
@@ -181,14 +186,40 @@ fn curves() -> String {
     format!("{{{}}}", parts.join(","))
 }
 
-/// Server-sent events: the curve once, then the live values 30 times a second.
+/// The look, as the app last saved it (obs_style.json next to the curves),
+/// on one line: an event carries "data: " per line, so a pretty-printed file
+/// would reach the page as nothing but its first brace.
+fn style() -> String {
+    std::fs::read_to_string(crate::dir().join("obs_style.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .map_or_else(|| "{}".into(), |v| v.to_string())
+}
+
+/// Server-sent events: the look and the curve when they change, then the live
+/// values 30 times a second.
 fn live(mut stream: TcpStream) {
     let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: keep-alive\r\n\r\n";
     if stream.write_all(head.as_bytes()).is_err() {
         return;
     }
-    let mut sent_curve = String::new();
+    let (mut sent_curve, mut sent_style) = (String::new(), String::new());
+    let mut checked = std::time::Instant::now() - Duration::from_secs(1);
     loop {
+        // the look is a small file: look at it a few times a second, not 30
+        if checked.elapsed() >= Duration::from_millis(300) {
+            checked = std::time::Instant::now();
+            let style = style();
+            if style != sent_style {
+                if stream.write_all(format!("event: style
+data: {style}
+
+").as_bytes()).is_err() {
+                    return;
+                }
+                sent_style = style;
+            }
+        }
         let curve = curves();
         if curve != sent_curve {
             if stream.write_all(format!("event: curve\ndata: {curve}\n\n").as_bytes()).is_err() {

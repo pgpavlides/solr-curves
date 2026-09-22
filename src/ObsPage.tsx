@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { obsPort } from "./bridge";
+import { obsPort, obsSetStyle, obsStyle } from "./bridge";
 import { AXES, AXIS_LABEL, type AxisName } from "./curve";
 
 /*
   OBS overlays: one web page per axis, served by the app itself (obs.rs), so
-  OBS can show each curve as a Browser Source. The look is written into the
-  link as query parameters, so nothing has to be set up twice - copy the link,
-  paste it into OBS, done.
+  OBS can show each curve as a Browser Source. The look is set here, not in
+  the link: it is saved beside the curves and pushed to every open overlay at
+  once, so OBS only needs the plain link - set up once, then changes here show
+  in OBS immediately.
 */
 
 const DEFAULT_COLOUR: Record<AxisName, string> = {
@@ -55,41 +56,29 @@ export default function ObsPage() {
   });
   const [copied, setCopied] = useState<string | null>(null);
   const [preview, setPreview] = useState<AxisName>("roll");
-  const [nonce, setNonce] = useState(0); // reload the preview after a change
-
   useEffect(() => { obsPort().then(setPort).catch(() => setPort(0)); }, []);
+  // what the app last saved wins over this page's own memory, so every window agrees
+  useEffect(() => {
+    obsStyle().then((s) => {
+      const saved = s as (Partial<Style> & { color?: Record<AxisName, string> }) | null;
+      if (!saved || typeof saved !== "object") return;
+      const { color, ...rest } = saved;
+      setStyle((cur) => ({ ...cur, ...rest }));
+      if (color) setColours((c) => ({ ...c, ...color }));
+    }).catch(() => {});
+  }, []);
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(style)); } catch { /* not remembered */ } }, [style]);
   useEffect(() => { try { localStorage.setItem(KEY + ":colours", JSON.stringify(colours)); } catch { /* not remembered */ } }, [colours]);
-  useEffect(() => { const t = setTimeout(() => setNonce((n) => n + 1), 250); return () => clearTimeout(t); }, [style, colours]);
+  // the overlays follow this: saved here, streamed to them (obs.rs)
+  useEffect(() => {
+    const t = setTimeout(() => { obsSetStyle({ ...style, color: colours }).catch(() => {}); }, 150);
+    return () => clearTimeout(t);
+  }, [style, colours]);
 
   const set = <K extends keyof Style>(k: K, v: Style[K]) => setStyle((s) => ({ ...s, [k]: v }));
 
-  /** only what differs from the page's own defaults, so links stay readable */
-  const url = useMemo(() => (axis: AxisName) => {
-    const q = new URLSearchParams();
-    const colour = colours[axis] ?? DEFAULT_COLOUR[axis];
-    if (colour.toLowerCase() !== DEFAULT_COLOUR[axis]) q.set("color", colour.replace("#", ""));
-    if (style.bg) q.set("bg", style.bg.replace("#", ""));
-    if (style.line !== DEFAULTS.line) q.set("line", String(style.line));
-    if (style.glow !== DEFAULTS.glow) q.set("glow", String(style.glow));
-    if (style.pad !== DEFAULTS.pad) q.set("pad", String(style.pad));
-    if (style.round !== DEFAULTS.round) q.set("round", String(style.round));
-    if (!style.grid) q.set("grid", "0");
-    if (style.gridcolor !== DEFAULTS.gridcolor) q.set("gridcolor", style.gridcolor.replace("#", ""));
-    if (style.gridalpha !== DEFAULTS.gridalpha) q.set("gridalpha", String(style.gridalpha));
-    if (style.gridline !== DEFAULTS.gridline) q.set("gridline", String(style.gridline));
-    if (style.text !== DEFAULTS.text) q.set("text", String(style.text));
-    if (!style.ideal) q.set("ideal", "0");
-    if (!style.dot) q.set("dot", "0");
-    if (style.dotcolor !== DEFAULTS.dotcolor) q.set("dotcolor", style.dotcolor.replace("#", ""));
-    if (style.dotsize !== DEFAULTS.dotsize) q.set("dotsize", String(style.dotsize));
-    if (!style.guide) q.set("guide", "0");
-    if (!style.label) q.set("label", "0");
-    if (!style.nums) q.set("nums", "0");
-    if (style.fade) q.set("fade", "1");
-    const s = q.toString();
-    return `http://127.0.0.1:${port}/${axis}${s ? `?${s}` : ""}`;
-  }, [port, style, colours]);
+  /** the plain link: the look is saved in the app, not carried in the URL */
+  const url = useMemo(() => (axis: AxisName) => `http://127.0.0.1:${port}/${axis}`, [port]);
 
   const copy = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); } catch { /* the box is selectable as a fallback */ }
@@ -104,7 +93,8 @@ export default function ObsPage() {
           <h1>OBS overlays</h1>
           <p>
             One page per axis, served by this app on your own machine. In OBS: <b>+ → Browser</b>, paste the link, set the
-            size, and tick <b>Shutdown source when not visible</b> if you like. The background is transparent.
+            size, and tick <b>Shutdown source when not visible</b> if you like. The background is transparent. The look
+            below is sent to the overlays as you change it, so the links never change and OBS is set up once.
           </p>
           {port === 0 && <p className="hint warn">The overlay server isn't running - restart the app.</p>}
         </div>
@@ -173,7 +163,7 @@ export default function ObsPage() {
             <h2>Preview <small>{AXIS_LABEL[preview]} · move the stick to see the dot</small></h2>
             <div className="obs-stage">
               {port > 0 && (
-                <iframe key={nonce} title="overlay preview" src={url(preview)} allowTransparency
+                <iframe title="overlay preview" src={url(preview)} allowTransparency
                   style={{ width: style.w, height: style.h, background: "transparent", colorScheme: "normal" }} />
               )}
             </div>

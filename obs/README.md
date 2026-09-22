@@ -13,15 +13,15 @@ http://127.0.0.1:8799/throttle
 
 Each draws that axis's curve, the live dot (where your hand is, and what the game gets) and the numbers, on a transparent background. Opening `http://127.0.0.1:8799/` lists all four.
 
-**In OBS:** + → Browser, paste a link, set Width and Height to match, and tick *Shutdown source when not visible* if you like. Nothing else to set: the look travels in the link.
+**In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change.
 
-**In the app:** the **OBS** tab writes the links for you, with a colour picker per axis, every option below as a control, a live preview on a checkerboard, and Copy buttons (one axis, or all four).
+**The look lives in the app.** The **OBS** tab has every option as a control, a colour picker per axis, a live preview on a checkerboard and Copy buttons. What you set there is saved to `C:\SolR\obs_style.json` and pushed to every open overlay at once, so OBS picks it up while it is running - no reloading a source, no editing a URL.
 
 ![The OBS page](../docs/screenshots/obs.png)
 
 ### The options
 
-They are query parameters: `…/roll?text=30&gridline=4&dotsize=34`. Everything is optional; leave one out and the default applies. Colours are hex with or without `#`, and switches take `0` or `1`.
+Set these in the app's OBS tab. They are also query parameters (`…/roll?dotsize=40`) for a one-off: anything put in the link is pinned and the app no longer changes it. Colours are hex with or without `#`, and switches take `0` or `1`.
 
 | Option | What it does | Default | Range |
 | --- | --- | --- | --- |
@@ -45,7 +45,7 @@ They are query parameters: `…/roll?text=30&gridline=4&dotsize=34`. Everything 
 | `round` | rounded corners, with a background | `0` | 0–60 |
 | `fade` | fade out when the axis has been still for 2 s | `0` | 0 / 1 |
 
-For a vertical (phone) stream, bigger is better: something like `?text=30&gridline=4&dotsize=34&line=5`.
+For a vertical (phone) stream, bigger is better: text around 30, grid thickness 4, dot size 34, line 5.
 
 ### How it works
 
@@ -55,7 +55,7 @@ For a vertical (phone) stream, bigger is better: something like `?text=30&gridli
 | --- | --- |
 | `/` | the four links |
 | `/<axis>?options` | the overlay page (`src-tauri/assets/obs/overlay.html`) |
-| `/live` | server-sent events: the curve when it changes, and where each axis is 30 times a second |
+| `/live` | server-sent events: the look and the curve when they change, and where each axis is 30 times a second |
 
 The curve comes from `C:\SolR\hotas_curves.txt` - the same table the T.A.R.G.E.T. script reads - and which input each axis uses from `hotas_curves.json`. Both are re-read when they change, so an overlay follows the app without being told. The positions come from the stick and throttle feeds inside the app, so the overlay works whether or not the game is running.
 

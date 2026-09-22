@@ -553,6 +553,19 @@ fn raw_throttle_snapshot() -> Option<hidraw::RawStick> {
     hidraw::snapshot_throttle()
 }
 
+/// The look of the OBS overlays, as the OBS page sets it: saved next to the
+/// curves and pushed to every open overlay (obs.rs), so the links stay plain.
+#[tauri::command]
+fn obs_set_style(style: Value) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(&style).map_err(|e| e.to_string())?;
+    atomic_write("obs_style.json", json.as_bytes())
+}
+
+#[tauri::command]
+fn obs_style() -> Value {
+    fs::read_to_string(dir().join("obs_style.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null)
+}
+
 /// The OBS overlays: the port they are served on (0 = not running).
 #[tauri::command]
 fn obs_port() -> u16 {
@@ -876,6 +889,8 @@ pub fn run() {
             throttle_led_pause,
             open_url,
             obs_port,
+            obs_set_style,
+            obs_style,
             horn_info,
             horn_record,
             horn_load_file,
