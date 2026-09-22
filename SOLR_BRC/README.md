@@ -73,7 +73,7 @@ The real WARDOGS heli horn is built in: eight honks, from short to long, and eac
 
 ### Overlays for OBS
 
-While the app runs it serves one page per axis for OBS Browser Sources - `http://127.0.0.1:8799/roll`, and the same for pitch, yaw and throttle. Each draws that axis's curve, the live dot and the numbers on a transparent background. The **OBS** tab holds the look (colour, curve thickness, glow, grid and how fat its lines are, the dot and its size, text size, background, fade) and sends it to every open overlay as you change it, so OBS takes the plain link once and never needs touching again. For a phone-shaped stream, turn the dot and the text up. See [obs/README.md](obs/README.md) for every option and the vertical YouTube profile.
+While the app runs it serves pages for OBS Browser Sources: `http://127.0.0.1:8799/row` puts roll, pitch and yaw side by side in **one** source (`/all` adds the throttle), and `/roll`, `/pitch`, `/yaw`, `/throttle` are the single ones. Each draws that axis's curve, the live dot and the numbers on a transparent background. The **OBS** tab holds the look (colour, curve thickness, glow, grid and how fat its lines are, the dot and its size, text size, background, fade) and sends it to every open overlay as you change it, so OBS takes the plain link once and never needs touching again. For a phone-shaped stream, turn the dot and the text up. See [obs/README.md](obs/README.md) for every option and the vertical YouTube profile.
 
 <p align="center">
   <img src="docs/screenshots/obs.png" alt="OBS overlays" width="900" />
