@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<title>Sol-R __AXIS__</title>
+<!--
+  One axis, for an OBS Browser Source: its curve, where your hand is on it,
+  and what the game gets. Served by the app (src-tauri/src/obs.rs); the look
+  comes from the query string, which the app's OBS page writes.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { font: 13px "Segoe UI", system-ui, sans-serif; color: #e6eee5; }
+  #wrap { position: relative; width: 100vw; height: 100vh; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #head { position: absolute; left: 10px; top: 8px; display: flex; gap: 10px; align-items: baseline; text-shadow: 0 1px 3px #000a; }
+  #name { font-weight: 700; letter-spacing: 0.02em; }
+  #nums { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; opacity: 0.85; white-space: pre; }
+  .off { display: none; }
+</style>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="head"><span id="name"></span><span id="nums"></span></div>
+</div>
+<script>
+const AXIS = "__AXIS__";
+const LABELS = { roll: "Roll", pitch: "Pitch", yaw: "Yaw", throttle: "Throttle" };
+const DEFAULT_COLOUR = { roll: "39ff6a", pitch: "2f9bff", yaw: "ffb020", throttle: "ff5fb4" };
+
+const q = new URLSearchParams(location.search);
+const hex = (v, fallback) => {
+  const s = (v ?? "").replace(/^#/, "");
+  return /^[0-9a-f]{3,8}$/i.test(s) ? "#" + s : fallback;
+};
+const num = (v, fallback, lo, hi) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
+};
+const on = (v, fallback) => (v === null || v === undefined ? fallback : v !== "0" && v !== "false");
+
+const S = {
+  colour: hex(q.get("color"), "#" + DEFAULT_COLOUR[AXIS]),
+  bg: q.get("bg") === null || q.get("bg") === "" || q.get("bg") === "transparent" ? null : hex(q.get("bg"), null),
+  line: num(q.get("line"), 3, 1, 12),
+  grid: on(q.get("grid"), true),
+  gridColour: hex(q.get("gridcolor"), "#ffffff"),
+  gridAlpha: num(q.get("gridalpha"), 0.14, 0, 1),
+  dot: on(q.get("dot"), true),
+  dotColour: hex(q.get("dotcolor"), "#ffffff"),
+  dotSize: num(q.get("dotsize"), 7, 2, 30),
+  guide: on(q.get("guide"), true),   // the faint line through the dot
+  ideal: on(q.get("ideal"), true),   // the straight 1:1 line behind the curve
+  label: on(q.get("label"), true),
+  nums: on(q.get("nums"), true),
+  pad: num(q.get("pad"), 10, 0, 80),
+  round: num(q.get("round"), 0, 0, 60),
+  glow: num(q.get("glow"), 8, 0, 40),
+  fade: on(q.get("fade"), false),    // hide while the axis is at rest
+};
+
+const canvas = document.getElementById("c");
+const g = canvas.getContext("2d");
+const nameEl = document.getElementById("name");
+const numsEl = document.getElementById("nums");
+nameEl.textContent = LABELS[AXIS] ?? AXIS;
+nameEl.style.color = S.colour;
+if (!S.label) nameEl.classList.add("off");
+if (!S.nums) numsEl.classList.add("off");
+
+let curve = null;          // 257 points, -1..1
+let live = { x: 0, y: 0, live: false };
+let idle = 0;
+
+function size() {
+  const r = devicePixelRatio || 1;
+  canvas.width = Math.round(canvas.clientWidth * r);
+  canvas.height = Math.round(canvas.clientHeight * r);
+}
+addEventListener("resize", size);
+size();
+
+function draw() {
+  requestAnimationFrame(draw);
+  const w = canvas.width, h = canvas.height, r = devicePixelRatio || 1;
+  g.clearRect(0, 0, w, h);
+  // at rest for two seconds: fade away, so it isn't in the way on stream
+  const moving = Math.abs(live.x) > 0.02;
+  idle = moving ? 0 : idle + 1;
+  const alpha = S.fade ? Math.max(0, 1 - Math.max(0, idle - 60) / 60) : 1;
+  if (alpha <= 0) return;
+  g.globalAlpha = alpha;
+
+  const pad = S.pad * r;
+  const x0 = pad, y0 = pad, x1 = w - pad, y1 = h - pad;
+  const X = (v) => x0 + ((v + 1) / 2) * (x1 - x0);
+  const Y = (v) => y1 - ((v + 1) / 2) * (y1 - y0);
+
+  if (S.bg) {
+    g.fillStyle = S.bg;
+    const rad = S.round * r;
+    g.beginPath();
+    if (g.roundRect) g.roundRect(0, 0, w, h, rad); else g.rect(0, 0, w, h);
+    g.fill();
+  }
+
+  if (S.grid) {
+    g.strokeStyle = S.gridColour;
+    g.lineWidth = 1 * r;
+    for (const v of [-0.5, 0, 0.5]) {
+      g.globalAlpha = alpha * (v === 0 ? S.gridAlpha * 2.2 : S.gridAlpha);
+      g.beginPath(); g.moveTo(X(v), y0); g.lineTo(X(v), y1); g.stroke();
+      g.beginPath(); g.moveTo(x0, Y(v)); g.lineTo(x1, Y(v)); g.stroke();
+    }
+    g.globalAlpha = alpha;
+  }
+  if (S.ideal) {
+    g.strokeStyle = S.gridColour;
+    g.globalAlpha = alpha * S.gridAlpha;
+    g.lineWidth = 1 * r;
+    g.beginPath(); g.moveTo(X(-1), Y(-1)); g.lineTo(X(1), Y(1)); g.stroke();
+    g.globalAlpha = alpha;
+  }
+
+  if (curve) {
+    g.strokeStyle = S.colour;
+    g.lineWidth = S.line * r;
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    g.shadowColor = S.colour;
+    g.shadowBlur = S.glow * r;
+    g.beginPath();
+    curve.forEach((y, i) => {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y));
+    });
+    g.stroke();
+    g.shadowBlur = 0;
+  }
+
+  if (S.dot && live.live) {
+    if (S.guide) {
+      g.strokeStyle = S.dotColour;
+      g.globalAlpha = alpha * 0.35;
+      g.lineWidth = 1 * r;
+      g.beginPath(); g.moveTo(X(live.x), y0); g.lineTo(X(live.x), y1); g.stroke();
+      g.beginPath(); g.moveTo(x0, Y(live.y)); g.lineTo(x1, Y(live.y)); g.stroke();
+      g.globalAlpha = alpha;
+    }
+    g.fillStyle = S.dotColour;
+    g.shadowColor = S.dotColour;
+    g.shadowBlur = S.glow * r;
+    g.beginPath();
+    g.arc(X(live.x), Y(live.y), S.dotSize * r, 0, Math.PI * 2);
+    g.fill();
+    g.shadowBlur = 0;
+  }
+
+  if (S.nums) {
+    const pct = (v) => (v * 100).toFixed(0).padStart(4, " ") + "%";
+    numsEl.textContent = live.live ? `${pct(live.x)} → ${pct(live.y)}` : "no stick";
+  }
+  g.globalAlpha = 1;
+}
+draw();
+
+// the app pushes the curve when it changes and the position 30 times a second
+function listen() {
+  const es = new EventSource("/live");
+  es.addEventListener("curve", (e) => {
+    const all = JSON.parse(e.data);
+    if (all[AXIS]) curve = all[AXIS];
+  });
+  es.onmessage = (e) => {
+    const all = JSON.parse(e.data);
+    if (all[AXIS]) live = all[AXIS];
+  };
+  es.onerror = () => { es.close(); setTimeout(listen, 1000); };
+}
+listen();
+</script>
+</body>
+</html>

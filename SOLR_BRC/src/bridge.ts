@@ -205,6 +205,9 @@ export const hornRestore = () => invoke<HornInfo>("horn_restore");
 /** every built-in song rendered to its own sound file (only when something changed); their full paths */
 export const hornExportSongs = (songs: { name: string; notes: HornNote[] }[]) => invoke<string[]>("horn_export_songs", { songs });
 
+/** The port the OBS overlays are served on (obs.rs); 0 when it isn't running. */
+export const obsPort = () => invoke<number>("obs_port");
+
 /** Open an https page in the default browser (links in the window don't). */
 export async function openUrl(url: string): Promise<void> {
   if (!inTauri) { window.open(url, "_blank"); return; }

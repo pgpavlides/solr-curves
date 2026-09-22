@@ -9,6 +9,7 @@ import Dashboard, { type Page } from "./Dashboard";
 import MacrosPage from "./MacrosPage";
 import HelpPage from "./HelpPage";
 import HornPage from "./HornPage";
+import ObsPage from "./ObsPage";
 import { exportHornSongs } from "./hornSongs";
 import RamBadge from "./RamBadge";
 import MiniGraph from "./MiniGraph";
@@ -88,7 +89,7 @@ export default function App() {
   // the app opens on the dashboard; the logo in the header brings you back to it
   // the built-in horn songs as sound files, for stick buttons (a no-op when nothing changed)
   useEffect(() => { if (inTauri) exportHornSongs().catch(() => {}); }, []);
-  const [page, setPage] = useState<"home" | "help" | "horn" | Page>("home");
+  const [page, setPage] = useState<"home" | "help" | "horn" | "obs" | Page>("home");
 
   const c = st.axes[axis];
   // which side the controls edit. Linked: both, stored on pos and mirrored to neg
@@ -510,6 +511,7 @@ export default function App() {
               </button>
             ))}
             <button className={page === "horn" ? "on" : ""} onClick={() => setPage("horn")} title="Songs on the helicopter's horn">Horn</button>
+            <button className={page === "obs" ? "on" : ""} onClick={() => setPage("obs")} title="Overlays for OBS, one link per axis">OBS</button>
             <button className={page === "help" ? "on" : ""} onClick={() => setPage("help")}>Help</button>
           </nav>
         )}
@@ -548,6 +550,7 @@ export default function App() {
         <Dashboard onOpen={setPage} onHelp={() => setPage("help")} sync={sync} preset={activePreset} stick={pads.stick} cfg={voice.cfg} bank={voice.bank} />
       )}
       {inTauri && page === "horn" && <HornPage />}
+      {inTauri && page === "obs" && <ObsPage />}
       {inTauri && page === "help" && <HelpPage sync={sync} pads={pads} cfg={voice.cfg} />}
       {inTauri && page === "script" && <ScriptView curveScript="hotas_wardogs_solr.tmc" />}
       {inTauri && page === "devices" && <DevicesView />}
