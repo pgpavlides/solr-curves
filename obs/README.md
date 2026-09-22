@@ -2,18 +2,20 @@
 
 ## The overlays
 
-While Sol-R Curves is running it serves one page per axis, for OBS Browser Sources:
+While Sol-R Curves is running it serves these pages, for OBS Browser Sources:
 
 ```
-http://127.0.0.1:8799/roll
+http://127.0.0.1:8799/row        roll, pitch and yaw side by side - ONE source
+http://127.0.0.1:8799/all        those and the throttle
+http://127.0.0.1:8799/roll       one axis on its own
 http://127.0.0.1:8799/pitch
 http://127.0.0.1:8799/yaw
 http://127.0.0.1:8799/throttle
 ```
 
-Each draws that axis's curve, the live dot (where your hand is, and what the game gets) and the numbers, on a transparent background. Opening `http://127.0.0.1:8799/` lists all four.
+Each panel draws that axis's curve, the live dot (where your hand is, and what the game gets) and the numbers, on a transparent background. `/row` and `/all` share the width evenly, so one browser source covers the lot and nothing has to be lined up by hand; `?axes=roll,yaw` picks your own set. Opening `http://127.0.0.1:8799/` lists them.
 
-**In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change.
+**In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change. Size a row by the axes in it: at 420 × 300 per axis, `/row` is 1260 × 300 and `/all` is 1680 × 300.
 
 **The look lives in the app.** The **OBS** tab has every option as a control, a colour picker per axis, a live preview on a checkerboard and Copy buttons. What you set there is saved to `C:\SolR\obs_style.json` and pushed to every open overlay at once, so OBS picks it up while it is running - no reloading a source, no editing a URL.
 
@@ -44,6 +46,8 @@ Set these in the app's OBS tab. They are also query parameters (`…/roll?dotsiz
 | `bg` | a background colour instead of transparent | transparent | any hex |
 | `round` | rounded corners, with a background | `0` | 0–60 |
 | `fade` | fade out when the axis has been still for 2 s | `0` | 0 / 1 |
+| `gap` | space between panels, on `/row` and `/all` | `10` | 0–120 |
+| `axes` | which axes a page shows, e.g. `roll,yaw` | the route's own | any of the four |
 
 For a vertical (phone) stream, bigger is better: text around 30, grid thickness 4, dot size 34, line 5.
 
@@ -54,7 +58,8 @@ For a vertical (phone) stream, bigger is better: text around 30, grid thickness 
 | Route | What it serves |
 | --- | --- |
 | `/` | the four links |
-| `/<axis>?options` | the overlay page (`src-tauri/assets/obs/overlay.html`) |
+| `/<axis>?options` | one axis (`src-tauri/assets/obs/overlay.html`) |
+| `/row`, `/all` | the same page with several axes, one panel each |
 | `/live` | server-sent events: the look and the curve when they change, and where each axis is 30 times a second |
 
 The curve comes from `C:\SolR\hotas_curves.txt` - the same table the T.A.R.G.E.T. script reads - and which input each axis uses from `hotas_curves.json`. Both are re-read when they change, so an overlay follows the app without being told. The positions come from the stick and throttle feeds inside the app, so the overlay works whether or not the game is running.
