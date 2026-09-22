@@ -15,7 +15,9 @@ http://127.0.0.1:8799/throttle
 
 Each panel draws that axis's curve, the live dot (where your hand is, and what the game gets) and the numbers, on a transparent background. `/row` and `/all` share the width evenly, so one browser source covers the lot and nothing has to be lined up by hand; `?axes=roll,yaw` picks your own set. Opening `http://127.0.0.1:8799/` lists them.
 
-**In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change. Size a row by the axes in it: at 420 × 300 per axis, `/row` is 1260 × 300 and `/all` is 1680 × 300.
+**In OBS:** + → Browser, paste the plain link, set Width and Height, and tick *Shutdown source when not visible* if you like. That is the whole setup - the links never change.
+
+**Fitting the stream.** The app reads OBS's own canvas from its current profile and **Fit the width** sizes the one you have selected to span it, edge to edge: on a 1080 × 1920 vertical canvas that is 360 per axis for `/row`, with no gap between panels and no margin inside them. The hint above the button always shows the size to type into OBS.
 
 **The look lives in the app.** The **OBS** tab has every option as a control, a colour picker per axis, a live preview on a checkerboard and Copy buttons. What you set there is saved to `C:\SolR\obs_style.json` and pushed to every open overlay at once, so OBS picks it up while it is running - no reloading a source, no editing a URL.
 
