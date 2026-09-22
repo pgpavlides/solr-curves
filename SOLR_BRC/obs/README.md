@@ -35,12 +35,12 @@ They are query parameters: `…/roll?text=30&gridline=4&dotsize=34`. Everything 
 | `grid` | show the grey lines | `1` | 0 / 1 |
 | `gridcolor` | their colour | `ffffff` | any hex |
 | `gridalpha` | how strong they are | `0.14` | 0–1 |
-| `gridline` | **how fat the grey X and Y lines are** | `1` | 0.5–14 |
+| `gridline` | **how fat the grey lines are** - the grid, the 1:1 line and the lines through the dot | `1` | 0.5–14 |
 | `ideal` | the straight 1:1 line behind the curve | `1` | 0 / 1 |
 | `dot` | the live dot | `1` | 0 / 1 |
 | `dotcolor` | its colour | `ffffff` | any hex |
 | `dotsize` | **how big it is** - turn this up for streaming to phones | `7` | 2–80 |
-| `guide` | the faint lines through the dot | `1` | 0 / 1 |
+| `guide` | the grey lines through the dot (thickness comes from `gridline`) | `1` | 0 / 1 |
 | `bg` | a background colour instead of transparent | transparent | any hex |
 | `round` | rounded corners, with a background | `0` | 0–60 |
 | `fade` | fade out when the axis has been still for 2 s | `0` | 0 / 1 |

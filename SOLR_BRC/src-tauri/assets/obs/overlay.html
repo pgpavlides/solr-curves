@@ -144,9 +144,10 @@ function draw() {
 
   if (S.dot && live.live) {
     if (S.guide) {
+      // the lines through the dot are the same family as the grid: same thickness
       g.strokeStyle = S.dotColour;
       g.globalAlpha = alpha * 0.35;
-      g.lineWidth = 1 * r;
+      g.lineWidth = S.gridLine * r;
       g.beginPath(); g.moveTo(X(live.x), y0); g.lineTo(X(live.x), y1); g.stroke();
       g.beginPath(); g.moveTo(x0, Y(live.y)); g.lineTo(x1, Y(live.y)); g.stroke();
       g.globalAlpha = alpha;
