@@ -24,6 +24,8 @@ interface Style {
   grid: boolean;
   gridcolor: string;
   gridalpha: number;
+  gridline: number;
+  text: number;
   ideal: boolean;
   dot: boolean;
   dotcolor: string;
@@ -36,7 +38,7 @@ interface Style {
 
 const DEFAULTS: Style = {
   w: 420, h: 300, bg: "", line: 3, glow: 8, pad: 10, round: 0,
-  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, ideal: true,
+  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, gridline: 1, ideal: true, text: 13,
   dot: true, dotcolor: "#ffffff", dotsize: 7, guide: true,
   label: true, nums: true, fade: false,
 };
@@ -75,6 +77,8 @@ export default function ObsPage() {
     if (!style.grid) q.set("grid", "0");
     if (style.gridcolor !== DEFAULTS.gridcolor) q.set("gridcolor", style.gridcolor.replace("#", ""));
     if (style.gridalpha !== DEFAULTS.gridalpha) q.set("gridalpha", String(style.gridalpha));
+    if (style.gridline !== DEFAULTS.gridline) q.set("gridline", String(style.gridline));
+    if (style.text !== DEFAULTS.text) q.set("text", String(style.text));
     if (!style.ideal) q.set("ideal", "0");
     if (!style.dot) q.set("dot", "0");
     if (style.dotcolor !== DEFAULTS.dotcolor) q.set("dotcolor", style.dotcolor.replace("#", ""));
@@ -143,11 +147,13 @@ export default function ObsPage() {
               <label className="check"><input type="checkbox" checked={style.grid} onChange={(e) => set("grid", e.target.checked)} /> Grid</label>
               <label>Grid colour<input type="color" value={style.gridcolor} onChange={(e) => set("gridcolor", e.target.value)} /></label>
               <label>Grid strength<input type="range" min={0} max={1} step={0.02} value={style.gridalpha} onChange={(e) => set("gridalpha", Number(e.target.value))} /><b>{style.gridalpha.toFixed(2)}</b></label>
+              <label>Grid thickness<input type="range" min={0.5} max={14} step={0.5} value={style.gridline} onChange={(e) => set("gridline", Number(e.target.value))} /><b>{style.gridline}</b></label>
               <label className="check"><input type="checkbox" checked={style.ideal} onChange={(e) => set("ideal", e.target.checked)} /> Straight 1:1 line</label>
               <label className="check"><input type="checkbox" checked={style.dot} onChange={(e) => set("dot", e.target.checked)} /> Live dot</label>
               <label>Dot colour<input type="color" value={style.dotcolor} onChange={(e) => set("dotcolor", e.target.value)} /></label>
               <label>Dot size<input type="range" min={2} max={60} value={style.dotsize} onChange={(e) => set("dotsize", Number(e.target.value))} /><b>{style.dotsize}</b></label>
               <label className="check"><input type="checkbox" checked={style.guide} onChange={(e) => set("guide", e.target.checked)} /> Lines through the dot</label>
+              <label>Text size<input type="range" min={8} max={64} value={style.text} onChange={(e) => set("text", Number(e.target.value))} /><b>{style.text}</b></label>
               <label className="check"><input type="checkbox" checked={style.label} onChange={(e) => set("label", e.target.checked)} /> Name</label>
               <label className="check"><input type="checkbox" checked={style.nums} onChange={(e) => set("nums", e.target.checked)} /> Numbers</label>
               <label className="check"><input type="checkbox" checked={style.fade} onChange={(e) => set("fade", e.target.checked)} /> Fade out when still</label>
