@@ -566,6 +566,19 @@ fn obs_style() -> Value {
     fs::read_to_string(dir().join("obs_style.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null)
 }
 
+/// OBS's canvas: what an overlay should be sized against (obs.rs).
+#[derive(serde::Serialize)]
+struct ObsCanvas {
+    width: u32,
+    height: u32,
+    profile: String,
+}
+
+#[tauri::command]
+fn obs_canvas() -> Option<ObsCanvas> {
+    obs::canvas().map(|(width, height, profile)| ObsCanvas { width, height, profile })
+}
+
 /// The OBS overlays: the port they are served on (0 = not running).
 #[tauri::command]
 fn obs_port() -> u16 {
@@ -889,6 +902,7 @@ pub fn run() {
             throttle_led_pause,
             open_url,
             obs_port,
+            obs_canvas,
             obs_set_style,
             obs_style,
             horn_info,

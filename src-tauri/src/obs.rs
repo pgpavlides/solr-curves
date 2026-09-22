@@ -114,6 +114,26 @@ fn index() -> String {
     )
 }
 
+/// OBS's own canvas, so the app can size an overlay to the stream: the
+/// profile OBS has open (user.ini since OBS 31, global.ini before) and its
+/// output resolution (basic.ini). None when OBS has never run here.
+pub fn canvas() -> Option<(u32, u32, String)> {
+    let root = std::path::PathBuf::from(std::env::var_os("APPDATA")?).join("obs-studio");
+    let field = |text: &str, key: &str| -> Option<String> {
+        text.lines()
+            .find_map(|l| l.trim().strip_prefix(key)?.strip_prefix('=').map(|v| v.trim().to_string()))
+    };
+    let conf = ["user.ini", "global.ini"]
+        .iter()
+        .filter_map(|f| std::fs::read_to_string(root.join(f)).ok())
+        .find(|t| t.contains("ProfileDir="))?;
+    let dir = field(&conf, "ProfileDir")?;
+    let name = field(&conf, "Profile").unwrap_or_else(|| dir.clone());
+    let basic = std::fs::read_to_string(root.join("basic").join("profiles").join(&dir).join("basic.ini")).ok()?;
+    let pick = |a: &str, b: &str| field(&basic, a).or_else(|| field(&basic, b))?.parse::<u32>().ok();
+    Some((pick("OutputCX", "BaseCX")?, pick("OutputCY", "BaseCY")?, name))
+}
+
 // ---------------------------------------------------------------- live values
 
 /// The curve tables as the script reads them, re-read when the file changes.

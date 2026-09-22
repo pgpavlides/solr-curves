@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { obsPort, obsSetStyle, obsStyle } from "./bridge";
+import { obsCanvas, obsPort, obsSetStyle, obsStyle } from "./bridge";
 import { AXES, AXIS_LABEL, type AxisName } from "./curve";
 
 /*
@@ -32,6 +32,7 @@ interface Style {
   gridcolor: string;
   gridalpha: number;
   gridline: number;
+  gap: number;
   text: number;
   ideal: boolean;
   dot: boolean;
@@ -45,7 +46,7 @@ interface Style {
 
 const DEFAULTS: Style = {
   w: 420, h: 300, bg: "", line: 3, glow: 8, pad: 10, round: 0,
-  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, gridline: 1, ideal: true, text: 13,
+  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, gridline: 1, gap: 10, ideal: true, text: 13,
   dot: true, dotcolor: "#ffffff", dotsize: 7, guide: true,
   label: true, nums: true, fade: false,
 };
@@ -62,7 +63,9 @@ export default function ObsPage() {
   });
   const [copied, setCopied] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>("row");
+  const [canvas, setCanvas] = useState<{ width: number; height: number; profile: string } | null>(null);
   useEffect(() => { obsPort().then(setPort).catch(() => setPort(0)); }, []);
+  useEffect(() => { obsCanvas().then(setCanvas).catch(() => setCanvas(null)); }, []);
   // what the app last saved wins over this page's own memory, so every window agrees
   useEffect(() => {
     obsStyle().then((s) => {
@@ -88,6 +91,12 @@ export default function ObsPage() {
 
   /** how many panels a link shows, so the preview is the width OBS needs */
   const panelsIn = (path: string) => (path === "row" ? 3 : path === "all" ? 4 : 1);
+
+  /** span OBS's canvas: the panels share its width, edge to edge */
+  const fitWidth = () => {
+    if (!canvas) return;
+    setStyle((s) => ({ ...s, w: Math.floor(canvas.width / panelsIn(preview)), gap: 0, pad: 0 }));
+  };
 
   const copy = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); } catch { /* the box is selectable as a fallback */ }
@@ -139,6 +148,13 @@ export default function ObsPage() {
               Size in OBS: <b>{style.w * panelsIn(preview)} × {style.h}</b> for the one shown below ({style.w} per axis). Every link is listed at{" "}
               <code>http://127.0.0.1:{port}/</code>.
             </p>
+            {canvas && (
+              <p className="hint">
+                OBS is on <b>{canvas.profile}</b>, {canvas.width} × {canvas.height}.{" "}
+                <button className="add-btn" onClick={fitWidth}>Fit the width</button>{" "}
+                sizes the one shown below to span it: {Math.floor(canvas.width / panelsIn(preview))} per axis, no gap, no margin.
+              </p>
+            )}
             <div className="row">
               <button className="ghost-btn" onClick={() => copy([...ROWS.map((r) => `${r.name}: ${url(r.path)}`), ...AXES.map((a) => `${AXIS_LABEL[a]}: ${url(a)}`)].join("\n"), "every")}>
                 {copied === "every" ? "Copied them all" : "Copy every link"}
@@ -155,6 +171,7 @@ export default function ObsPage() {
               <label>Line<input type="range" min={1} max={12} step={0.5} value={style.line} onChange={(e) => set("line", Number(e.target.value))} /><b>{style.line}</b></label>
               <label>Glow<input type="range" min={0} max={40} value={style.glow} onChange={(e) => set("glow", Number(e.target.value))} /><b>{style.glow}</b></label>
               <label>Margin<input type="range" min={0} max={60} value={style.pad} onChange={(e) => set("pad", Number(e.target.value))} /><b>{style.pad}</b></label>
+              <label>Gap between<input type="range" min={0} max={120} value={style.gap} onChange={(e) => set("gap", Number(e.target.value))} /><b>{style.gap}</b></label>
               <label className="check"><input type="checkbox" checked={style.grid} onChange={(e) => set("grid", e.target.checked)} /> Grid</label>
               <label>Grid colour<input type="color" value={style.gridcolor} onChange={(e) => set("gridcolor", e.target.value)} /></label>
               <label>Grid strength<input type="range" min={0} max={1} step={0.02} value={style.gridalpha} onChange={(e) => set("gridalpha", Number(e.target.value))} /><b>{style.gridalpha.toFixed(2)}</b></label>
