@@ -29,6 +29,7 @@ WARDOGS gives a HOTAS very little to work with. Sol-R Curves sits between the st
 - **Curves**: shape how roll, pitch, yaw and the throttle respond, and hear the change in the game within a quarter of a second, without restarting anything.
 - **Macros and sounds**: put a key sequence or a soundboard clip on any button. Four banks sit on the base's knob, and the throttle has banks of its own.
 - **Horn Music**: play 51 songs, or any MIDI file, on the helicopter's real horn, through your mic.
+- **Overlays for OBS**: a link per axis, drawn live on a transparent background, styled how you like.
 - **No T.A.R.G.E.T. window needed**: the app writes, compiles and runs the T.A.R.G.E.T. script itself, and gives the game one clean device, *Thrustmaster Combined*.
 
 ## Getting started
@@ -70,6 +71,14 @@ The real WARDOGS heli horn is built in: eight honks, from short to long, and eac
   <img src="docs/screenshots/horn.png" alt="Horn Music" width="900" />
 </p>
 
+### Overlays for OBS
+
+While the app runs it serves one page per axis for OBS Browser Sources - `http://127.0.0.1:8799/roll`, and the same for pitch, yaw and throttle. Each draws that axis's curve, the live dot and the numbers on a transparent background. The **OBS** tab writes the links with the look you pick (colour, curve thickness, glow, grid and how fat its lines are, the dot and its size, text size, background, fade), previews it and copies it. For a phone-shaped stream, turn the dot and the text up. See [obs/README.md](obs/README.md) for every option and the vertical YouTube profile.
+
+<p align="center">
+  <img src="docs/screenshots/obs.png" alt="OBS overlays" width="900" />
+</p>
+
 ### Script, devices and help
 
 The built-in T.A.R.G.E.T. script, with its live console, and an editor for your own scripts. Both devices, their T.A.R.G.E.T. status and pictures. A Help page that checks your setup and links to everything you need to install.
@@ -85,6 +94,7 @@ The built-in T.A.R.G.E.T. script, with its live console, and an editor for your 
 - **Curves:** the app writes the curves to `C:\SolR\hotas_curves.txt`: 4 axes (roll, pitch, yaw, throttle) × 257 samples, with a dated log line. The script re-reads that file every 250 ms and confirms each table it loads in `C:\SolR\hotas_curves.ack`, which is when the app shows **Live in T.A.R.G.E.T.**
 - **The script:** it takes over the stick and the throttle and hands the game *Thrustmaster Combined*. Stick buttons are 1–44, and the throttle's buttons and hats are 45–62. The app runs it through Thrustmaster's own service (`TmServiceControl.dll`, the Script Editor's call sequence, `src-tauri/src/target.rs`).
 - **Sounds:** sounds and horn songs play through the WARDOGS soundboard's engine, to VB-CABLE and to your monitor, with Caps Lock (the game's push-to-talk) held.
+- **The overlays:** a small HTTP server inside the app (`src-tauri/src/obs.rs`), bound to `127.0.0.1` only. It reads the same curve file the script reads, and streams where each axis is 30 times a second, so an overlay always matches the app.
 - **Your data:** everything lives in `C:\SolR`: curves, presets, styles, voice settings, scripts, and the horn and its songs. `SOLR_DIR` points it somewhere else.
 
 ## Develop
@@ -99,5 +109,5 @@ Tauri 2 + Rust + React.
 **Checks**
 
 - `npm run check`: the curve maths matches T.A.R.G.E.T.'s `fcurve`; also covers split sides and migration.
-- `npm run test:rust`: covers the curve file (parsed exactly like the script parses it), bindings, LEDs, and the horn (pitch, honk splitting, MIDI, rendering).
+- `npm run test:rust`: covers the curve file (parsed exactly like the script parses it), bindings, LEDs, the horn (pitch, honk splitting, MIDI, rendering) and the OBS server (a page per axis, the live stream).
 - Browser tests, against a second server so they never touch `C:\SolR` (`set SOLR_DIR=.testdata/ && npx vite --port 5179`): `node scripts/e2e.mjs`, `node scripts/addpoint.mjs`, `node scripts/layout.mjs`.
