@@ -45,6 +45,7 @@ const S = {
   grid: on(q.get("grid"), true),
   gridColour: hex(q.get("gridcolor"), "#ffffff"),
   gridAlpha: num(q.get("gridalpha"), 0.14, 0, 1),
+  gridLine: num(q.get("gridline"), 1, 0.5, 14),   // how fat the grey X and Y lines are
   dot: on(q.get("dot"), true),
   dotColour: hex(q.get("dotcolor"), "#ffffff"),
   dotSize: num(q.get("dotsize"), 7, 2, 80),
@@ -56,6 +57,7 @@ const S = {
   round: num(q.get("round"), 0, 0, 60),
   glow: num(q.get("glow"), 8, 0, 40),
   fade: on(q.get("fade"), false),    // hide while the axis is at rest
+  text: num(q.get("text"), 13, 8, 64),           // the name and the numbers, top left
 };
 
 const canvas = document.getElementById("c");
@@ -64,6 +66,9 @@ const nameEl = document.getElementById("name");
 const numsEl = document.getElementById("nums");
 nameEl.textContent = LABELS[AXIS] ?? AXIS;
 nameEl.style.color = S.colour;
+nameEl.style.fontSize = S.text + "px";
+numsEl.style.fontSize = (S.text * 0.9).toFixed(1) + "px";
+document.getElementById("head").style.gap = (S.text * 0.75).toFixed(1) + "px";
 if (!S.label) nameEl.classList.add("off");
 if (!S.nums) numsEl.classList.add("off");
 
@@ -105,7 +110,7 @@ function draw() {
 
   if (S.grid) {
     g.strokeStyle = S.gridColour;
-    g.lineWidth = 1 * r;
+    g.lineWidth = S.gridLine * r;
     for (const v of [-0.5, 0, 0.5]) {
       g.globalAlpha = alpha * (v === 0 ? S.gridAlpha * 2.2 : S.gridAlpha);
       g.beginPath(); g.moveTo(X(v), y0); g.lineTo(X(v), y1); g.stroke();
@@ -116,7 +121,7 @@ function draw() {
   if (S.ideal) {
     g.strokeStyle = S.gridColour;
     g.globalAlpha = alpha * S.gridAlpha;
-    g.lineWidth = 1 * r;
+    g.lineWidth = S.gridLine * r;
     g.beginPath(); g.moveTo(X(-1), Y(-1)); g.lineTo(X(1), Y(1)); g.stroke();
     g.globalAlpha = alpha;
   }
