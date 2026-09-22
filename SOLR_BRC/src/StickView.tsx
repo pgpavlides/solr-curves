@@ -307,7 +307,26 @@ export default function StickView({ stick, throttle = null, bank, cfg, selected 
       el.removeEventListener("pointermove", move);
       el.removeEventListener("click", click);
       controls.dispose();
+      /*
+        The models are loaded again on every visit, so what this one put on the
+        graphics card has to go with it - geometries, the cloned materials and
+        their textures - or the app grows by a couple of MB each time the page
+        is opened. forceContextLoss() hands the WebGL context back as well.
+      */
+      scene.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry?.dispose();
+        for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          const mat = m as THREE.MeshStandardMaterial;
+          for (const v of Object.values(mat)) {
+            if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose();
+          }
+          mat.dispose();
+        }
+      });
       renderer.dispose();
+      renderer.forceContextLoss();
       el.removeChild(renderer.domElement);
       parts.current.clear();
       partOf.current.clear();
