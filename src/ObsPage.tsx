@@ -10,6 +10,12 @@ import { AXES, AXIS_LABEL, type AxisName } from "./curve";
   in OBS immediately.
 */
 
+/** the pages that hold several axes at once, so OBS needs one source (obs.rs ROWS) */
+const ROWS = [
+  { path: "row", name: "Roll + Pitch + Yaw", what: "one source, side by side" },
+  { path: "all", name: "All four", what: "with the throttle" },
+];
+
 const DEFAULT_COLOUR: Record<AxisName, string> = {
   roll: "#39ff6a", pitch: "#2f9bff", yaw: "#ffb020", throttle: "#ff5fb4",
 };
@@ -55,7 +61,7 @@ export default function ObsPage() {
     try { return { ...DEFAULT_COLOUR, ...JSON.parse(localStorage.getItem(KEY + ":colours") ?? "{}") }; } catch { return DEFAULT_COLOUR; }
   });
   const [copied, setCopied] = useState<string | null>(null);
-  const [preview, setPreview] = useState<AxisName>("roll");
+  const [preview, setPreview] = useState<string>("row");
   useEffect(() => { obsPort().then(setPort).catch(() => setPort(0)); }, []);
   // what the app last saved wins over this page's own memory, so every window agrees
   useEffect(() => {
@@ -78,7 +84,10 @@ export default function ObsPage() {
   const set = <K extends keyof Style>(k: K, v: Style[K]) => setStyle((s) => ({ ...s, [k]: v }));
 
   /** the plain link: the look is saved in the app, not carried in the URL */
-  const url = useMemo(() => (axis: AxisName) => `http://127.0.0.1:${port}/${axis}`, [port]);
+  const url = useMemo(() => (path: string) => `http://127.0.0.1:${port}/${path}`, [port]);
+
+  /** how many panels a link shows, so the preview is the width OBS needs */
+  const panelsIn = (path: string) => (path === "row" ? 3 : path === "all" ? 4 : 1);
 
   const copy = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); } catch { /* the box is selectable as a fallback */ }
@@ -102,6 +111,18 @@ export default function ObsPage() {
         <div className="obs-grid">
           <section className="vv-panel obs-links">
             <h2>The links</h2>
+            {ROWS.map((r) => (
+              <div key={r.path} className={`obs-link ${preview === r.path ? "on" : ""}`} onClick={() => setPreview(r.path)}>
+                <span className="obs-swatch obs-swatch-row" />
+                <div className="obs-link-body">
+                  <b>{r.name} <small className="muted">{r.what}</small></b>
+                  <input readOnly value={url(r.path)} onFocus={(e) => e.currentTarget.select()} spellCheck={false} />
+                </div>
+                <button className="add-btn" onClick={(e) => { e.stopPropagation(); copy(url(r.path), r.path); }}>
+                  {copied === r.path ? "Copied" : "Copy"}
+                </button>
+              </div>
+            ))}
             {AXES.map((a) => (
               <div key={a} className={`obs-link ${preview === a ? "on" : ""}`} onClick={() => setPreview(a)}>
                 <span className="obs-swatch" style={{ background: colours[a] }} />
@@ -115,12 +136,12 @@ export default function ObsPage() {
               </div>
             ))}
             <p className="hint">
-              Size in OBS: <b>{style.w} × {style.h}</b> suits these settings. All four links are also listed at{" "}
+              Size in OBS: <b>{style.w * panelsIn(preview)} × {style.h}</b> for the one shown below ({style.w} per axis). Every link is listed at{" "}
               <code>http://127.0.0.1:{port}/</code>.
             </p>
             <div className="row">
-              <button className="ghost-btn" onClick={() => copy(AXES.map((a) => `${AXIS_LABEL[a]}: ${url(a)}`).join("\n"), "all")}>
-                {copied === "all" ? "Copied all four" : "Copy all four"}
+              <button className="ghost-btn" onClick={() => copy([...ROWS.map((r) => `${r.name}: ${url(r.path)}`), ...AXES.map((a) => `${AXIS_LABEL[a]}: ${url(a)}`)].join("\n"), "every")}>
+                {copied === "every" ? "Copied them all" : "Copy every link"}
               </button>
               <button className="ghost-btn" onClick={() => { setStyle(DEFAULTS); setColours(DEFAULT_COLOUR); }}>Reset the look</button>
             </div>
@@ -160,11 +181,11 @@ export default function ObsPage() {
           </section>
 
           <section className="vv-panel obs-preview">
-            <h2>Preview <small>{AXIS_LABEL[preview]} · move the stick to see the dot</small></h2>
+            <h2>Preview <small>{ROWS.find((r) => r.path === preview)?.name ?? AXIS_LABEL[preview as AxisName]} · move the stick to see the dot</small></h2>
             <div className="obs-stage">
               {port > 0 && (
                 <iframe title="overlay preview" src={url(preview)} allowTransparency
-                  style={{ width: style.w, height: style.h, background: "transparent", colorScheme: "normal" }} />
+                  style={{ width: style.w * panelsIn(preview), height: style.h, background: "transparent", colorScheme: "normal" }} />
               )}
             </div>
             <p className="hint">The checkerboard is only here - in OBS that part is see-through.</p>

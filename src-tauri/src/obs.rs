@@ -3,14 +3,16 @@
 //! OBS can't show a Tauri window, but it can show a web page (Browser
 //! Source). So the app serves one: `http://127.0.0.1:8799/roll` draws the roll
 //! curve with the live dot on it, on a transparent background, and the same
-//! for pitch, yaw and throttle. The look is set with query parameters
-//! (`?color=39ff6a&line=3&grid=0`), which the app's OBS page writes for you.
+//! for pitch, yaw and throttle. `/row` puts roll, pitch and yaw side by side
+//! in one source, so OBS needs one browser source instead of three.
 //!
 //! It is a tiny HTTP server of its own - no crates, no outside access: it
 //! binds 127.0.0.1 only. Three routes:
 //!
-//!   GET /                 the four links, for a quick look in a browser
-//!   GET /<axis>?options   the overlay page itself
+//!   GET /                 the links, for a quick look in a browser
+//!   GET /<axis>?options   one axis
+//!   GET /row              roll, pitch and yaw side by side in one source
+//!   GET /all              those and the throttle
 //!   GET /live             server-sent events: the look, the curve, and where
 //!                         each axis is 30 times a second - as the stick
 //!                         reports it and as the curve answers (the same
@@ -33,6 +35,8 @@ use std::time::{Duration, SystemTime};
 const PAGE: &str = include_str!("../assets/obs/overlay.html");
 
 pub const AXES: [&str; 4] = ["roll", "pitch", "yaw", "throttle"];
+/// pages holding more than one axis, so OBS needs only one source for them
+const ROWS: [(&str, &[&str]); 2] = [("row", &["roll", "pitch", "yaw"]), ("all", &["roll", "pitch", "yaw", "throttle"])];
 const NSAMP: usize = 257;
 /// tried in turn, so a busy port doesn't stop the overlays working
 const PORTS: [u16; 6] = [8799, 8800, 8801, 8802, 8803, 8804];
@@ -68,11 +72,21 @@ fn serve(mut stream: TcpStream) {
         "" => send(&mut stream, "text/html; charset=utf-8", index().as_bytes()),
         "/live" => live(stream),
         r => {
-            let axis = r.trim_start_matches('/');
-            if AXES.contains(&axis) {
-                send(&mut stream, "text/html; charset=utf-8", PAGE.replace("__AXIS__", axis).as_bytes());
+            let name = r.trim_start_matches('/');
+            // one axis, or one of the rows: the page draws a panel per axis
+            let axes: Option<Vec<&str>> = if AXES.contains(&name) {
+                Some(vec![name])
             } else {
-                let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                ROWS.iter().find(|(n, _)| *n == name).map(|(_, list)| list.to_vec())
+            };
+            match axes {
+                Some(list) => {
+                    let json = format!("[{}]", list.iter().map(|a| format!("\"{a}\"")).collect::<Vec<_>>().join(","));
+                    send(&mut stream, "text/html; charset=utf-8", PAGE.replace("__AXES__", &json).as_bytes());
+                }
+                None => {
+                    let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                }
             }
         }
     }
@@ -89,15 +103,14 @@ fn send(stream: &mut TcpStream, mime: &str, body: &[u8]) {
 
 fn index() -> String {
     let port = port();
-    let links: String = AXES
+    let links: String = ROWS
         .iter()
-        .map(|a| format!("<li><a href=\"/{a}\">{a}</a> &mdash; <code>http://127.0.0.1:{port}/{a}</code></li>"))
+        .map(|(n, list)| ((*n).to_string(), list.join(", ")))
+        .chain(AXES.iter().map(|a| ((*a).to_string(), (*a).to_string())))
+        .map(|(name, what)| format!("<li><a href=\"/{name}\">{name}</a> &mdash; {what} &mdash; <code>http://127.0.0.1:{port}/{name}</code></li>"))
         .collect();
     format!(
-        "<!doctype html><meta charset=utf-8><title>Sol-R Curves overlays</title>\
-         <body style=\"font:14px system-ui;background:#0e1813;color:#e6eee5;padding:24px\">\
-         <h1>Sol-R Curves overlays</h1><p>Add one of these as a Browser Source in OBS:</p><ul>{links}</ul>\
-         <p style=\"color:#8ea396\">The app's OBS page writes these links for you, with the look you choose.</p>"
+        "<!doctype html><meta charset=utf-8><title>Sol-R Curves overlays</title>         <body style=\"font:14px system-ui;background:#0e1813;color:#e6eee5;padding:24px\">         <h1>Sol-R Curves overlays</h1><p>Add one of these as a Browser Source in OBS:</p><ul>{links}</ul>         <p style=\"color:#8ea396\">The app's OBS page copies these links, and holds the look they use.</p>"
     )
 }
 
@@ -254,9 +267,8 @@ Host: localhost
                 break;
             }
             out.extend_from_slice(&buf[..n]);
-            if path.starts_with("/live") && out.windows(2).filter(|w| *w == b"
-
-").count() >= 2 {
+            // the live route never ends: stop once the values have arrived
+            if path.starts_with("/live") && out.windows(9).any(|w| w == b"\"roll\":{\"x\"") {
                 break;
             }
         }
@@ -271,10 +283,14 @@ Host: localhost
         for axis in AXES {
             let page = get(&format!("/{axis}"));
             assert!(page.starts_with("HTTP/1.1 200 OK"), "{axis}: {}", &page[..40.min(page.len())]);
-            assert!(page.contains(&format!("const AXIS = \"{axis}\"")), "{axis}: the page is for that axis");
+            assert!(page.contains(&format!(": [\"{axis}\"];")), "{axis}: the page is for that axis alone");
             assert!(page.contains("EventSource(\"/live\")"), "{axis}: it listens for the live values");
         }
-        assert!(get("/").contains("/throttle"), "the index lists them all");
+        // one source, several axes side by side
+        assert!(get("/row").contains(": [\"roll\",\"pitch\",\"yaw\"];"), "the row is roll, pitch, yaw");
+        assert!(get("/all").contains(": [\"roll\",\"pitch\",\"yaw\",\"throttle\"];"), "and /all adds the throttle");
+        let index = get("/");
+        assert!(index.contains("/throttle") && index.contains("/row") && index.contains("/all"), "the index lists them all");
         assert!(get("/nope").starts_with("HTTP/1.1 404"), "anything else is 404");
 
         let live = get("/live");
