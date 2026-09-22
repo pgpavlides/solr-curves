@@ -73,7 +73,7 @@ The real WARDOGS heli horn is built in: eight honks, from short to long, and eac
 
 ### Overlays for OBS
 
-While the app runs it serves one page per axis for OBS Browser Sources - `http://127.0.0.1:8799/roll`, and the same for pitch, yaw and throttle. Each draws that axis's curve, the live dot and the numbers on a transparent background. The **OBS** tab writes the links with the look you pick (colour, curve thickness, glow, grid and how fat its lines are, the dot and its size, text size, background, fade), previews it and copies it. For a phone-shaped stream, turn the dot and the text up. See [obs/README.md](obs/README.md) for every option and the vertical YouTube profile.
+While the app runs it serves one page per axis for OBS Browser Sources - `http://127.0.0.1:8799/roll`, and the same for pitch, yaw and throttle. Each draws that axis's curve, the live dot and the numbers on a transparent background. The **OBS** tab holds the look (colour, curve thickness, glow, grid and how fat its lines are, the dot and its size, text size, background, fade) and sends it to every open overlay as you change it, so OBS takes the plain link once and never needs touching again. For a phone-shaped stream, turn the dot and the text up. See [obs/README.md](obs/README.md) for every option and the vertical YouTube profile.
 
 <p align="center">
   <img src="docs/screenshots/obs.png" alt="OBS overlays" width="900" />
@@ -94,7 +94,7 @@ The built-in T.A.R.G.E.T. script, with its live console, and an editor for your 
 - **Curves:** the app writes the curves to `C:\SolR\hotas_curves.txt`: 4 axes (roll, pitch, yaw, throttle) × 257 samples, with a dated log line. The script re-reads that file every 250 ms and confirms each table it loads in `C:\SolR\hotas_curves.ack`, which is when the app shows **Live in T.A.R.G.E.T.**
 - **The script:** it takes over the stick and the throttle and hands the game *Thrustmaster Combined*. Stick buttons are 1–44, and the throttle's buttons and hats are 45–62. The app runs it through Thrustmaster's own service (`TmServiceControl.dll`, the Script Editor's call sequence, `src-tauri/src/target.rs`).
 - **Sounds:** sounds and horn songs play through the WARDOGS soundboard's engine, to VB-CABLE and to your monitor, with Caps Lock (the game's push-to-talk) held.
-- **The overlays:** a small HTTP server inside the app (`src-tauri/src/obs.rs`), bound to `127.0.0.1` only. It reads the same curve file the script reads, and streams where each axis is 30 times a second, so an overlay always matches the app.
+- **The overlays:** a small HTTP server inside the app (`src-tauri/src/obs.rs`), bound to `127.0.0.1` only. It reads the same curve file the script reads, streams where each axis is 30 times a second, and pushes the look from `obs_style.json` whenever the OBS tab changes it.
 - **Your data:** everything lives in `C:\SolR`: curves, presets, styles, voice settings, scripts, and the horn and its songs. `SOLR_DIR` points it somewhere else.
 
 ## Develop

@@ -207,6 +207,9 @@ export const hornExportSongs = (songs: { name: string; notes: HornNote[] }[]) =>
 
 /** The port the OBS overlays are served on (obs.rs); 0 when it isn't running. */
 export const obsPort = () => invoke<number>("obs_port");
+/** the look every overlay uses; saved by the app and pushed to them live */
+export const obsSetStyle = (style: unknown) => invoke<void>("obs_set_style", { style });
+export const obsStyle = () => invoke<unknown>("obs_style");
 
 /** Open an https page in the default browser (links in the window don't). */
 export async function openUrl(url: string): Promise<void> {

@@ -4,8 +4,11 @@
 <title>Sol-R __AXIS__</title>
 <!--
   One axis, for an OBS Browser Source: its curve, where your hand is on it,
-  and what the game gets. Served by the app (src-tauri/src/obs.rs); the look
-  comes from the query string, which the app's OBS page writes.
+  and what the game gets. Served by the app (src-tauri/src/obs.rs).
+
+  The look is set in the app and arrives over the same stream as the values,
+  so a change there shows here at once - OBS needs nothing but the plain link.
+  A query parameter (?dotsize=40) still wins, for a one-off.
 -->
 <style>
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
@@ -60,17 +63,49 @@ const S = {
   text: num(q.get("text"), 13, 8, 64),           // the name and the numbers, top left
 };
 
+// what the link asked for: those keep their value whatever the app says
+const PINNED = new Set([...q.keys()].map((k) => k.toLowerCase()));
+
+/** The look as the app saved it: the same names as the query parameters. */
+function applyStyle(s) {
+  if (!s || typeof s !== "object") return;
+  const take = (key, apply) => { if (!PINNED.has(key) && s[key] !== undefined && s[key] !== null) apply(s[key]); };
+  take("color", (v) => { S.colour = hex(typeof v === "object" ? v[AXIS] : v, S.colour); });
+  take("bg", (v) => { S.bg = v === "" || v === "transparent" ? null : hex(v, null); });
+  take("line", (v) => { S.line = num(v, S.line, 1, 12); });
+  take("glow", (v) => { S.glow = num(v, S.glow, 0, 40); });
+  take("pad", (v) => { S.pad = num(v, S.pad, 0, 80); });
+  take("round", (v) => { S.round = num(v, S.round, 0, 60); });
+  take("grid", (v) => { S.grid = !!v; });
+  take("gridcolor", (v) => { S.gridColour = hex(v, S.gridColour); });
+  take("gridalpha", (v) => { S.gridAlpha = num(v, S.gridAlpha, 0, 1); });
+  take("gridline", (v) => { S.gridLine = num(v, S.gridLine, 0.5, 14); });
+  take("ideal", (v) => { S.ideal = !!v; });
+  take("dot", (v) => { S.dot = !!v; });
+  take("dotcolor", (v) => { S.dotColour = hex(v, S.dotColour); });
+  take("dotsize", (v) => { S.dotSize = num(v, S.dotSize, 2, 80); });
+  take("guide", (v) => { S.guide = !!v; });
+  take("label", (v) => { S.label = !!v; });
+  take("nums", (v) => { S.nums = !!v; });
+  take("fade", (v) => { S.fade = !!v; });
+  take("text", (v) => { S.text = num(v, S.text, 8, 64); });
+  paintHead();
+}
+
 const canvas = document.getElementById("c");
 const g = canvas.getContext("2d");
 const nameEl = document.getElementById("name");
 const numsEl = document.getElementById("nums");
 nameEl.textContent = LABELS[AXIS] ?? AXIS;
-nameEl.style.color = S.colour;
-nameEl.style.fontSize = S.text + "px";
-numsEl.style.fontSize = (S.text * 0.9).toFixed(1) + "px";
-document.getElementById("head").style.gap = (S.text * 0.75).toFixed(1) + "px";
-if (!S.label) nameEl.classList.add("off");
-if (!S.nums) numsEl.classList.add("off");
+function paintHead() {
+  nameEl.style.color = S.colour;
+  nameEl.style.fontSize = S.text + "px";
+  numsEl.style.fontSize = (S.text * 0.9).toFixed(1) + "px";
+  document.getElementById("head").style.gap = (S.text * 0.75).toFixed(1) + "px";
+  nameEl.classList.toggle("off", !S.label);
+  numsEl.classList.toggle("off", !S.nums);
+}
+paintHead();
 
 let curve = null;          // 257 points, -1..1
 let live = { x: 0, y: 0, live: false };
@@ -172,6 +207,7 @@ draw();
 // the app pushes the curve when it changes and the position 30 times a second
 function listen() {
   const es = new EventSource("/live");
+  es.addEventListener("style", (e) => applyStyle(JSON.parse(e.data)));
   es.addEventListener("curve", (e) => {
     const all = JSON.parse(e.data);
     if (all[AXIS]) curve = all[AXIS];
