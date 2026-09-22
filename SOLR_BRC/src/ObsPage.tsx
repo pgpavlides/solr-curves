@@ -33,6 +33,7 @@ interface Style {
   gridalpha: number;
   gridline: number;
   gap: number;
+  square: boolean;
   text: number;
   ideal: boolean;
   dot: boolean;
@@ -46,7 +47,7 @@ interface Style {
 
 const DEFAULTS: Style = {
   w: 420, h: 300, bg: "", line: 3, glow: 8, pad: 10, round: 0,
-  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, gridline: 1, gap: 10, ideal: true, text: 13,
+  grid: true, gridcolor: "#ffffff", gridalpha: 0.14, gridline: 1, gap: 10, square: true, ideal: true, text: 13,
   dot: true, dotcolor: "#ffffff", dotsize: 7, guide: true,
   label: true, nums: true, fade: false,
 };
@@ -92,10 +93,11 @@ export default function ObsPage() {
   /** how many panels a link shows, so the preview is the width OBS needs */
   const panelsIn = (path: string) => (path === "row" ? 3 : path === "all" ? 4 : 1);
 
-  /** span OBS's canvas: the panels share its width, edge to edge */
+  /** span OBS's canvas: the panels share its width, edge to edge and square */
   const fitWidth = () => {
     if (!canvas) return;
-    setStyle((s) => ({ ...s, w: Math.floor(canvas.width / panelsIn(preview)), gap: 0, pad: 0 }));
+    const w = Math.floor(canvas.width / panelsIn(preview));
+    setStyle((s) => ({ ...s, w, h: s.square ? w : s.h, gap: 0, pad: 0 }));
   };
 
   const copy = async (text: string, what: string) => {
@@ -176,6 +178,7 @@ export default function ObsPage() {
               <label>Grid colour<input type="color" value={style.gridcolor} onChange={(e) => set("gridcolor", e.target.value)} /></label>
               <label>Grid strength<input type="range" min={0} max={1} step={0.02} value={style.gridalpha} onChange={(e) => set("gridalpha", Number(e.target.value))} /><b>{style.gridalpha.toFixed(2)}</b></label>
               <label>Grid thickness<input type="range" min={0.5} max={14} step={0.5} value={style.gridline} onChange={(e) => set("gridline", Number(e.target.value))} /><b>{style.gridline}</b></label>
+              <label className="check"><input type="checkbox" checked={style.square} onChange={(e) => set("square", e.target.checked)} /> Square graph (not stretched)</label>
               <label className="check"><input type="checkbox" checked={style.ideal} onChange={(e) => set("ideal", e.target.checked)} /> Straight 1:1 line</label>
               <label className="check"><input type="checkbox" checked={style.dot} onChange={(e) => set("dot", e.target.checked)} /> Live dot</label>
               <label>Dot colour<input type="color" value={style.dotcolor} onChange={(e) => set("dotcolor", e.target.value)} /></label>
