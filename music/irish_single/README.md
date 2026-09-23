@@ -37,13 +37,18 @@ python C:/Users/pgpav/cubase-mcp/record_single.py --all   # arms + records each 
 
 Every track received its part, played by the loaded Ireland instruments — no reimport, instruments stayed put.
 
-## TODO — musicality (next phase)
+## v2 — the arrangement (`make_arrangement.py` → `arrangement.mid`, ~30s)
 
-v1 is intentionally simple (everyone plays through, on the grid). Planned improvements:
-- **Call-and-response**: instruments answer each other instead of all doubling the tune; give leads and
-  fills their own bars; drop instruments in/out.
-- **Stops / rests**: real phrase breaks and dynamics, not a constant wall of sound.
-- **Velocity + articulation**: shaped dynamics and the Ireland keyswitch ornaments (cuts, rolls,
-  slides, strikes — see the key-switch tables in `../irish_jig/README.md`), plus CC1 swells.
-- **Humanize**: small timing and velocity jitter so notes aren't dead-on the grid or perfectly aligned
-  across instruments.
+The reworked piece addresses the flat v1:
+- **Call-and-response**: the melody is handed off — Tin Whistle (bars 2–3) → Fiddle answers (4–5) →
+  Flute + Tenor Banjo (6–7) → Mandolin (8–9) → full unison finale (10–13). Instruments rest and re-enter.
+- **Stops / dynamics**: a full-band stop before the finale; section dynamics from soft intro to loud finish.
+- **Velocity + articulation**: shaped velocity with accents; Ireland keyswitch ornaments (cuts, rolls,
+  strikes, strum direction) on the leads and strummers; CC1 swells on wind/bowed.
+- **Humanize**: independent per-instrument timing + velocity jitter (keyswitches stay locked to their notes).
+- **Articulation latch reset**: these instruments latch the last keyswitch, so **every entry's first note
+  presses a known "normal" keyswitch** (`DEFAULT_KS`) — otherwise a note with no articulation plays whatever
+  ornament was left on from a previous session. See `ensure_first_ks()`.
+
+Record it: `python C:/Users/pgpav/cubase-mcp/record_midi.py <path>/arrangement.mid --all`, then
+`python C:/Users/pgpav/cubase-mcp/apply_mix.py` for the stereo balance.

@@ -50,6 +50,8 @@ should change. If not, the bridge isn't connected (restart Cubase).
 | `send_command.py` | Fire one bridge command (optionally N times): `send_command.py record` |
 | `stream_notes.py` | Stream a jig part real-time to `Cubase MCP` |
 | `record_single.py` | The recorder: arm a track by index → record → stream → disarm; `--all` batches every track |
+| `record_midi.py` | General file-based recorder: `record_midi.py <file.mid> --all` records every named track (notes + keyswitches + CC1) into the project, arming by index |
+| `apply_mix.py` | Sets volume + pan per track from a `MIX` table (session-style stereo image) |
 
 The live working copies run from `C:\Users\pgpav\cubase-mcp` (the git clone of cubase-mcp with our
 patch applied). These repo copies are the backup / source of truth.
