@@ -7,6 +7,7 @@ velocity jitter, independent per instrument, so nothing lands machine-perfect).
 
     python make_arrangement.py        # -> arrangement.mid   (needs: pip install mido)
 """
+import math
 import pathlib
 import random
 import sys
@@ -53,16 +54,16 @@ def voices():
         dict(at=0, dyn=0.62, chords=['D', 'D'], parts=[
             ('Bodhran', 'drum', None), ('Bouzouki', 'strum', ['D', 'D']),
             ('Irish Harp', 'arp', ['D', 'D'])]),
-        # bar 2-3  A: Tin Whistle asks the CALL, light backing
-        dict(at=2, dyn=0.85, chords=['D', 'G'], parts=[
+        # bar 2-3  A: Tin Whistle asks the CALL, light backing (soft, expressive entrance)
+        dict(at=2, dyn=0.6, chords=['D', 'G'], parts=[
             ('Tin Whistle', 'lead', CALL), ('Bouzouki', 'strum', ['D', 'G']),
             ('Bodhran', 'drum', None), ('Irish Harp', 'arp', ['D', 'G'])]),
         # bar 4-5  A-answer: Fiddle REPLIES (whistle rests), accordion joins
-        dict(at=4, dyn=0.85, chords=['A', 'D'], parts=[
+        dict(at=4, dyn=0.7, chords=['A', 'D'], parts=[
             ('Fiddle', 'answer', ANSWER), ('Bouzouki', 'strum', ['A', 'D']),
             ('Button Accordion', 'pad', ['A', 'D']), ('Bodhran', 'drum', None)]),
         # bar 6-7  B: Flute + Tenor Banjo take a new idea an octave apart; concertina chops
-        dict(at=6, dyn=0.9, chords=['G', 'D'], parts=[
+        dict(at=6, dyn=0.82, chords=['G', 'D'], parts=[
             ('Irish Flute', 'lead', BTHEME), ('Tenor Banjo', 'lead8', BTHEME),
             ('Concertina', 'offbeat', ['G', 'D']), ('Irish Harp', 'arp', ['G', 'D']),
             ('Bodhran', 'drum', None)]),
@@ -218,6 +219,68 @@ def ensure_first_ks(instr, ev):
     return ev + [(max(0, ft - 20), flen, DEFAULT_KS[instr], 92)]
 
 
+# --- CC1 (Performance slider) dynamics ------------------------------------------------------------
+# On wind/bowed instruments CC1 = Dynamic (the main expression); on plucked/harp CC1 = Tremolo, which
+# Irish playing keeps off. CC1 is a continuous controller that LATCHES, so like the keyswitches it is
+# set at every entry so no stale mod-wheel value from a previous take leaks in.
+DYN_INSTR = {'Tin Whistle', 'Fiddle', 'Uilleann Pipes', 'Irish Flute', 'Concertina', 'Button Accordion'}
+TREM_INSTR = {'Bouzouki', 'Mandolin', 'Tenor Banjo', 'Irish Harp'}
+CC1_STEP = 80             # ~83ms between points: smooth swells
+
+
+def dynamic_env():
+    """(tick, level 0-1) control points: the piece's dynamic arc, soft intro -> loud finale."""
+    pts = [(sec['at'] * BAR, min(1.0, sec['dyn'] / 1.1 * 0.85 + 0.12)) for sec in voices()]
+    return pts + [(20 * BAR, 1.0)]
+
+
+def level_at(pts, t):
+    for (t0, l0), (t1, l1) in zip(pts, pts[1:]):
+        if t0 <= t <= t1:
+            return l0 + (l1 - l0) * ((t - t0) / (t1 - t0) if t1 > t0 else 0)
+    return pts[-1][1]
+
+
+def spans(notes, gap=BAR):
+    """Contiguous sounding regions (start, end) of a note list."""
+    ev = sorted((t, t + l) for t, l, p, v in notes if p >= 36)
+    if not ev:
+        return []
+    out, s, e = [], ev[0][0], ev[0][1]
+    for a, b in ev[1:]:
+        if a - e > gap:
+            out.append((s, e))
+            s, e = a, b
+        else:
+            e = max(e, b)
+    out.append((s, e))
+    return out
+
+
+def cc1_pass(parts):
+    env = dynamic_env()
+    cc1 = lambda lvl: int(max(0, min(127, 8 + 119 * lvl)))     # wide range, low floor for real softs
+    for name, ch, _ in CUBASE_TRACKS:
+        sp = spans(parts[name]['notes'])
+        cc = []
+        if name in TREM_INSTR:                       # kill any stale tremolo; keep plucked dry
+            cc = [(max(0, s - 40), 0) for s, _ in sp]
+        elif name in DYN_INSTR:
+            for s, e in sp:
+                cc.append((max(0, s - 40), cc1(level_at(env, s))))   # set level at the entry
+                t = s
+                while t < e:
+                    base = level_at(env, t)
+                    # per-phrase "breath": soft at the phrase start, swell to the middle, ease back
+                    swell = 0.18 * math.sin(2 * math.pi * (t % (2 * BAR)) / (2 * BAR) - math.pi / 2)
+                    if t >= 13 * BAR:                 # big crescendo on the final held chord
+                        base, swell = 0.35 + 0.65 * min(1, (t - 13 * BAR) / BAR), 0
+                    cc.append((t, cc1(base + swell)))
+                    t += CC1_STEP
+        parts[name]['cc'] = sorted(set(cc))
+    return parts
+
+
 def build():
     parts = {name: {'notes': [], 'cc': []} for name, ch, r in CUBASE_TRACKS}
     for sec in voices():
@@ -251,8 +314,7 @@ def build():
                 ev = [(t, min(l, cut - t), p, v) for t, l, p, v in ev if t < cut]
             ev = hum(rng, ev, TIME_SD.get(role, 8), 6)
             parts[instr]['notes'] += [(at + t, l, p, v) for t, l, p, v in ev]
-            parts[instr]['cc'] += [(at + t, v) for t, v in cc]
-    return parts
+    return cc1_pass(parts)      # generate the expressive CC1 dynamics over the finished parts
 
 
 # name, channel, (unused role tag). Order MUST match Cubase's track order for recording.
