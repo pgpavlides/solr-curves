@@ -57,7 +57,9 @@ Also installed, but not needed for Cubase: [tubone24/midi-mcp-server](https://gi
 | Mixer track *n* solo | *n* − 1 | 21 | 127 on · 0 off |
 | Command *i* | 16 | 40 + *i* | 127 press, then 0 |
 
-Mixer track numbers count the Cubase mixer's audio, instrument, sampler and MIDI channels from left to right.
+Mixer track numbers count the Cubase mixer's audio, instrument, sampler and MIDI channels from left to right. Input channels (Stereo In) are skipped, so track 1 is the first instrument track.
+
+**Volume scale:** CC 100 = **0.00 dB** (unity); CC 64 = −8.17 dB.
 
 **Commands:** play, stop, record, return_to_zero, goto_end, cycle, metronome, next_marker, previous_marker, to_left_locator, locators_to_selection, nudge_cursor_left, nudge_cursor_right, save, save_new_version, import_midi_file, export_audio_mixdown, undo, redo, select_all, select_none, duplicate, delete, mute_selected_events, split_at_cursor, open_close_editor, deactivate_all_solo, quantize, legato, zoom_in, zoom_out, zoom_full, zoom_to_selection, select_previous_track, select_next_track, navigate_left, navigate_right, show_mixer, show_vst_instruments.
 
@@ -67,4 +69,20 @@ To add a command, append it to `COMMANDS` in `wardogs_remote.py`, rerun the scri
 
 - **Dialogs:** anything that opens one (import MIDI, export mixdown) only gets as far as opening it. Someone has to finish the dialog.
 - **Plugins:** Claude can't load plugins or presets, or move parts between tracks.
-- **Verified:** the surface shows as Connected, and `import_midi_file` opened the import dialog in Cubase. A mixer mute was also sent while connected, but nobody checked it on screen, so mixer control is still unconfirmed.
+- **`show_mixer`:** no visible effect while the MixConsole is already open in its own window.
+
+## Tested (2026-09-23, Cubase 14, checked on screen)
+
+| Works | How it was checked |
+|---|---|
+| mute / unmute | track 1 M lit, then cleared |
+| solo / unsolo | track 11 S lit, other tracks solo-muted, then cleared |
+| pan | track 2 to L, then back to C |
+| volume | track 2 to −8.17 dB (CC 64), then 0.00 dB (CC 100) |
+| play, stop, return_to_zero | level meters and playhead |
+| cycle | button and locator range turned purple, then grey |
+| zoom_in / zoom_out | ruler went 1-5-9-13 → 1-9-17-25 and back |
+| select_next_track / select_previous_track | MixConsole selection moved and came back |
+| import_midi_file | the import dialog opened |
+
+Not tested, because they change the project or start recording: record, save, undo/redo, delete, duplicate, split, quantize, legato, select all/none, export. They use the same command-binding path as the ones that work. Not checked on screen: goto_end, markers, locators, nudge, metronome.
