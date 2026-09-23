@@ -201,6 +201,27 @@ def bodhran_notes():
     return out
 
 
+def part_notes(name, span):
+    """(bar, start tick, length ticks, pitch, velocity) for one track, range-checked."""
+    if span is None:
+        return []
+    if name == 'Bouzouki':
+        notes = bouzouki_notes()
+    elif name == 'Bodhran':
+        notes = bodhran_notes()
+    elif 'roll' in MAP.get(name, {}):
+        notes = ornamented_melody(name)
+    else:
+        notes = melody_notes()
+    notes = [n for n in notes if span[0] <= n[0] < span[1]]
+    if name in MAP:  # refuse to write notes the instrument cannot play
+        lo, hi = MAP[name]['range']
+        bad = sorted({n[3] for n in notes if n[3] >= 36 and not lo <= n[3] <= hi})
+        if bad:
+            raise SystemExit(f'{name}: notes {bad} outside playable range {lo}-{hi}')
+    return notes
+
+
 def build():
     mid = mido.MidiFile(type=1, ticks_per_beat=TPQ)
     meta = mido.MidiTrack([
@@ -212,23 +233,7 @@ def build():
     mid.tracks.append(meta)
 
     for name, ch, span in TRACKS:
-        if span is None:
-            notes = []
-        elif name == 'Bouzouki':
-            notes = bouzouki_notes()
-        elif name == 'Bodhran':
-            notes = bodhran_notes()
-        elif 'roll' in MAP.get(name, {}):
-            notes = ornamented_melody(name)
-        else:
-            notes = melody_notes()
-        if span:
-            notes = [n for n in notes if span[0] <= n[0] < span[1]]
-        if name in MAP:  # refuse to write notes the instrument cannot play
-            lo, hi = MAP[name]['range']
-            bad = sorted({n[3] for n in notes if n[3] >= 36 and not lo <= n[3] <= hi})
-            if bad:
-                raise SystemExit(f'{name}: notes {bad} outside playable range {lo}-{hi}')
+        notes = part_notes(name, span)
 
         events = [(0, 0, mido.Message('control_change', channel=ch, control=7, value=100))]
         if 'roll' in MAP.get(name, {}):  # CC1 = Performance slider = Dynamic

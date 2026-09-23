@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 
 PORT_PREFIX = 'Cubase MCP'
 MIXER_TRACKS = 16
-CC_VOLUME, CC_PAN, CC_MUTE, CC_SOLO = 7, 10, 20, 21
+CC_VOLUME, CC_PAN, CC_MUTE, CC_SOLO, CC_REC = 7, 10, 20, 21, 22
 COMMAND_CHANNEL = 15
 COMMAND_CC_BASE = 40
 
@@ -61,6 +61,11 @@ COMMANDS = [
     ('navigate_right', 'Navigate', 'Right'),
     ('show_mixer', 'Devices', 'Mixer'),
     ('show_vst_instruments', 'Devices', 'VST Instruments'),
+    # appended, so existing commands keep their CC numbers
+    ('export_dawproject', 'Export', 'DAWproject'),
+    ('import_dawproject', 'Import', 'DAWproject'),
+    ('record_enable', 'Edit', 'Record Enable'),   # arm/disarm the selected track
+    ('monitor', 'Edit', 'Monitor'),
 ]
 COMMAND_NAMES = [c[0] for c in COMMANDS]
 
@@ -105,6 +110,7 @@ def build_script():
         f'    page.makeValueBinding(control("knob", i, 1, i, {CC_PAN}), ch.mPan)',
         f'    page.makeValueBinding(control("button", i, 2, i, {CC_MUTE}), ch.mMute)',
         f'    page.makeValueBinding(control("button", i, 3, i, {CC_SOLO}), ch.mSolo)',
+        f'    page.makeValueBinding(control("button", i, 4, i, {CC_REC}), ch.mRecordEnable)',
         '}',
         '',
     ]

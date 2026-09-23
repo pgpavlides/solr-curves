@@ -20,6 +20,7 @@ for (var i = 0; i < 16; i++) {
     page.makeValueBinding(control("knob", i, 1, i, 10), ch.mPan)
     page.makeValueBinding(control("button", i, 2, i, 20), ch.mMute)
     page.makeValueBinding(control("button", i, 3, i, 21), ch.mSolo)
+    page.makeValueBinding(control("button", i, 4, i, 22), ch.mRecordEnable)
 }
 
 page.makeCommandBinding(control("button", 0, 5, 15, 40), 'Transport', 'Start')
@@ -61,3 +62,7 @@ page.makeCommandBinding(control("button", 3, 7, 15, 75), 'Navigate', 'Left')
 page.makeCommandBinding(control("button", 4, 7, 15, 76), 'Navigate', 'Right')
 page.makeCommandBinding(control("button", 5, 7, 15, 77), 'Devices', 'Mixer')
 page.makeCommandBinding(control("button", 6, 7, 15, 78), 'Devices', 'VST Instruments')
+page.makeCommandBinding(control("button", 7, 7, 15, 79), 'Export', 'DAWproject')
+page.makeCommandBinding(control("button", 8, 7, 15, 80), 'Import', 'DAWproject')
+page.makeCommandBinding(control("button", 9, 7, 15, 81), 'Edit', 'Record Enable')
+page.makeCommandBinding(control("button", 10, 7, 15, 82), 'Edit', 'Monitor')
