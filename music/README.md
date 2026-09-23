@@ -1,5 +1,11 @@
 # WARDOGS music
 
+| Folder | What |
+|---|---|
+| `irish_jig/` | Irish jig as multi-track MIDI for Cubase + NI Spotlight Collection: Ireland, the key maps we found, and the "WARDOGS Irish" template |
+| `cubase/` | ClaudeBridge: how Claude controls Cubase (loopMIDI + patched cubase-mcp + MIDI Remote script), and how to rebuild it |
+| this folder | the three synthesised organ pieces below |
+
 Original organ music for the videos. All three pieces are written from scratch, and the organ is
 synthesised from sine waves in `organ.py`. There are no samples, loops or third-party recordings,
 so nothing in the audio can match a Content ID reference.

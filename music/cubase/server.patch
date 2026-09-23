@@ -1,0 +1,207 @@
+﻿diff --git a/server.py b/server.py
+index 4ca1714..9b90514 100644
+--- a/server.py
++++ b/server.py
+@@ -12,6 +12,10 @@ Features:
+ - Song creation from text descriptions
+ """
+ 
++import builtins
++import functools
++import sys
++
+ import mido
+ from mido import Message, MidiFile, MidiTrack, MetaMessage
+ import time
+@@ -20,6 +24,12 @@ from pathlib import Path
+ from typing import Optional, List, Dict, Any
+ from mcp.server.fastmcp import FastMCP
+ 
++import wardogs_remote as remote
++
++# stdout is the MCP stdio channel: any stray print there breaks the connection.
++sys.stderr.reconfigure(encoding='utf-8', errors='replace')
++print = functools.partial(builtins.print, file=sys.stderr, flush=True)
++
+ # Initialize FastMCP server
+ mcp = FastMCP("Cubase Controller")
+ 
+@@ -33,9 +43,16 @@ def get_midi_port():
+     global midi_port
+     if midi_port is None or midi_port.closed:
+         try:
+-            # Create a virtual MIDI output port
+-            midi_port = mido.open_output(VIRTUAL_PORT_NAME, virtual=True)
+-            print(f"✓ Created virtual MIDI port: {VIRTUAL_PORT_NAME}")
++            # Windows cannot create virtual ports: use the loopMIDI port of the same name
++            # (rtmidi lists it with an index suffix, e.g. "Cubase MCP 2").
++            existing = [n for n in mido.get_output_names() if n.startswith(VIRTUAL_PORT_NAME)]
++            if existing:
++                midi_port = mido.open_output(existing[0])
++            elif sys.platform == 'win32':
++                raise RuntimeError(f'loopMIDI port "{VIRTUAL_PORT_NAME}" not found - is loopMIDI running?')
++            else:
++                midi_port = mido.open_output(VIRTUAL_PORT_NAME, virtual=True)
++            print(f"✓ Opened MIDI port: {midi_port.name}")
+         except Exception as e:
+             print(f"✗ Failed to create MIDI port: {e}")
+             raise
+@@ -73,46 +90,53 @@ def send_midi_note(note: int, velocity: int, duration: float = 0.5, channel: int
+ # TRANSPORT CONTROLS
+ # ============================================================================
+ 
++def press(name: str) -> bool:
++    """Trigger a Cubase key command through the Wardogs ClaudeBridge MIDI Remote script."""
++    cc = remote.command_cc(name)
++    ch = remote.COMMAND_CHANNEL
++    return send_midi_cc(cc, 127, ch) and send_midi_cc(cc, 0, ch)
++
++
++@mcp.tool(description=(
++    "Run a Cubase key command. Commands that open a dialog (import_midi_file, "
++    "export_audio_mixdown) still need the user to finish the dialog. "
++    f"name is one of: {', '.join(remote.COMMAND_NAMES)}"))
++def cubase_command(name: str) -> str:
++    if name not in remote.COMMAND_NAMES:
++        return f"✗ Unknown command '{name}'. Available: {', '.join(remote.COMMAND_NAMES)}"
++    if press(name):
++        return f"✓ Sent {name}"
++    return f"✗ Failed to send {name}"
++
++
+ @mcp.tool()
+ def transport_play() -> str:
+     """Start playback in Cubase."""
+-    # MIDI Machine Control (MMC) Play command
+-    # Or use CC that you'll map in Generic Remote
+-    if send_midi_cc(cc_number=91, value=127):  # CC 91 mapped to Play
+-        return "✓ Playback started"
+-    return "✗ Failed to start playback"
++    return "✓ Playback started" if press('play') else "✗ Failed to start playback"
+ 
+ 
+ @mcp.tool()
+ def transport_stop() -> str:
+     """Stop playback in Cubase."""
+-    if send_midi_cc(cc_number=92, value=127):  # CC 92 mapped to Stop
+-        return "✓ Playback stopped"
+-    return "✗ Failed to stop playback"
++    return "✓ Playback stopped" if press('stop') else "✗ Failed to stop playback"
+ 
+ 
+ @mcp.tool()
+ def transport_record() -> str:
+     """Start recording in Cubase."""
+-    if send_midi_cc(cc_number=93, value=127):  # CC 93 mapped to Record
+-        return "✓ Recording started"
+-    return "✗ Failed to start recording"
++    return "✓ Recording started" if press('record') else "✗ Failed to start recording"
+ 
+ 
+ @mcp.tool()
+ def transport_rewind() -> str:
+-    """Rewind to beginning in Cubase."""
+-    if send_midi_cc(cc_number=94, value=127):  # CC 94 mapped to Rewind
+-        return "✓ Rewound to beginning"
+-    return "✗ Failed to rewind"
++    """Return to the start of the project in Cubase."""
++    return "✓ Returned to zero" if press('return_to_zero') else "✗ Failed to rewind"
+ 
+ 
+ @mcp.tool()
+ def transport_forward() -> str:
+-    """Fast forward in Cubase."""
+-    if send_midi_cc(cc_number=95, value=127):  # CC 95 mapped to Forward
+-        return "✓ Fast forwarded"
+-    return "✗ Failed to fast forward"
++    """Jump to the end of the project in Cubase."""
++    return "✓ Jumped to end" if press('goto_end') else "✗ Failed to jump to end"
+ 
+ 
+ # ============================================================================
+@@ -125,17 +149,17 @@ def mixer_set_volume(track: int, volume: int) -> str:
+     Set the volume of a track.
+ 
+     Args:
+-        track: Track number (1-8)
++        track: Track number (1-16, in Cubase mixer order)
+         volume: Volume level (0-127)
+     """
+-    if not (1 <= track <= 8):
+-        return "✗ Track number must be between 1 and 8"
++    if not (1 <= track <= remote.MIXER_TRACKS):
++        return f"✗ Track number must be between 1 and {remote.MIXER_TRACKS}"
+     if not (0 <= volume <= 127):
+         return "✗ Volume must be between 0 and 127"
+ 
+     # CC 7 is standard MIDI volume, channel = track-1
+     channel = track - 1
+-    if send_midi_cc(cc_number=7, value=volume, channel=channel):
++    if send_midi_cc(cc_number=remote.CC_VOLUME, value=volume, channel=channel):
+         return f"✓ Set track {track} volume to {volume}"
+     return f"✗ Failed to set track {track} volume"
+ 
+@@ -146,17 +170,17 @@ def mixer_set_pan(track: int, pan: int) -> str:
+     Set the pan of a track.
+ 
+     Args:
+-        track: Track number (1-8)
++        track: Track number (1-16, in Cubase mixer order)
+         pan: Pan position (0=left, 64=center, 127=right)
+     """
+-    if not (1 <= track <= 8):
+-        return "✗ Track number must be between 1 and 8"
++    if not (1 <= track <= remote.MIXER_TRACKS):
++        return f"✗ Track number must be between 1 and {remote.MIXER_TRACKS}"
+     if not (0 <= pan <= 127):
+         return "✗ Pan must be between 0 and 127"
+ 
+     # CC 10 is standard MIDI pan
+     channel = track - 1
+-    if send_midi_cc(cc_number=10, value=pan, channel=channel):
++    if send_midi_cc(cc_number=remote.CC_PAN, value=pan, channel=channel):
+         return f"✓ Set track {track} pan to {pan}"
+     return f"✗ Failed to set track {track} pan"
+ 
+@@ -167,16 +191,15 @@ def mixer_mute_track(track: int, mute: bool = True) -> str:
+     Mute or unmute a track.
+ 
+     Args:
+-        track: Track number (1-8)
++        track: Track number (1-16, in Cubase mixer order)
+         mute: True to mute, False to unmute
+     """
+-    if not (1 <= track <= 8):
+-        return "✗ Track number must be between 1 and 8"
++    if not (1 <= track <= remote.MIXER_TRACKS):
++        return f"✗ Track number must be between 1 and {remote.MIXER_TRACKS}"
+ 
+     channel = track - 1
+     value = 127 if mute else 0
+-    # CC 120 or custom CC you map in Generic Remote
+-    if send_midi_cc(cc_number=20 + track, value=value, channel=0):
++    if send_midi_cc(cc_number=remote.CC_MUTE, value=value, channel=channel):
+         status = "muted" if mute else "unmuted"
+         return f"✓ Track {track} {status}"
+     return f"✗ Failed to mute/unmute track {track}"
+@@ -188,16 +211,15 @@ def mixer_solo_track(track: int, solo: bool = True) -> str:
+     Solo or unsolo a track.
+ 
+     Args:
+-        track: Track number (1-8)
++        track: Track number (1-16, in Cubase mixer order)
+         solo: True to solo, False to unsolo
+     """
+-    if not (1 <= track <= 8):
+-        return "✗ Track number must be between 1 and 8"
++    if not (1 <= track <= remote.MIXER_TRACKS):
++        return f"✗ Track number must be between 1 and {remote.MIXER_TRACKS}"
+ 
+     channel = track - 1
+     value = 127 if solo else 0
+-    # Custom CC you map in Generic Remote for Solo
+-    if send_midi_cc(cc_number=30 + track, value=value, channel=0):
++    if send_midi_cc(cc_number=remote.CC_SOLO, value=value, channel=channel):
+         status = "soloed" if solo else "unsoloed"
+         return f"✓ Track {track} {status}"
+     return f"✗ Failed to solo/unsolo track {track}"
