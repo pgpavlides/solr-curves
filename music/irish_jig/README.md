@@ -106,4 +106,26 @@ Beater (Hotrod, Stick, Hand) is chosen in the instrument.
 | **Phrases** | white keys 36–45 | white keys 36–45 | white keys 96–105 | white keys 36–45 |
 | **CC1** | Dynamic | Dynamic | Dynamic | Tremolo |
 
-The Pipes also have **Regulators** on 43–59. We haven't read the maps for Button Accordion, Concertina, Irish Flute, Irish Harp, Mandolin or Tenor Banjo yet. Expect the same layout, but check their Mapping tabs before writing parts for them.
+The Pipes also have **Regulators** on 43–59.
+
+### The other six (read 2026-09-23)
+
+Keyswitches on 24–35, same as above. Full per-key labels live in the `MAP` `ks=` dicts in `make_jig.py`; the useful ornaments and ranges:
+
+| MIDI | Irish Flute | Mandolin | Tenor Banjo | Irish Harp | Concertina | Button Accordion |
+|---|---|---|---|---|---|---|
+| 24 | Short | Downstroke | Downstroke | Thumb | Short | Short |
+| 25 | Long | Upstroke | Upstroke | Index Finger | Long | Long |
+| 26 | Sound Var | Sound Var | Sound Var | Sound Var | Sound Var | Sound Var |
+| 27 | Slide | Triplet 1 | Triplet 1 | Triplet 1 | Octave | Octave |
+| 28 | Strike | Reso FX | Reso FX | Harmonics | Button Only | Button Only |
+| 29 | Cut | Pull Off | Pull Off | Cut | Cut | Cut |
+| 30 | Triplet 1 | Triplet 2 | Triplet 2 | Triplet 2 | Triplet 1 | Triplet 1 |
+| 31 | Cut Short | Decaying | Open/Stopped | Open/Stopped | Slide Up | Slide Up |
+| 32 | Triplet 2 | Damp Note | Damp Note | Damp Note | Triplet 2 | Triplet 2 |
+| 33 | Triplet 3 | Triplet 3 | Triplet 3 | Short Gliss | Grace | Strike |
+| 35 | Lower HT | Lower HT | Lower HT | Lower HT | Lower HT | Lower HT |
+| **range** | 55–84 | 55–86 | 48–81 | 36–86 | 55–84 | 48–84 |
+| **CC1** | Dynamic | Tremolo | Tremolo | Tremolo | Dynamic | Dynamic |
+
+Notes: Flute keyswitches are identical to the Tin Whistle. Button Accordion also has **bass buttons on C1–B1 (36–47)** and performance keys up at C6 — keep melody in 48–84. Harp has the widest range and a Damp-All on its C6 performance keys. Ranges are read from the Mapping tabs; the generator range-check is the backstop.

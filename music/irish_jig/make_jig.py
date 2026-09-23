@@ -62,7 +62,33 @@ MAP = {
     'Tin Whistle': dict(range=(62, 86), cut=29, roll=30, start=28),      # start = Strike
     'Fiddle': dict(range=(55, 84), cut=29, roll=30, start=27),           # start = Slide
     'Uilleann Pipes': dict(range=(62, 86), cut=29, roll=30, start=28, final=25),  # Vibrato
+    'Irish Flute': dict(range=(55, 84), cut=29, roll=30, start=28, slide=27,      # same map as Tin Whistle
+                        ks={24: 'Short', 25: 'Long', 26: 'Sound Var', 27: 'Slide', 28: 'Strike',
+                            29: 'Cut', 30: 'Triplet 1', 31: 'Cut Short', 32: 'Triplet 2',
+                            33: 'Triplet 3', 34: 'Legato Alt', 35: 'Lower HT'}),
     'Bouzouki': dict(range=(55, 86), upstroke=27),
+    # read 2026-09-23 from the Mapping tabs; plucked family has Downstroke/Upstroke at 24/25
+    'Mandolin': dict(range=(55, 86), downstroke=24, upstroke=25, sound_var=26, roll=27,
+                     ks={24: 'Downstroke', 25: 'Upstroke', 26: 'Sound Var', 27: 'Triplet 1',
+                         28: 'Reso FX', 29: 'Pull Off', 30: 'Triplet 2', 31: 'Decaying',
+                         32: 'Damp Note', 33: 'Triplet 3', 35: 'Lower HT'}),
+    'Tenor Banjo': dict(range=(48, 81), downstroke=24, upstroke=25, sound_var=26, roll=27,
+                        ks={24: 'Downstroke', 25: 'Upstroke', 26: 'Sound Var', 27: 'Triplet 1',
+                            28: 'Reso FX', 29: 'Pull Off', 30: 'Triplet 2', 31: 'Open/Stopped',
+                            32: 'Damp Note', 33: 'Triplet 3', 35: 'Lower HT'}),
+    'Irish Harp': dict(range=(36, 86), roll=27, cut=29, harmonics=28,
+                       ks={24: 'Thumb', 25: 'Index Finger', 26: 'Sound Var', 27: 'Triplet 1',
+                           28: 'Harmonics', 29: 'Cut', 30: 'Triplet 2', 31: 'Open/Stopped',
+                           32: 'Damp Note', 33: 'Short Gliss', 35: 'Lower HT'}),  # Damp All on C6 keys
+    'Concertina': dict(range=(55, 84), cut=29, roll=30, grace=33, slide=31,
+                       ks={24: 'Short', 25: 'Long', 26: 'Sound Var', 27: 'Octave', 28: 'Button Only',
+                           29: 'Cut', 30: 'Triplet 1', 31: 'Slide Up', 32: 'Triplet 2', 33: 'Grace',
+                           34: 'Decaying', 35: 'Lower HT'}),
+    # bass buttons on C1-B1 (36-47); performance keys up at C6 - keep melody in 48-84
+    'Button Accordion': dict(range=(48, 84), cut=29, roll=30, start=33, slide=31,  # start = Strike
+                             ks={24: 'Short', 25: 'Long', 26: 'Sound Var', 27: 'Octave',
+                                 28: 'Button Only', 29: 'Cut', 30: 'Triplet 1', 31: 'Slide Up',
+                                 32: 'Triplet 2', 33: 'Strike', 34: 'Decaying', 35: 'Lower HT'}),
     'Bodhran': dict(range=(60, 83)),  # single hits only; 36-59 are patterns and fills
 }
 
