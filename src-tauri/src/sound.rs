@@ -266,6 +266,10 @@ impl Worker {
             let _ = self.app.emit("solr:sound-stopped", button);
             return;
         }
+        // the wheel and arrow buttons do that, in every bank, and nothing else
+        if crate::macros::fixed_button(&self.config, button) {
+            return;
+        }
         let Some(path) = bank.and_then(|b| assigned(&self.config, b, button)) else { return };
         let file = path.file_name().map(|n| n.to_string_lossy().into_owned());
         let error = match self.clips.get(&path).cloned() {

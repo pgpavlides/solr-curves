@@ -168,6 +168,7 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
     // (it does during set_polling); dropping one sample is harmless
     let Ok(mut st) = STATE.try_lock() else { return 0 };
     let mut downs: Vec<u16> = vec![];
+    let mut ups: Vec<u16> = vec![];
     for v in vals {
         match v.usage_page {
             PAGE_GENERIC if (USAGE_X..USAGE_X + 8).contains(&v.usage) => {
@@ -185,6 +186,8 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
                 let down = v.value != 0;
                 if down && !st.pressed[i] {
                     downs.push(v.usage);
+                } else if !down && st.pressed[i] {
+                    ups.push(v.usage);
                 }
                 st.pressed[i] = down;
             }
@@ -202,6 +205,9 @@ unsafe extern "system" fn on_values(_param: Ptr, data: Ptr, n: u32) -> i32 {
             crate::sound::press(b, bank);
             crate::macros::press(b, bank);
         }
+    }
+    for b in ups {
+        crate::macros::release(b);
     }
     st.stick.buttons = st.pressed.iter().enumerate().filter(|(_, p)| **p).map(|(i, _)| i as u16).collect();
     // ~120 updates a second is plenty for a dot on a graph
@@ -400,6 +406,7 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
     let vals = std::slice::from_raw_parts(data as *const Value, (n as usize).min(512));
     let Ok(mut st) = STATE.try_lock() else { return 0 };
     let mut downs: Vec<u16> = vec![];
+    let mut ups: Vec<u16> = vec![];
     let mut holds: Vec<(usize, u64)> = vec![];
     for v in vals {
         match v.usage_page {
@@ -427,6 +434,8 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
                     }
                 } else if down && !was {
                     downs.push(THROTTLE_FIRST + v.usage);
+                } else if !down && was {
+                    ups.push(THROTTLE_FIRST + v.usage);
                 }
                 st.thr_pressed[i] = down;
             }
@@ -459,6 +468,9 @@ unsafe extern "system" fn on_throttle(_param: Ptr, data: Ptr, n: u32) -> i32 {
             crate::macros::press(b, bank);
         }
     }
+    for b in ups {
+        crate::macros::release(b);
+    }
     st.thr.buttons = st
         .thr_pressed
         .iter()
@@ -485,6 +497,11 @@ pub fn knob() -> Option<usize> {
 pub fn snapshot_throttle() -> Option<RawStick> {
     let st = STATE.lock().unwrap();
     st.thr_id.map(|_| st.thr.clone())
+}
+
+/// Is this stick button down right now?
+pub fn stick_held(button: u16) -> bool {
+    STATE.lock().map_or(false, |st| st.pressed.get(button as usize).copied().unwrap_or(false))
 }
 
 pub fn snapshot() -> Option<RawStick> {

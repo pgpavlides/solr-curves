@@ -71,6 +71,19 @@ export interface VoiceConfig {
   ptt?: boolean;
   /** this stick button stops every sound playing (and lets go of Caps Lock); 0 = none, default 11 */
   stopButton?: number;
+  /** these stick buttons are the mouse wheel, up and down, in every bank; 0 = none, default 37 / 38 */
+  wheelUp?: number;
+  wheelDown?: number;
+  /** these stick buttons hold the arrow keys down, in every bank; 0 = none, default up 32, right 33, down 34, left 31 (the top-left hat) */
+  arrowUp?: number;
+  arrowRight?: number;
+  arrowDown?: number;
+  arrowLeft?: number;
+  /** the throttle's own arrow keys, held down the same way; 0 = none, default its hat 1: up 51, right 52, down 53, left 54 */
+  throttleArrowUp?: number;
+  throttleArrowRight?: number;
+  throttleArrowDown?: number;
+  throttleArrowLeft?: number;
   /** older setups, folded into the banks when loaded */
   macros?: Record<number, Macro>;
   macroSets?: Record<string, MacroSet>;
@@ -117,6 +130,16 @@ export const defaultVoice = (): VoiceConfig => ({
   ],
   map: { ...SOLR_LED_MAP },
   stopButton: 11,
+  wheelUp: 37,
+  wheelDown: 38,
+  arrowUp: 32,
+  arrowRight: 33,
+  arrowDown: 34,
+  arrowLeft: 31,
+  throttleArrowUp: 51,
+  throttleArrowRight: 52,
+  throttleArrowDown: 53,
+  throttleArrowLeft: 54,
 
 });
 

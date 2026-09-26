@@ -238,6 +238,9 @@ export default function HelpPage({ sync, pads, cfg }: Props) {
             <li>In WARDOGS, set voice chat to <b>push-to-talk on Caps Lock</b> and the microphone to <b>CABLE Output (VB-Audio Virtual Cable)</b>.</li>
             <li>Sounds on the Macros page hold Caps Lock for you while they play, so the game transmits them.</li>
             <li>{cfg.stopButton ? <>Stick button {cfg.stopButton} stops whatever is playing (change it on the Macros page).</> : <>No stop button is set - pick one on the Macros page.</>}</li>
+            <li>Stick buttons {cfg.wheelUp ?? 37} and {cfg.wheelDown ?? 38} are the mouse wheel, up and down, in every bank - hold one to keep scrolling (change them on the Macros page).</li>
+            <li>Stick buttons {cfg.arrowUp ?? 32}, {cfg.arrowRight ?? 33}, {cfg.arrowDown ?? 34} and {cfg.arrowLeft ?? 31} are the arrow keys - up, right, down, left - in every bank, held for as long as you hold the button.</li>
+            <li>Throttle buttons {cfg.throttleArrowUp ?? 51}, {cfg.throttleArrowRight ?? 52}, {cfg.throttleArrowDown ?? 53} and {cfg.throttleArrowLeft ?? 54} are the arrow keys too - up, right, down, left - in every throttle bank.</li>
           </ul>
         </section>
 

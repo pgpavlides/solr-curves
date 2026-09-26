@@ -359,6 +359,30 @@ export default function MacrosPage({ stick, throttle = null, bank, thrBank, cfg,
               <input className="num" type="number" min={0} max={128} value={cfg.stopButton ?? 11}
                 onChange={(e) => update({ ...cfg, stopButton: Math.max(0, Math.min(128, Number(e.target.value) || 0)) })} />
             </label>
+            <label className="vv-stopbtn" title="This stick button scrolls the mouse wheel up, in every bank - hold it to keep scrolling (0 = none)">
+              Wheel up
+              <input className="num" type="number" min={0} max={44} value={cfg.wheelUp ?? 37}
+                onChange={(e) => update({ ...cfg, wheelUp: Math.max(0, Math.min(44, Number(e.target.value) || 0)) })} />
+            </label>
+            <label className="vv-stopbtn" title="This stick button scrolls the mouse wheel down, in every bank - hold it to keep scrolling (0 = none)">
+              Wheel down
+              <input className="num" type="number" min={0} max={44} value={cfg.wheelDown ?? 38}
+                onChange={(e) => update({ ...cfg, wheelDown: Math.max(0, Math.min(44, Number(e.target.value) || 0)) })} />
+            </label>
+            {([["arrowUp", "Up", 32], ["arrowRight", "Right", 33], ["arrowDown", "Down", 34], ["arrowLeft", "Left", 31]] as const).map(([k, name, d]) => (
+              <label key={k} className="vv-stopbtn" title={`This stick button is the ${name} arrow key, in every bank - held down for as long as you hold the button (0 = none)`}>
+                Arrow {name}
+                <input className="num" type="number" min={0} max={44} value={cfg[k] ?? d}
+                  onChange={(e) => update({ ...cfg, [k]: Math.max(0, Math.min(44, Number(e.target.value) || 0)) })} />
+              </label>
+            ))}
+            {([["throttleArrowUp", "Up", 51], ["throttleArrowRight", "Right", 52], ["throttleArrowDown", "Down", 53], ["throttleArrowLeft", "Left", 54]] as const).map(([k, name, d]) => (
+              <label key={k} className="vv-stopbtn" title={`This throttle button is the ${name} arrow key, in every throttle bank - held down for as long as you hold the button (0 = none)`}>
+                Throttle arrow {name}
+                <input className="num" type="number" min={0} max={62} value={cfg[k] ?? d}
+                  onChange={(e) => { const v = Number(e.target.value) || 0; update({ ...cfg, [k]: v === 0 ? 0 : Math.max(45, Math.min(62, v)) }); }} />
+              </label>
+            ))}
             <button className="ghost-btn" onClick={() => soundStop()}>Stop all</button>
             <label className="vv-ptt" title="While this window is in front, a press only picks the button - it doesn't type or play. Behind another window the stick works as usual.">
               <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />

@@ -14,7 +14,7 @@
 
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -38,6 +38,8 @@ static CONFIG: Mutex<Value> = Mutex::new(Value::Null);
 /// While the editor is open the stick must not type into the desktop.
 static SUPPRESSED: AtomicBool = AtomicBool::new(false);
 static RUNNING: Mutex<Option<HashSet<u16>>> = Mutex::new(None);
+/// Arrow keys held down right now, by the stick button holding them.
+static HELD: Mutex<Option<HashMap<u16, (u16, bool)>>> = Mutex::new(None);
 
 /// Scan codes (set 1, as SendInput wants them) for a key name.
 fn scan(name: &str) -> Option<(u16, bool)> {
@@ -144,6 +146,51 @@ const FAST_HOLD: u64 = 20;
 const HOLD: u64 = 40;
 /// Between typed characters.
 const TEXT_GAP: u64 = 8;
+/// The wheel buttons: how long a press waits before it starts repeating, and
+/// the time between notches after that.
+const WHEEL_DELAY: u64 = 350;
+const WHEEL_REPEAT: u64 = 60;
+
+/// The mouse wheel on two stick buttons, the same in every bank ("wheelUp" /
+/// "wheelDown", default 37 / 38, 0 = off): notches up (+1) or down (-1).
+/// Stick buttons that are the arrow keys, the same in every bank: held down
+/// for as long as the button is ("arrowUp" / "arrowRight" / "arrowDown" /
+/// "arrowLeft", default 32 / 33 / 34 / 31 - the stick head's top-left hat,
+/// which numbers its directions from left, clockwise - 0 = off). Returns the
+/// key's scan code.
+const ARROWS: [(&str, u64, &str); 4] = [("arrowUp", 32, "up"), ("arrowRight", 33, "right"), ("arrowDown", 34, "down"), ("arrowLeft", 31, "left")];
+/// The throttle's own set, on its hat 1 by default (51 up, 52 right, 53 down,
+/// 54 left; "throttleArrowUp" and so on, 0 = off).
+const THROTTLE_ARROWS: [(&str, u64, &str); 4] =
+    [("throttleArrowUp", 51, "up"), ("throttleArrowRight", 52, "right"), ("throttleArrowDown", 53, "down"), ("throttleArrowLeft", 54, "left")];
+
+pub fn arrow_button(cfg: &Value, button: u16) -> Option<(u16, bool)> {
+    let set = if button > crate::hidraw::THROTTLE_FIRST { &THROTTLE_ARROWS } else { &ARROWS };
+    set.iter()
+        .find(|(k, d, _)| button as u64 == cfg.get(*k).and_then(|v| v.as_u64()).unwrap_or(*d))
+        .and_then(|(_, _, name)| scan(name))
+}
+
+/// A button the app keeps for itself in every bank (the wheel or an arrow),
+/// so no bank's sound plays on it.
+pub fn fixed_button(cfg: &Value, button: u16) -> bool {
+    wheel_button(cfg, button).is_some() || arrow_button(cfg, button).is_some()
+}
+
+pub fn wheel_button(cfg: &Value, button: u16) -> Option<i32> {
+    if button > crate::hidraw::THROTTLE_FIRST {
+        return None;
+    }
+    let get = |k: &str, d: u64| cfg.get(k).and_then(|v| v.as_u64()).unwrap_or(d);
+    let b = button as u64;
+    if b == get("wheelUp", 37) {
+        Some(1)
+    } else if b == get("wheelDown", 38) {
+        Some(-1)
+    } else {
+        None
+    }
+}
 
 /// "2s", "2seconds", "1.5sec", "1500ms" -> ms (a bare number is seconds).
 fn hold_ms(s: &str) -> Option<u32> {
@@ -235,9 +282,9 @@ pub fn parse(text: &str) -> Result<Vec<Timed>, String> {
 }
 
 #[cfg(windows)]
-fn send(step: &Step, fast: bool) {
+fn key_input(scan: u16, ext: bool, up: bool) -> windows_sys::Win32::UI::Input::KeyboardAndMouse::INPUT {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
-    let key = |scan: u16, ext: bool, up: bool| INPUT {
+    INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
@@ -248,7 +295,21 @@ fn send(step: &Step, fast: bool) {
                 dwExtraInfo: 0,
             },
         },
-    };
+    }
+}
+
+/// One key going down or coming up, on its own.
+#[cfg(windows)]
+fn key_event(scan: u16, ext: bool, up: bool) {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let i = key_input(scan, ext, up);
+    unsafe { SendInput(1, &i, std::mem::size_of::<INPUT>() as i32) };
+}
+
+#[cfg(windows)]
+fn send(step: &Step, fast: bool) {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let key = key_input;
     let one = |i: INPUT| unsafe { SendInput(1, &i, std::mem::size_of::<INPUT>() as i32) };
     match step {
         Step::Key(s, e) => {
@@ -335,6 +396,20 @@ pub fn press(button: u16, bank: Option<usize>) {
     if suppressed() {
         return;
     }
+    let (wheel, arrow) = {
+        let cfg = CONFIG.lock().unwrap();
+        (wheel_button(&cfg, button), arrow_button(&cfg, button))
+    };
+    if let Some(n) = wheel {
+        scroll(button, n);
+        return;
+    }
+    if let Some((s, e)) = arrow {
+        HELD.lock().unwrap().get_or_insert_with(HashMap::new).insert(button, (s, e));
+        #[cfg(windows)]
+        key_event(s, e, false);
+        return;
+    }
     let (steps, gap) = {
         let cfg = CONFIG.lock().unwrap();
         let Some(m) = macro_for(&cfg, button, bank) else { return };
@@ -368,8 +443,89 @@ pub fn press(button: u16, bank: Option<usize>) {
     });
 }
 
+/// From the stick's callback: a button let go. An arrow key it was holding
+/// comes up - always, even if the stick went quiet meanwhile.
+pub fn release(button: u16) {
+    let held = HELD.lock().unwrap().as_mut().and_then(|h| h.remove(&button));
+    if let Some((_s, _e)) = held {
+        #[cfg(windows)]
+        key_event(_s, _e, true);
+    }
+}
+
+/// A wheel button: one notch at once, and while it stays down, a notch every
+/// WHEEL_REPEAT ms after the first WHEEL_DELAY - like a key repeating.
+fn scroll(button: u16, n: i32) {
+    {
+        let mut running = RUNNING.lock().unwrap();
+        if !running.get_or_insert_with(HashSet::new).insert(button) {
+            return;
+        }
+    }
+    std::thread::spawn(move || {
+        #[cfg(windows)]
+        send(&Step::Wheel(n), false);
+        std::thread::sleep(Duration::from_millis(WHEEL_DELAY));
+        while crate::hidraw::stick_held(button) && !suppressed() {
+            #[cfg(windows)]
+            send(&Step::Wheel(n), false);
+            std::thread::sleep(Duration::from_millis(WHEEL_REPEAT));
+        }
+        if let Some(set) = RUNNING.lock().unwrap().as_mut() {
+            set.remove(&button);
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn arrow_buttons_follow_the_hat_31_left_32_up_33_right_34_down() {
+        use super::{arrow_button, fixed_button};
+        let none = serde_json::json!({});
+        assert_eq!(arrow_button(&none, 32), Some((0x48, true)), "up");
+        assert_eq!(arrow_button(&none, 33), Some((0x4D, true)), "right");
+        assert_eq!(arrow_button(&none, 34), Some((0x50, true)), "down");
+        assert_eq!(arrow_button(&none, 31), Some((0x4B, true)), "left");
+        assert_eq!(arrow_button(&none, 35), None);
+        let moved = serde_json::json!({ "arrowLeft": 0, "arrowUp": 7 });
+        assert_eq!(arrow_button(&moved, 31), None, "0 turns it off");
+        assert_eq!(arrow_button(&moved, 7), Some((0x48, true)));
+        assert!(fixed_button(&none, 33) && fixed_button(&none, 37) && !fixed_button(&none, 1));
+    }
+
+    #[test]
+    fn the_throttle_has_its_own_arrows_on_hat_1() {
+        use super::arrow_button;
+        let none = serde_json::json!({});
+        assert_eq!(arrow_button(&none, 51), Some((0x48, true)), "up");
+        assert_eq!(arrow_button(&none, 52), Some((0x4D, true)), "right");
+        assert_eq!(arrow_button(&none, 53), Some((0x50, true)), "down");
+        assert_eq!(arrow_button(&none, 54), Some((0x4B, true)), "left");
+        assert_eq!(arrow_button(&none, 55), None);
+        // each side only reads its own numbers: a stick setting of 51 or a
+        // throttle setting of 32 binds nothing
+        let crossed = serde_json::json!({ "arrowUp": 51, "throttleArrowUp": 32 });
+        assert_eq!(arrow_button(&crossed, 51), None);
+        assert_eq!(arrow_button(&crossed, 32), None);
+        assert_eq!(arrow_button(&crossed, 52), Some((0x4D, true)), "the rest stay");
+    }
+
+    #[test]
+    fn wheel_buttons_default_to_37_up_and_38_down_on_the_stick_only() {
+        use super::wheel_button;
+        let none = serde_json::json!({});
+        assert_eq!(wheel_button(&none, 37), Some(1));
+        assert_eq!(wheel_button(&none, 38), Some(-1));
+        assert_eq!(wheel_button(&none, 36), None);
+        let moved = serde_json::json!({ "wheelUp": 5, "wheelDown": 0 });
+        assert_eq!(wheel_button(&moved, 5), Some(1));
+        assert_eq!(wheel_button(&moved, 37), None);
+        assert_eq!(wheel_button(&moved, 38), None, "0 turns it off");
+        let throttle = serde_json::json!({ "wheelUp": 50 });
+        assert_eq!(wheel_button(&throttle, 50), None, "the throttle's numbers are its own");
+    }
+
     use super::*;
 
     fn steps(text: &str) -> Vec<Step> {
