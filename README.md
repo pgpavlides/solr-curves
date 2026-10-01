@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/pgpavlides/wardogspilot/releases/tag/solr-curves-v1.3.0"><b>Download 1.3.0</b></a> ·
+  <a href="https://github.com/pgpavlides/solr-curves/releases/tag/v1.3.0"><b>Download 1.3.0</b></a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#features">Features</a> ·
   <a href="#develop">Develop</a>
@@ -38,7 +38,7 @@ WARDOGS gives a HOTAS very little to work with. Sol-R Curves sits between the st
    - [Thrustmaster drivers and T.A.R.G.E.T.](https://support.thrustmaster.com/en/product/sol-r-1-flightstick-en/): T.A.R.G.E.T. 3.0.25.603 or later is needed for the throttle.
    - [VB-CABLE](https://vb-audio.com/Cable/), the virtual microphone for sounds and horn music.
    - WebView2: Windows 11 already has it.
-2. Run **`Sol-R Curves_1.3.0_x64-setup.exe`** from the [release](https://github.com/pgpavlides/wardogspilot/releases/tag/solr-curves-v1.3.0).
+2. Run **`Sol-R Curves_1.3.0_x64-setup.exe`** from the [release](https://github.com/pgpavlides/solr-curves/releases/tag/v1.3.0).
 3. Start **Sol-R Curves first**, then WARDOGS. Bind everything in the game to **Thrustmaster Combined**. The Help page has the axis and button numbers, and **Fix bindings** moves existing ones over for you.
 
 Closing the window keeps the app running in the tray at about **28 MB**, and the stick keeps working. Quit it from the tray.
